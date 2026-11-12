@@ -152,45 +152,6 @@
   max-width: 44ch;
 }
 
-.trust-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.trust-card {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-
-  &:hover {
-    transform: translateY(-2px);
-    border-color: var(--color-accent);
-  }
-}
-
-.trust-icon {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: var(--marfil-surface);
-  color: var(--color-accent);
-}
-
-.trust-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.trust-label {
-  font: var(--text-label);
-  font-weight: 700;
-}
-
 // Right Section
 .form-section {
   display: flex;
@@ -429,7 +390,6 @@
 
 // Grouped Shared Declarations
 .pill-dot,
-.trust-icon,
 .step-badge,
 .error-badge,
 .primary-action-btn {
@@ -447,15 +407,13 @@
 
 .nav-back-link,
 .brand-pill,
-.trust-card,
 .auth-card,
 .field-control {
   border: var(--border-width) solid var(--color-border-default);
 }
 
 .nav-back-link,
-.brand-pill,
-.trust-card {
+.brand-pill {
   background: var(--color-surface-glass);
   backdrop-filter: blur(var(--blur-glass));
 }
@@ -463,7 +421,6 @@
 .hero-title-main,
 .card-heading,
 .field-tag,
-.trust-label,
 .logo-utn-caption {
   color: var(--color-text-primary);
 }
@@ -478,7 +435,6 @@
 .nav-back-link,
 .hero-lede,
 .card-subheading,
-.trust-desc,
 .security-notice,
 .timer-countdown,
 .footer-legal {
@@ -488,7 +444,6 @@
 
 .nav-back-link,
 .nav-back-arrow,
-.trust-card,
 .step-badge,
 .field-control,
 .primary-action-btn,
@@ -517,9 +472,5 @@
 
   .hero-title {
     font-size: 30px;
-  }
-
-  .trust-grid {
-    grid-template-columns: 1fr;
   }
 }
