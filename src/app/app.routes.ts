@@ -14,11 +14,6 @@ export const routes: Routes = [
       import('./features/auth/login-page/login-page.component').then((m) => m.LoginPage),
   },
   {
-    path: 'login-propuesta',
-    redirectTo: 'login',
-    pathMatch: 'full',
-  },
-  {
     path: '',
     component: AppShell,
     canActivate: [authGuard],
