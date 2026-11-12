@@ -1,80 +1,124 @@
-# UtnRh
+# Sistema de Recursos Humanos · UTN
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.6.
+Frontend del back office de Recursos Humanos de la Universidad Tecnológica de
+Nezahualcóyotl. Angular 22 sobre el sistema de tokens descrito en
+[`AGENTS.md`](./AGENTS.md) — ese documento es la fuente de verdad del diseño, y
+este README la fuente de verdad de cómo se corre.
 
-## Development server
+## Requisitos
 
-To start a local development server, run:
+- **Node** `^22.22.3 || ^24.15.0 || >=26.0.0` (el rango lo impone Angular 22)
+- **npm** 10 o superior
+
+## Levantar el proyecto
 
 ```bash
-ng serve
+npm ci
+npm start          # http://localhost:4200
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+La aplicación habla con `http://localhost:8080/api`. Ese backend vive en su
+propio repositorio (Laravel + Docker) y hay que levantarlo aparte:
+
+```bash
+docker compose up            # en el repositorio del backend
+```
+
+Los códigos de acceso del login se leen en **Mailpit**: `http://localhost:8025`.
+
+## Comandos
+
+| Comando | Qué hace |
+| --- | --- |
+| `npm start` | Servidor de desarrollo en `:4200` |
+| `npm run build` | Build de producción. **Antes corre `lint:styles`** |
+| `npm test` | Vitest en modo watch |
+| `npm run verify` | lint + build + tests. **Es lo que se corre antes de pushear** |
+| `npm run lint:styles` | Stylelint sobre todos los `.scss` |
+| `npm run brand:vectorize` | Regenera el SVG del logo desde el PNG fuente |
+
+`npm run build` ejecuta el lint primero mediante un hook `prebuild`: un color
+crudo en un componente **rompe el build**, no genera una advertencia.
+
+## Cómo está organizado
+
+```
+src/
+  styles/
+    styles.scss              # tokens, base del documento y fondo del tema
+    tokens/                  # única carpeta donde se permiten valores literales
+  app/
+    core/                    # servicios sin vista
+      auth/                  # token, sesión, guardas
+      dashboard/ padron/ empleados/   # un servicio por contrato del backend
+      http/                  # interceptor que adjunta el Bearer
+      layout/                # estado del sidebar
+      theme/                 # data-theme y persistencia
+    layout/                  # app-shell, sidebar, topbar
+    shared/ui/               # componentes reutilizables sin dominio
+    features/                # pantallas
+```
+
+### Rutas
+
+| Ruta | Pantalla |
+| --- | --- |
+| `/login` | Acceso sin contraseña: correo institucional + código de 6 dígitos |
+| `/` | Panel general con tres indicadores |
+| `/empleados` | Índice de la sección |
+| `/empleados/activos` | Listado de la plantilla vigente, con búsqueda y paginación |
+| `/empleados/alta` | Formulario de alta, en cuatro pasos |
+| `/empleados/baja` | Pendiente de contrato |
+| `/semaforo-documentos` | Pendiente de contrato |
+| `/ajustes` | Selector de tema |
+| `/tokens`, `/ui` | Pantallas internas de control, sin enlace en el menú |
+
+## Reglas del sistema de diseño
+
+Tres niveles de token: **primitivos** → **semánticos por tema** → **componentes**.
+Un componente solo consume tokens semánticos y nunca declara un color, radio,
+sombra, duración o curva propios.
+
+- Los tres temas (`guinda`, `light`, `dark`) comparten nombres, no valores, y se
+  aplican con `data-theme` en `<html>`.
+- El **login queda siempre en `light`**: la preferencia del usuario aplica
+  adentro del sistema, no a la puerta de entrada.
+- Si falta un token, se crea primero en `src/styles/tokens/`. Nunca se escribe
+  el valor dentro del componente — `stylelint` lo rechaza.
+
+Las capturas del lienzo de diseño (`docs/design/`) **no se versionan**: son
+material de referencia del autor. Si clonás el repositorio y la carpeta está
+vacía, es esperado.
 
 ## Docker
 
-The whole project builds into a static nginx image (multi-stage `Dockerfile`).
+La imagen compila el bundle y lo sirve con nginx.
 
 ```bash
-cp .env.example .env      # adjust APP_PORT and API_BASE_URL
-docker compose up --build
-docker compose down
+docker build --build-arg API_BASE_URL=https://api.ejemplo.mx/api -t utn-rh .
+docker compose up
 ```
 
-Configuration lives in `.env` (never committed):
+`API_BASE_URL` es un argumento de build, no de runtime: Angular resuelve los
+entornos en tiempo de compilación. El Dockerfile reescribe
+`src/environments/environment.prod.ts` dentro de la imagen; el archivo del
+repositorio es el valor por defecto.
 
-| Variable | Meaning |
-| --- | --- |
-| `APP_PORT` | Host port the container publishes (default `4200`). |
-| `API_BASE_URL` | API origin compiled into the bundle. Requires a rebuild to change. |
-| `IMAGE_TAG` | Tag of the locally built image. |
+## Convenciones
 
-`API_BASE_URL` is a build argument, not a runtime one: Angular environments are
-static, so `docker compose up --build` is required after changing it.
+- **Commits convencionales** (`feat:`, `fix:`, `chore:`, `docs:`). Sin
+  atribución a herramientas.
+- **Una acción principal por vista.** El botón primario es único; el resto son
+  secundarios o fantasma.
+- **Estados por forma además de color**: todo mensaje de error lleva ícono o
+  palabra, nunca solo rojo.
+- **Nada de `new Date('YYYY-MM-DD')`** para fechas del backend: interpreta UTC y
+  corre el día en México. Usar el helper que parsea la cadena.
 
-## Code scaffolding
+## Estado del proyecto
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Implementado y cubierto por tests: tokens y temas, shell, login, panel, padrón,
+ficha en drawer, alta con validación espejo del backend (CURP completa) y baja.
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Pendiente: semáforo de documentos, listado de bajas (falta endpoint), botón
+`Editar` de la ficha, y prueba de punta a punta de alta y baja contra el backend.
