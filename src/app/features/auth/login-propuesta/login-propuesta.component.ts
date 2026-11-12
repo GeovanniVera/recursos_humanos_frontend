@@ -49,6 +49,9 @@ export class LoginPropuesta {
   /** Estado de petición en curso */
   readonly enviando = signal(false);
 
+  /** Estado de verificación exitosa para feedback visual animado */
+  readonly verificado = signal(false);
+
   /** Segundos restantes para reenviar código */
   readonly segundos = signal(0);
 
@@ -133,8 +136,11 @@ export class LoginPropuesta {
       )
       .subscribe({
         next: () => {
-          const destino = this.auth.redirect() ?? '/';
-          void this.router.navigateByUrl(destino === '' ? '/' : destino);
+          this.verificado.set(true);
+          setTimeout(() => {
+            const destino = this.auth.redirect() ?? '/';
+            void this.router.navigateByUrl(destino === '' ? '/' : destino);
+          }, 700);
         },
         error: (error: unknown) => this.manejarError(error),
       });
@@ -168,6 +174,7 @@ export class LoginPropuesta {
     this.segundos.set(0);
     this.codigo.set('');
     this.error.set(null);
+    this.verificado.set(false);
     this.paso.set('correo');
   }
 

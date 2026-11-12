@@ -192,9 +192,28 @@
   font: var(--text-overline);
   font-weight: 700;
 
-  &.is-active {
+  &.is-active,
+  &.is-done {
     background: var(--color-accent);
     color: var(--white);
+  }
+}
+
+.step-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  animation: step-slide-enter var(--motion-base) var(--motion-ease) both;
+}
+
+@keyframes step-slide-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -305,6 +324,43 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  &.is-success {
+    background: var(--color-state-success);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--white-a20);
+  border-top-color: var(--white);
+  border-radius: var(--radius-pill);
+  animation: spin var(--motion-slow) linear infinite;
+}
+
+.btn-check-icon {
+  display: flex;
+  align-items: center;
+  animation: check-bounce var(--motion-fast) var(--motion-ease) both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes check-bounce {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
