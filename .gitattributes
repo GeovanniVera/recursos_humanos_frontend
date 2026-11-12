@@ -1,0 +1,15 @@
+# Line endings
+#
+# Every text file is stored with LF and checked out with LF. The workspace runs
+# on Windows, but the container, any CI and most editors on the team do not:
+# without this, the same file shows up as modified when only the line ending
+# changed, and review diffs fill with noise that hides the real change.
+* text=auto eol=lf
+
+# Binary assets: git must never normalise these.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
