@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -36,7 +36,7 @@ const LARGO_CODIGO = 6;
  */
 @Component({
   selector: 'app-login-page',
-  imports: [FormsModule, AnimatedBackdrop, BrandLogos, OtpInput],
+  imports: [FormsModule, RouterLink, AnimatedBackdrop, BrandLogos, OtpInput],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
   host: { 'data-theme': 'light' },

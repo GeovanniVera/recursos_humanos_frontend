@@ -1,0 +1,190 @@
+<div class="page">
+  <app-animated-backdrop />
+
+  <header class="preview-banner">
+    <a routerLink="/login" class="preview-link">
+      <span aria-hidden="true">←</span>
+      <span>Ver login original</span>
+    </a>
+  </header>
+
+  <main class="page-container enter-rise">
+    <!-- Columna Izquierda: Identidad Institucional -->
+    <section class="brand-column">
+      <header class="brand-header">
+        <div class="brand-seal">
+          <img
+            class="seal-image"
+            src="brand/logo-utn.svg"
+            alt="Escudo de la Universidad Tecnológica de Nezahualcóyotl"
+          />
+          <p class="seal-caption">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</p>
+        </div>
+
+        <span class="brand-divider" aria-hidden="true"></span>
+
+        <div class="brand-partner">
+          <img
+            class="partner-image"
+            src="brand/logo-edomex.svg"
+            alt="Gobierno del Estado de México"
+          />
+        </div>
+      </header>
+
+      @if (paso() === 'correo') {
+        <div class="brand-titles">
+          <h1 class="headline">
+            <span class="headline-guinda">Sistema de</span>
+            <span class="headline-accent">Recursos Humanos</span>
+          </h1>
+
+          <div class="title-rule" aria-hidden="true"></div>
+
+          <p class="lede">
+            Acceso para el personal de la universidad con tu correo institucional, de forma
+            rápida y segura.
+          </p>
+        </div>
+      } @else {
+        <div class="brand-titles">
+          <h1 class="headline">
+            <span class="headline-guinda">Verifica tu</span>
+            <span class="headline-accent">identidad</span>
+          </h1>
+
+          <div class="title-rule" aria-hidden="true"></div>
+
+          <p class="lede">
+            Escribe el código que enviamos a tu correo institucional para entrar al sistema.
+          </p>
+        </div>
+      }
+    </section>
+
+    <!-- Columna Derecha: Tarjeta de Acceso -->
+    <section class="form-column">
+      <div class="card enter-modal">
+        <div class="steps" aria-hidden="true">
+          <span class="dot" [class.is-active]="paso() === 'correo'"></span>
+          <span class="dot" [class.is-active]="paso() === 'codigo'"></span>
+        </div>
+
+        @if (hayError()) {
+          <div class="alert" role="alert">
+            <span class="alert-icon" aria-hidden="true">✕</span>
+            <p class="alert-text">{{ error() }}</p>
+          </div>
+        }
+
+        @if (paso() === 'correo') {
+          <h2 class="card-title">Bienvenido</h2>
+
+          <p class="card-body">
+            Ingresa tu correo institucional y te enviaremos un código de acceso. No necesitas
+            contraseña.
+          </p>
+
+          <form class="form" (ngSubmit)="enviarCorreo()">
+            <label class="field-label" for="correo-propuesta">CORREO INSTITUCIONAL</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </span>
+              <input
+                id="correo-propuesta"
+                class="field has-icon"
+                type="email"
+                name="correo"
+                autocomplete="email"
+                required
+                placeholder="nombre@correo-institucional"
+                [attr.value]="correo()"
+                [disabled]="enviando()"
+                (input)="alEscribirCorreo($event)"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="primary"
+              [disabled]="!puedeEnviarCorreo()"
+              [attr.aria-busy]="enviando() ? 'true' : null"
+            >
+              Enviar código de acceso ›
+            </button>
+          </form>
+
+          <div class="security-footnote">
+            <span class="security-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </span>
+            <p class="footnote-text">El código es de un solo uso y caduca en 10 minutos.</p>
+          </div>
+        } @else {
+          <h2 class="card-title">Revisa tu correo</h2>
+
+          <p class="card-body">
+            Enviamos un código de 6 dígitos a
+            <strong class="card-emphasis">{{ correo() }}</strong>
+          </p>
+
+          <form class="form" (ngSubmit)="enviarCodigo()">
+            <app-otp-input
+              [isInvalid]="hayError()"
+              [disabled]="enviando()"
+              (valueChanges)="codigo.set($event)"
+            />
+
+            <div class="progress">
+              <span class="progress-bar" [style.width.%]="progreso()"></span>
+            </div>
+
+            <div class="resend">
+              @if (segundos() > 0) {
+                <p class="resend-wait">Reenviar código en {{ etiquetaReenvio() }}</p>
+              } @else {
+                <button
+                  type="button"
+                  class="link"
+                  [disabled]="enviando()"
+                  (click)="reenviarCodigo()"
+                >
+                  Reenviar código
+                </button>
+              }
+
+              <button
+                type="button"
+                class="link link-underline"
+                [disabled]="enviando()"
+                (click)="cambiarCorreo()"
+              >
+                Cambiar correo
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              class="primary primary-shimmer"
+              [disabled]="!puedeVerificar()"
+              [attr.aria-busy]="enviando() ? 'true' : null"
+            >
+              Verificar y entrar
+            </button>
+          </form>
+        }
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>Acceso exclusivo para personal autorizado</p>
+  </footer>
+</div>

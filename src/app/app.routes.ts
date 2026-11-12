@@ -14,6 +14,14 @@ export const routes: Routes = [
       import('./features/auth/login-page/login-page.component').then((m) => m.LoginPage),
   },
   {
+    path: 'login-propuesta',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/login-propuesta/login-propuesta.component').then(
+        (m) => m.LoginPropuesta,
+      ),
+  },
+  {
     path: '',
     component: AppShell,
     canActivate: [authGuard],

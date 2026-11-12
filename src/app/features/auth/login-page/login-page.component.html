@@ -1,6 +1,13 @@
 <div class="page">
   <app-animated-backdrop />
 
+  <header class="preview-banner">
+    <a routerLink="/login-propuesta" class="preview-link">
+      <span>Probar nueva propuesta</span>
+      <span aria-hidden="true">→</span>
+    </a>
+  </header>
+
   <section class="brand-column enter-rise">
     @if (paso() === 'correo') {
       <app-brand-logos variant="lg" />
