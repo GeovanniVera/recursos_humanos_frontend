@@ -1,47 +1,6 @@
 <div class="page">
-  <!-- Fondo base del Login 1 (auroras, gradiente cálido y partículas) -->
+  <!-- Fondo exacto del Login 1 (auroras, gradiente y anillos) -->
   <app-animated-backdrop />
-
-  <!-- Formas curvas decorativas (esquina inferior izquierda y superior derecha) -->
-  <div class="ribbon-bottom-left" aria-hidden="true">
-    <svg viewBox="0 0 540 380" fill="none" preserveAspectRatio="none" class="ribbon-svg">
-      <path
-        d="M 0 380 L 0 150 C 100 210 200 295 340 280 C 420 270 480 320 540 380 Z"
-        fill="var(--login-vino)"
-        opacity="0.96"
-      />
-      <path
-        d="M 0 380 L 0 220 C 110 255 180 320 280 305 C 360 295 440 340 500 380 Z"
-        fill="var(--vino-ribbon-dark)"
-        opacity="0.9"
-      />
-      <path
-        d="M 0 150 C 100 210 200 295 340 280 C 420 270 480 320 540 380"
-        stroke="var(--login-gold)"
-        stroke-width="2.5"
-      />
-    </svg>
-  </div>
-
-  <div class="ribbon-top-right" aria-hidden="true">
-    <svg viewBox="0 0 460 360" fill="none" preserveAspectRatio="none" class="ribbon-svg">
-      <path
-        d="M 140 0 C 200 80 270 145 460 170 L 460 0 Z"
-        fill="var(--login-vino)"
-        opacity="0.92"
-      />
-      <path
-        d="M 240 0 C 290 60 350 105 460 115 L 460 0 Z"
-        fill="var(--vino-ribbon-dark)"
-        opacity="0.85"
-      />
-      <path
-        d="M 140 0 C 200 80 270 145 460 170"
-        stroke="var(--login-gold)"
-        stroke-width="2"
-      />
-    </svg>
-  </div>
 
   <!-- Botón superior discreto para alternar al login original -->
   <header class="preview-banner">
@@ -51,38 +10,40 @@
     </a>
   </header>
 
-  <!-- Contenedor Split 55% / 45% -->
+  <!-- Contenedor Split Layout -->
   <main class="split-container enter-rise">
     <!-- PANEL IZQUIERDO: Identidad Institucional (~55%) -->
     <section class="brand-panel">
-      <!-- 1 & 2: Logotipos con divisor vertical dorado -->
+      <!-- Logotipos centrados en su propio contenedor -->
       <header class="logos-header">
-        <div class="logo-utn-box">
-          <img
-            class="logo-utn-img"
-            src="brand/logo-utn.svg"
-            alt="Logotipo Universidad Tecnológica de Nezahualcóyotl"
-          />
-          <span class="logo-utn-text">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</span>
-        </div>
+        <div class="logos-container">
+          <div class="logo-utn-box">
+            <img
+              class="logo-utn-img"
+              src="brand/logo-utn.svg"
+              alt="Logotipo Universidad Tecnológica de Nezahualcóyotl"
+            />
+            <span class="logo-utn-text">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</span>
+          </div>
 
-        <span class="logos-divider" aria-hidden="true"></span>
+          <span class="logos-divider" aria-hidden="true"></span>
 
-        <div class="logo-edomex-box">
-          <img
-            class="logo-edomex-img"
-            src="brand/logo-edomex.svg"
-            alt="Gobierno del Estado de México"
-          />
+          <div class="logo-edomex-box">
+            <img
+              class="logo-edomex-img"
+              src="brand/logo-edomex.svg"
+              alt="Gobierno del Estado de México"
+            />
+          </div>
         </div>
       </header>
 
-      <!-- 3, 4 & 5: Título, línea dorada decorativa y texto descriptivo -->
+      <!-- Título institucional, línea decorativa y descripción -->
       @if (paso() === 'correo') {
         <div class="brand-text-block">
           <h1 class="main-title">
-            <span class="title-vino">Sistema de</span>
-            <span class="title-gold">Recursos Humanos</span>
+            <span class="title-primary">Sistema de</span>
+            <span class="title-accent">Recursos Humanos</span>
           </h1>
 
           <div class="decorative-line" aria-hidden="true"></div>
@@ -95,8 +56,8 @@
       } @else {
         <div class="brand-text-block">
           <h1 class="main-title">
-            <span class="title-vino">Verifica tu</span>
-            <span class="title-gold">identidad</span>
+            <span class="title-primary">Verifica tu</span>
+            <span class="title-accent">identidad</span>
           </h1>
 
           <div class="decorative-line" aria-hidden="true"></div>
@@ -107,27 +68,12 @@
           </p>
         </div>
       }
-
-      <!-- 6: Espacio preparado para fotografía de las instalaciones universitarias -->
-      <div class="campus-container" aria-hidden="true">
-        <div class="campus-overlay"></div>
-        <div class="campus-placeholder">
-          <!-- Silueta arquitectónica sutil institucional -->
-          <svg viewBox="0 0 600 240" fill="none" class="campus-svg" preserveAspectRatio="xMidYMax meet">
-            <path d="M 40 240 L 40 160 L 160 160 L 160 240 Z" fill="var(--vino-institutional)" opacity="0.08" />
-            <path d="M 180 240 L 180 90 L 380 90 L 440 140 L 440 240 Z" fill="var(--vino-institutional)" opacity="0.12" />
-            <path d="M 210 115 L 360 115 L 360 145 L 210 145 Z" fill="var(--white)" opacity="0.6" />
-            <path d="M 210 165 L 360 165 L 360 195 L 210 195 Z" fill="var(--white)" opacity="0.6" />
-            <path d="M 460 240 L 460 130 L 560 130 L 560 240 Z" fill="var(--vino-institutional)" opacity="0.09" />
-          </svg>
-        </div>
-      </div>
     </section>
 
-    <!-- PANEL DERECHO: Formulario de Acceso (~45%) -->
+    <!-- PANEL DERECHO: Tarjeta de Acceso (~45%) -->
     <section class="form-panel">
       <div class="auth-card enter-modal">
-        <!-- Encabezado decorativo: Línea dorada y círculo rosa suave -->
+        <!-- Indicador de pasos: Píldora activa y punto inactivo -->
         <div class="card-indicator" aria-hidden="true">
           <span class="indicator-bar" [class.is-active]="paso() === 'correo'"></span>
           <span class="indicator-dot" [class.is-active]="paso() === 'codigo'"></span>
@@ -141,7 +87,6 @@
         }
 
         @if (paso() === 'correo') {
-          <!-- Título y descripción -->
           <h2 class="card-title">Bienvenido</h2>
           <p class="card-subtitle">
             Ingresa tu correo institucional y te enviaremos un código de acceso. No necesitas
@@ -181,7 +126,6 @@
             </button>
           </form>
 
-          <!-- Aviso de seguridad: Escudo con candado en dorado -->
           <div class="security-badge">
             <span class="shield-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -193,7 +137,7 @@
             <p class="security-text">El código es de un solo uso y caduca en 10 minutos.</p>
           </div>
         } @else {
-          <!-- Paso 2: Verificación OTP -->
+          <!-- Paso 2: OTP -->
           <h2 class="card-title">Revisa tu correo</h2>
           <p class="card-subtitle">
             Enviamos un código de 6 dígitos a

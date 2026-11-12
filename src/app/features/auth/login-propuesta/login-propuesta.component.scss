@@ -14,34 +14,7 @@
   overflow: hidden;
 }
 
-// Cintas decorativas en esquinas
-.ribbon-bottom-left,
-.ribbon-top-right {
-  position: absolute;
-  z-index: 0;
-  pointer-events: none;
-
-  svg {
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.ribbon-bottom-left {
-  bottom: 0;
-  left: 0;
-  width: min(540px, 45vw);
-  height: min(380px, 40vh);
-}
-
-.ribbon-top-right {
-  top: 0;
-  right: 0;
-  width: min(460px, 35vw);
-  height: min(360px, 35vh);
-}
-
-// Banner flotante
+// Banner flotante para alternar
 .preview-banner {
   position: absolute;
   top: var(--space-4);
@@ -61,15 +34,17 @@
   font: var(--text-label);
   text-decoration: none;
   backdrop-filter: blur(var(--blur-glass));
-  transition: color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
 
   &:hover {
     color: var(--color-text-primary);
-    border-color: var(--login-gold);
+    border-color: var(--color-accent);
   }
 }
 
-// Split Layout 55% / 45%
+// Contenedor Split Layout
 .split-container {
   position: relative;
   z-index: 1;
@@ -83,18 +58,27 @@
   padding: var(--space-8);
 }
 
-// Panel Izquierdo
+// PANEL IZQUIERDO: Identidad
 .brand-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
   max-width: 540px;
 }
 
+// Logotipos centrados en su propio contenedor
 .logos-header {
   display: flex;
   align-items: center;
+  width: 100%;
+}
+
+.logos-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-5);
+  padding: var(--space-2) 0;
 }
 
 .logo-utn-box {
@@ -103,7 +87,7 @@
   align-items: center;
   text-align: center;
   gap: var(--space-1);
-  max-width: 135px;
+  width: 135px;
 }
 
 .logo-utn-img {
@@ -118,20 +102,23 @@
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: var(--login-vino);
+  color: var(--color-text-primary);
   line-height: 1.15;
+  text-align: center;
 }
 
 .logos-divider {
   width: var(--border-width);
   height: 48px;
-  background: var(--login-gold);
-  opacity: 0.7;
+  background: var(--color-accent);
+  opacity: 0.6;
 }
 
 .logo-edomex-box {
   display: flex;
   align-items: center;
+  justify-content: center;
+  height: var(--logo-slot-height-sm);
 }
 
 .logo-edomex-img {
@@ -156,22 +143,22 @@
   line-height: 1.1;
 }
 
-.title-vino,
+.title-primary,
 .card-title,
 .email-highlight,
 .field-label {
-  color: var(--login-vino);
+  color: var(--color-text-primary);
 }
 
-.title-gold {
-  color: var(--login-gold);
+.title-accent {
+  color: var(--color-accent);
 }
 
 .decorative-line {
   width: 52px;
   height: 3px;
   border-radius: var(--radius-pill);
-  background: var(--login-gold);
+  background: var(--color-accent);
 }
 
 .description-text,
@@ -185,28 +172,7 @@
   line-height: 1.5;
 }
 
-.campus-container {
-  position: relative;
-  height: 100px;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  mask-image: var(--login-campus-mask);
-  -webkit-mask-image: var(--login-campus-mask);
-
-  svg {
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.campus-overlay {
-  position: absolute;
-  inset: 0;
-  background: var(--canvas-wash);
-  opacity: 0.3;
-}
-
-// Panel Derecho
+// PANEL DERECHO: Tarjeta
 .form-panel {
   display: flex;
   justify-content: center;
@@ -222,7 +188,7 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-2xl);
   background: var(--white);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .card-indicator {
@@ -235,7 +201,7 @@
 .indicator-dot {
   height: 6px;
   border-radius: var(--radius-pill);
-  background: var(--login-gold);
+  background: var(--color-accent);
 }
 
 .indicator-bar {
@@ -244,11 +210,11 @@
 
 .indicator-dot {
   width: 6px;
-  background: var(--login-rose);
+  background: var(--color-border-default);
 
   &.is-active {
     width: 24px;
-    background: var(--login-gold);
+    background: var(--color-accent);
   }
 }
 
@@ -277,24 +243,29 @@
   align-items: center;
 }
 
+// Icono de sobre con posición fija
 .envelope-icon {
   position: absolute;
   left: var(--space-4);
   display: flex;
+  align-items: center;
   color: var(--color-text-secondary);
   pointer-events: none;
 }
 
+// Campo de texto con padding izquierdo amplio (48px) para separar el icono
 .text-input {
   width: 100%;
   min-height: var(--control-height-md);
-  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-7);
-  border: var(--border-width) solid var(--login-border-rose);
+  padding: var(--space-2) var(--space-4) var(--space-2) 48px;
+  border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
   background: var(--white);
   color: var(--color-text-primary);
   font: var(--text-body);
-  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 
   &::placeholder {
     color: var(--color-text-secondary);
@@ -302,7 +273,7 @@
 
   &:hover,
   &:focus-visible {
-    border-color: var(--login-gold);
+    border-color: var(--color-accent);
     outline: none;
     box-shadow: var(--login-focus-ring-shadow);
   }
@@ -313,6 +284,7 @@
   }
 }
 
+// Botón en color de acción primario del proyecto
 .submit-button {
   position: relative;
   display: flex;
@@ -321,21 +293,22 @@
   width: 100%;
   min-height: var(--space-8);
   padding: var(--space-3) var(--space-6);
-  border: var(--border-width) solid var(--login-vino);
+  border: var(--border-width) solid var(--color-action-primary);
   border-radius: var(--radius-pill);
-  background: var(--login-vino);
-  color: var(--white);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
   font: var(--text-label);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: var(--tracking-label);
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    background: var(--login-vino-hover);
-    box-shadow: var(--login-btn-hover-shadow);
+    box-shadow: var(--shadow-md);
   }
 
   &:disabled {
@@ -348,9 +321,15 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(100deg, transparent 25%, var(--color-action-sheen) 50%, transparent 75%);
+  background-image: linear-gradient(
+    100deg,
+    transparent 25%,
+    var(--color-action-sheen) 50%,
+    transparent 75%
+  );
   transform: translateX(-100%);
-  animation: cta-shimmer var(--backdrop-cta-shimmer) var(--motion-ease) var(--backdrop-cta-shimmer-delay) infinite;
+  animation: cta-shimmer var(--backdrop-cta-shimmer) var(--motion-ease)
+    var(--backdrop-cta-shimmer-delay) infinite;
 }
 
 .security-badge {
@@ -363,7 +342,7 @@
 
 .shield-icon {
   display: flex;
-  color: var(--login-gold);
+  color: var(--color-accent);
 }
 
 .security-text,
@@ -407,7 +386,7 @@
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
-  background: var(--login-gold);
+  background: var(--color-accent);
   transition: width var(--motion-fast) var(--motion-ease);
 }
 
@@ -423,7 +402,7 @@
   padding: 0;
   border: 0;
   background: var(--color-surface-ghost);
-  color: var(--login-gold);
+  color: var(--color-accent);
   font: var(--text-label);
   cursor: pointer;
   transition: color var(--motion-fast) var(--motion-ease);
@@ -490,14 +469,5 @@
 
   .description-text {
     text-align: center;
-  }
-
-  .campus-container {
-    display: none;
-  }
-
-  .ribbon-bottom-left,
-  .ribbon-top-right {
-    opacity: 0.3;
   }
 }
