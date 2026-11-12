@@ -15,11 +15,8 @@ export const routes: Routes = [
   },
   {
     path: 'login-propuesta',
-    canActivate: [guestGuard],
-    loadComponent: () =>
-      import('./features/auth/login-propuesta/login-propuesta.component').then(
-        (m) => m.LoginPropuesta,
-      ),
+    redirectTo: 'login',
+    pathMatch: 'full',
   },
   {
     path: '',
