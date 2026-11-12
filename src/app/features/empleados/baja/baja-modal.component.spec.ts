@@ -163,7 +163,7 @@ describe('BajaModal', () => {
 
     const opciones = Array.from(select?.options ?? []).map((option) => option.textContent?.trim());
     // The placeholder, then one option per motive, showing the Spanish label.
-    expect(opciones).toEqual(['Elegí un motivo', 'Baja definitiva', 'Baja temporal']);
+    expect(opciones).toEqual(['Elige un motivo', 'Baja definitiva', 'Baja temporal']);
     expect(select?.value).toBe('');
 
     // The layer names the worker it is about.
@@ -345,7 +345,7 @@ describe('BajaModal', () => {
     );
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('Tu acceso ya no está vigente. Volvé a iniciar sesión.');
+    expect(text(fixture)).toContain('Tu acceso ya no está vigente. Vuelve a iniciar sesión.');
     expect(text(fixture)).not.toContain('No tenés permisos para dar de baja.');
   });
 
@@ -362,7 +362,7 @@ describe('BajaModal', () => {
     httpMock.expectOne(URL_BAJA).error(new ProgressEvent('error'), { status: 0 });
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisá tu conexión.');
+    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisa tu conexión.');
     expect(fixture.componentInstance.open()).toBe(true);
   });
 });

@@ -33,12 +33,12 @@ import { ToastService } from '../../../shared/ui/toast/toast.service';
  * The `409` is the exception: its sentence is the endpoint's own and already
  * Spanish and specific, so it is shown verbatim.
  */
-const MESSAGE_SESSION = 'Tu sesión venció. Volvé a iniciar sesión.';
-const MESSAGE_ACCESS = 'Tu acceso ya no está vigente. Volvé a iniciar sesión.';
+const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
+const MESSAGE_ACCESS = 'Tu acceso ya no está vigente. Vuelve a iniciar sesión.';
 const MESSAGE_PERMISSION = 'No tenés permisos para dar de baja.';
-const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 const MESSAGE_SERVER = 'No pudimos registrar la baja. Intente más tarde.';
-const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cerrá y volvé a abrir.';
+const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cerrá y vuelve a abrir.';
 
 /** Fallback of a `409` whose body carries no sentence. */
 const MESSAGE_CONFLICT = 'El trabajador ya está dado de baja.';

@@ -103,7 +103,7 @@ describe('validarCurp', () => {
     ]);
     // One sentence for all five cases: the backend collapses them the same way.
     expect(MENSAJE_CURP_INVALIDA).toBe(
-      'La CURP no es válida. Revisá el formato, la entidad y el dígito verificador.',
+      'La CURP no es válida. Revisa el formato, la entidad y el dígito verificador.',
     );
   });
 });
@@ -264,8 +264,8 @@ describe('the bounded text fields', () => {
 
   it('validates the shape of the email', () => {
     expect(validarCorreo('ana@utn.edu.mx')).toBeNull();
-    expect(validarCorreo('ana@utn')).toBe('Escribí un correo con formato válido.');
-    expect(validarCorreo('ana utn.edu.mx')).toBe('Escribí un correo con formato válido.');
+    expect(validarCorreo('ana@utn')).toBe('Escribe un correo con formato válido.');
+    expect(validarCorreo('ana utn.edu.mx')).toBe('Escribe un correo con formato válido.');
     expect(validarCorreo('')).toBe('El correo institucional es obligatorio.');
   });
 

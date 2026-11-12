@@ -32,10 +32,10 @@ import { BajaModal } from '../baja/baja-modal.component';
  * body would print two sentences for one situation. The body's own sentence is
  * still shown verbatim under it, for support.
  */
-const MESSAGE_SESSION = 'Tu sesión venció. Volvé a iniciar sesión.';
+const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MESSAGE_PERMISSION = 'No tenés permisos para ver esta ficha.';
 const MESSAGE_NOT_FOUND = 'No encontramos ese trabajador.';
-const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
 /**
  * Placeholder for a value the record does not carry. Never an empty cell and
@@ -147,7 +147,7 @@ export class FichaDrawer {
   readonly tituloBaja = computed(() => {
     const record = this.ficha();
     if (record === null) {
-      return 'Esperá a que cargue la ficha.';
+      return 'Espera a que cargue la ficha.';
     }
     if (record.gestion_interna.activo === false) {
       return 'Ya está dado de baja: la baja no se puede repetir.';

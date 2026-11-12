@@ -192,7 +192,7 @@ describe('DashboardPage', () => {
       );
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('El servicio no está disponible. Reintentá en unos segundos.');
+    expect(text(fixture)).toContain('El servicio no está disponible. Reintenta en unos segundos.');
 
     actionButton(fixture, 'Reintentar')?.click();
     await fixture.whenStable();
@@ -232,7 +232,7 @@ describe('DashboardPage', () => {
       .flush({ message: 'No autenticado.' }, { status: 401, statusText: 'Unauthorized' });
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('Tu sesión venció. Volvé a iniciar sesión.');
+    expect(text(fixture)).toContain('Tu sesión venció. Vuelve a iniciar sesión.');
 
     actionButton(fixture, 'Iniciar sesión')?.click();
     await fixture.whenStable();
@@ -247,7 +247,7 @@ describe('DashboardPage', () => {
     httpMock.expectOne(URL_RESUMEN).error(new ProgressEvent('error'), { status: 0 });
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisá tu conexión.');
+    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisa tu conexión.');
     expect(actionButton(fixture, 'Reintentar')).toBeDefined();
   });
 
