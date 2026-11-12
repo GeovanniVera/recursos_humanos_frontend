@@ -84,7 +84,8 @@
     [loading]="loading()"
     [sort]="sort()"
     (sortChange)="ordenar($event)"
-    actionsLabel="Acciones"
+    [clickableRows]="true"
+    (rowClick)="abrir($event)"
     caption="Semáforo de completitud de expedientes"
     [activeKey]="drawerOpen() ? empleadoId() : null"
     [emptyMessage]="
@@ -100,30 +101,21 @@
         <span class="visually-hidden"
           >Estado del expediente: {{ etiquetasEstado[row.estado] }}</span
         >
+      } @else if (column.key === 'nombre') {
+        <button
+          type="button"
+          class="worker-button"
+          [attr.aria-label]="'Ver campos faltantes de ' + row.nombre"
+          (click)="$event.stopPropagation(); abrir(row)"
+        >
+          {{ value }}
+        </button>
       } @else if (column.key === 'campos_faltantes') {
         <span class="missing-count">{{ value }}</span>
       } @else {
         {{ value }}
       }
     </ng-template>
-    <ng-template #rowActions let-row
-      ><button
-        type="button"
-        class="detail-button"
-        [attr.aria-label]="'Consultar campos faltantes de ' + row.nombre"
-        (click)="abrir(row)"
-      >
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          aria-hidden="true"
-        >
-          <path d="M4 2.5h8l4 4v11H4zM12 3v4h4M7 10h6M7 13h6" /></svg
-        ><span>Ver faltantes</span>
-      </button></ng-template
-    >
   </app-data-table>
   <footer class="pager">
     <p aria-live="polite" role="status">{{ rango() }}</p>

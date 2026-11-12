@@ -149,26 +149,16 @@ select {
 input::placeholder {
   color: var(--color-text-secondary);
 }
-.detail-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
+// Native keyboard action; pointer activation elsewhere is handled by the row.
+.worker-button {
   min-height: var(--space-8);
-  padding-inline: var(--space-3);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-pill);
+  padding: 0;
+  border: 0;
   background: var(--color-surface-ghost);
-  color: var(--color-text-primary);
+  color: inherit;
+  font: inherit;
+  text-align: start;
   cursor: pointer;
-  font: var(--text-label);
-}
-.detail-button:hover {
-  background: var(--color-surface-glass);
-}
-.detail-button svg {
-  width: var(--space-5);
-  height: var(--space-5);
 }
 .missing-count {
   font-variant-numeric: tabular-nums;

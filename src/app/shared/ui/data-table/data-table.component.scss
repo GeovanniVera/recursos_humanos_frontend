@@ -122,3 +122,10 @@
 .table.has-leading-decoration .row .cell:first-child {
   position: relative;
 }
+
+// The leading-decoration table opts into a row-wide keyboard focus indicator.
+.table.has-leading-decoration .row.is-clickable:focus-within {
+  outline: var(--border-width) solid var(--color-accent);
+  outline-offset: calc(-1 * var(--border-width));
+  background: var(--color-surface-glass);
+}

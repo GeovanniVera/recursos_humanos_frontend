@@ -116,15 +116,21 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
     http.expectNone((r) => r.url === URL);
   });
-  it('renders exactly six headers, in order, and no mail/edit actions', async () => {
+  it('renders exactly five headers, in order, and no mail/edit actions', async () => {
     await loaded();
     expect(
       Array.from(root().querySelectorAll('thead th')).map((e) => e.textContent?.trim()),
-    ).toEqual(['No.', 'Nombre', 'Adscripción', 'Plaza', 'Campos faltantes', 'Acciones']);
+    ).toEqual(['No.', 'Nombre', 'Adscripción', 'Plaza', 'Campos faltantes']);
     expect(root().textContent).toContain('4 de 19');
     expect(root().textContent).toContain('Sin adscripción');
     expect(root().textContent).toContain('Sin plaza');
     expect(root().querySelectorAll('tbody button')).toHaveLength(3);
+    expect(root().textContent).not.toContain('Ver faltantes');
+    expect(root().textContent).not.toContain('Acciones');
+    expect(root().querySelector('.worker-button')?.getAttribute('aria-label')).toBe(
+      'Ver campos faltantes de Ana Prueba',
+    );
+    expect(root().querySelector('tbody tr')?.classList.contains('is-clickable')).toBe(true);
     expect(root().textContent).not.toContain('Enviar correo');
     expect(root().textContent).not.toContain('Editar');
   });
@@ -147,7 +153,7 @@ describe('SemaforoPage', () => {
       ),
     ).toEqual(['is-incompleto', 'is-casi_completo', 'is-completo']);
     expect(root().querySelectorAll('.state-stripe[aria-hidden="true"]')).toHaveLength(3);
-    for (const row of root().querySelectorAll('tbody tr')) expect(row.children).toHaveLength(6);
+    for (const row of root().querySelectorAll('tbody tr')) expect(row.children).toHaveLength(5);
   });
   it('filters server-side, resets page and avoids duplicate selection requests', async () => {
     await loaded();
@@ -279,7 +285,7 @@ describe('SemaforoPage', () => {
   );
   it('opens the existing native drawer and fetches only the selected employee', async () => {
     await loaded();
-    root().querySelector<HTMLButtonElement>('.detail-button')?.click();
+    root().querySelector<HTMLButtonElement>('.worker-button')?.click();
     await fixture.whenStable();
     const req = http.expectOne(`${URL}/7/faltantes`);
     req.flush({
@@ -298,6 +304,24 @@ describe('SemaforoPage', () => {
     root().querySelector<HTMLButtonElement>('dialog .close')?.click();
     await fixture.whenStable();
     expect(fixture.componentInstance.drawerOpen()).toBe(false);
+  });
+  it('opens the same employee from every cell without duplicate detail requests', async () => {
+    await loaded();
+    const cells = root().querySelectorAll<HTMLTableCellElement>('tbody tr:first-child td');
+    for (const cell of cells) {
+      cell.click();
+      await fixture.whenStable();
+      const req = http.expectOne(`${URL}/7/faltantes`);
+      req.flush({
+        datos: {
+          empleado: { id: 7, num_empleado: '1000', nombre: 'Ana Prueba' },
+          semaforo: { ...ROWS[0].semaforo, detalle_faltantes: [] },
+        },
+      });
+      await fixture.whenStable();
+      fixture.componentInstance.drawerOpen.set(false);
+      await fixture.whenStable();
+    }
   });
   it('keeps the initial selector in sync with the requested page size', async () => {
     await loaded();
