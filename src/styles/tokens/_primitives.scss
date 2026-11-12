@@ -19,6 +19,18 @@
   // so it does not belong to the scale.
   --guinda-ink: #4a0a1d;
 
+  // Exact brand tokens for login redesign
+  --vino-institutional: #591327;
+  --vino-institutional-hover: #450c1c;
+  --vino-ribbon-dark: #3a0817;
+  --gold-institutional: #bd941f;
+  --marfil-surface: #f8f1e9;
+  --rose-soft: #e9c9ce;
+  --rose-soft-border: rgba(233, 201, 206, 0.75);
+  --login-focus-ring-shadow: 0 0 0 3px rgba(189, 148, 31, 0.2);
+  --login-btn-hover-shadow: 0 8px 20px rgba(89, 19, 39, 0.25);
+  --login-campus-mask: linear-gradient(to top, rgba(0, 0, 0, 0.45) 0%, transparent 100%);
+
   // Guinda with alpha — the spec uses explicit rgba() for overlays and borders.
   --guinda-a60: rgba(70, 8, 28, 0.6);
   --guinda-a80: rgba(30, 5, 14, 0.8);

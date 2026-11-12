@@ -21,6 +21,14 @@
   // Deep guinda, never gold: gold as text fails contrast on white.
   --color-text-overline: var(--guinda-500);
 
+  // Login V2 dedicated semantic tokens
+  --login-vino: var(--vino-institutional);
+  --login-vino-hover: var(--vino-institutional-hover);
+  --login-gold: var(--gold-institutional);
+  --login-marfil: var(--marfil-surface);
+  --login-rose: var(--rose-soft);
+  --login-border-rose: var(--rose-soft-border);
+
   // Actions
   --color-action-primary: var(--guinda-500);
   --color-action-on-primary: var(--white);

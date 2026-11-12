@@ -1,6 +1,49 @@
 <div class="page">
+  <!-- Fondo base del Login 1 (auroras, gradiente cálido y partículas) -->
   <app-animated-backdrop />
 
+  <!-- Formas curvas decorativas (esquina inferior izquierda y superior derecha) -->
+  <div class="ribbon-bottom-left" aria-hidden="true">
+    <svg viewBox="0 0 540 380" fill="none" preserveAspectRatio="none" class="ribbon-svg">
+      <path
+        d="M 0 380 L 0 150 C 100 210 200 295 340 280 C 420 270 480 320 540 380 Z"
+        fill="var(--login-vino)"
+        opacity="0.96"
+      />
+      <path
+        d="M 0 380 L 0 220 C 110 255 180 320 280 305 C 360 295 440 340 500 380 Z"
+        fill="var(--vino-ribbon-dark)"
+        opacity="0.9"
+      />
+      <path
+        d="M 0 150 C 100 210 200 295 340 280 C 420 270 480 320 540 380"
+        stroke="var(--login-gold)"
+        stroke-width="2.5"
+      />
+    </svg>
+  </div>
+
+  <div class="ribbon-top-right" aria-hidden="true">
+    <svg viewBox="0 0 460 360" fill="none" preserveAspectRatio="none" class="ribbon-svg">
+      <path
+        d="M 140 0 C 200 80 270 145 460 170 L 460 0 Z"
+        fill="var(--login-vino)"
+        opacity="0.92"
+      />
+      <path
+        d="M 240 0 C 290 60 350 105 460 115 L 460 0 Z"
+        fill="var(--vino-ribbon-dark)"
+        opacity="0.85"
+      />
+      <path
+        d="M 140 0 C 200 80 270 145 460 170"
+        stroke="var(--login-gold)"
+        stroke-width="2"
+      />
+    </svg>
+  </div>
+
+  <!-- Botón superior discreto para alternar al login original -->
   <header class="preview-banner">
     <a routerLink="/login" class="preview-link">
       <span aria-hidden="true">←</span>
@@ -8,66 +51,86 @@
     </a>
   </header>
 
-  <main class="page-container enter-rise">
-    <!-- Columna Izquierda: Identidad Institucional -->
-    <section class="brand-column">
-      <header class="brand-header">
-        <div class="brand-seal">
+  <!-- Contenedor Split 55% / 45% -->
+  <main class="split-container enter-rise">
+    <!-- PANEL IZQUIERDO: Identidad Institucional (~55%) -->
+    <section class="brand-panel">
+      <!-- 1 & 2: Logotipos con divisor vertical dorado -->
+      <header class="logos-header">
+        <div class="logo-utn-box">
           <img
-            class="seal-image"
+            class="logo-utn-img"
             src="brand/logo-utn.svg"
-            alt="Escudo de la Universidad Tecnológica de Nezahualcóyotl"
+            alt="Logotipo Universidad Tecnológica de Nezahualcóyotl"
           />
-          <p class="seal-caption">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</p>
+          <span class="logo-utn-text">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</span>
         </div>
 
-        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="logos-divider" aria-hidden="true"></span>
 
-        <div class="brand-partner">
+        <div class="logo-edomex-box">
           <img
-            class="partner-image"
+            class="logo-edomex-img"
             src="brand/logo-edomex.svg"
             alt="Gobierno del Estado de México"
           />
         </div>
       </header>
 
+      <!-- 3, 4 & 5: Título, línea dorada decorativa y texto descriptivo -->
       @if (paso() === 'correo') {
-        <div class="brand-titles">
-          <h1 class="headline">
-            <span class="headline-guinda">Sistema de</span>
-            <span class="headline-accent">Recursos Humanos</span>
+        <div class="brand-text-block">
+          <h1 class="main-title">
+            <span class="title-vino">Sistema de</span>
+            <span class="title-gold">Recursos Humanos</span>
           </h1>
 
-          <div class="title-rule" aria-hidden="true"></div>
+          <div class="decorative-line" aria-hidden="true"></div>
 
-          <p class="lede">
+          <p class="description-text">
             Acceso para el personal de la universidad con tu correo institucional, de forma
             rápida y segura.
           </p>
         </div>
       } @else {
-        <div class="brand-titles">
-          <h1 class="headline">
-            <span class="headline-guinda">Verifica tu</span>
-            <span class="headline-accent">identidad</span>
+        <div class="brand-text-block">
+          <h1 class="main-title">
+            <span class="title-vino">Verifica tu</span>
+            <span class="title-gold">identidad</span>
           </h1>
 
-          <div class="title-rule" aria-hidden="true"></div>
+          <div class="decorative-line" aria-hidden="true"></div>
 
-          <p class="lede">
-            Escribe el código que enviamos a tu correo institucional para entrar al sistema.
+          <p class="description-text">
+            Escribe el código de acceso que enviamos a tu correo institucional para ingresar al
+            sistema.
           </p>
         </div>
       }
+
+      <!-- 6: Espacio preparado para fotografía de las instalaciones universitarias -->
+      <div class="campus-container" aria-hidden="true">
+        <div class="campus-overlay"></div>
+        <div class="campus-placeholder">
+          <!-- Silueta arquitectónica sutil institucional -->
+          <svg viewBox="0 0 600 240" fill="none" class="campus-svg" preserveAspectRatio="xMidYMax meet">
+            <path d="M 40 240 L 40 160 L 160 160 L 160 240 Z" fill="var(--vino-institutional)" opacity="0.08" />
+            <path d="M 180 240 L 180 90 L 380 90 L 440 140 L 440 240 Z" fill="var(--vino-institutional)" opacity="0.12" />
+            <path d="M 210 115 L 360 115 L 360 145 L 210 145 Z" fill="var(--white)" opacity="0.6" />
+            <path d="M 210 165 L 360 165 L 360 195 L 210 195 Z" fill="var(--white)" opacity="0.6" />
+            <path d="M 460 240 L 460 130 L 560 130 L 560 240 Z" fill="var(--vino-institutional)" opacity="0.09" />
+          </svg>
+        </div>
+      </div>
     </section>
 
-    <!-- Columna Derecha: Tarjeta de Acceso -->
-    <section class="form-column">
-      <div class="card enter-modal">
-        <div class="steps" aria-hidden="true">
-          <span class="dot" [class.is-active]="paso() === 'correo'"></span>
-          <span class="dot" [class.is-active]="paso() === 'codigo'"></span>
+    <!-- PANEL DERECHO: Formulario de Acceso (~45%) -->
+    <section class="form-panel">
+      <div class="auth-card enter-modal">
+        <!-- Encabezado decorativo: Línea dorada y círculo rosa suave -->
+        <div class="card-indicator" aria-hidden="true">
+          <span class="indicator-bar" [class.is-active]="paso() === 'correo'"></span>
+          <span class="indicator-dot" [class.is-active]="paso() === 'codigo'"></span>
         </div>
 
         @if (hayError()) {
@@ -78,17 +141,17 @@
         }
 
         @if (paso() === 'correo') {
+          <!-- Título y descripción -->
           <h2 class="card-title">Bienvenido</h2>
-
-          <p class="card-body">
+          <p class="card-subtitle">
             Ingresa tu correo institucional y te enviaremos un código de acceso. No necesitas
             contraseña.
           </p>
 
-          <form class="form" (ngSubmit)="enviarCorreo()">
+          <form class="login-form" (ngSubmit)="enviarCorreo()">
             <label class="field-label" for="correo-propuesta">CORREO INSTITUCIONAL</label>
-            <div class="input-wrapper">
-              <span class="input-icon" aria-hidden="true">
+            <div class="input-container">
+              <span class="envelope-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="4" width="20" height="16" rx="2" />
                   <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
@@ -96,7 +159,7 @@
               </span>
               <input
                 id="correo-propuesta"
-                class="field has-icon"
+                class="text-input"
                 type="email"
                 name="correo"
                 autocomplete="email"
@@ -110,7 +173,7 @@
 
             <button
               type="submit"
-              class="primary"
+              class="submit-button"
               [disabled]="!puedeEnviarCorreo()"
               [attr.aria-busy]="enviando() ? 'true' : null"
             >
@@ -118,41 +181,43 @@
             </button>
           </form>
 
-          <div class="security-footnote">
-            <span class="security-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Aviso de seguridad: Escudo con candado en dorado -->
+          <div class="security-badge">
+            <span class="shield-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="m9 12 2 2 4-4" />
+                <circle cx="12" cy="11" r="1.5" />
+                <path d="M12 12.5v2.5" />
               </svg>
             </span>
-            <p class="footnote-text">El código es de un solo uso y caduca en 10 minutos.</p>
+            <p class="security-text">El código es de un solo uso y caduca en 10 minutos.</p>
           </div>
         } @else {
+          <!-- Paso 2: Verificación OTP -->
           <h2 class="card-title">Revisa tu correo</h2>
-
-          <p class="card-body">
+          <p class="card-subtitle">
             Enviamos un código de 6 dígitos a
-            <strong class="card-emphasis">{{ correo() }}</strong>
+            <strong class="email-highlight">{{ correo() }}</strong>
           </p>
 
-          <form class="form" (ngSubmit)="enviarCodigo()">
+          <form class="login-form" (ngSubmit)="enviarCodigo()">
             <app-otp-input
               [isInvalid]="hayError()"
               [disabled]="enviando()"
               (valueChanges)="codigo.set($event)"
             />
 
-            <div class="progress">
-              <span class="progress-bar" [style.width.%]="progreso()"></span>
+            <div class="progress-track">
+              <span class="progress-fill" [style.width.%]="progreso()"></span>
             </div>
 
-            <div class="resend">
+            <div class="resend-actions">
               @if (segundos() > 0) {
-                <p class="resend-wait">Reenviar código en {{ etiquetaReenvio() }}</p>
+                <p class="resend-timer">Reenviar código en {{ etiquetaReenvio() }}</p>
               } @else {
                 <button
                   type="button"
-                  class="link"
+                  class="action-link"
                   [disabled]="enviando()"
                   (click)="reenviarCodigo()"
                 >
@@ -162,7 +227,7 @@
 
               <button
                 type="button"
-                class="link link-underline"
+                class="action-link link-secondary"
                 [disabled]="enviando()"
                 (click)="cambiarCorreo()"
               >
@@ -172,7 +237,7 @@
 
             <button
               type="submit"
-              class="primary primary-shimmer"
+              class="submit-button submit-shimmer"
               [disabled]="!puedeVerificar()"
               [attr.aria-busy]="enviando() ? 'true' : null"
             >
@@ -183,8 +248,4 @@
       </div>
     </section>
   </main>
-
-  <footer class="page-footer">
-    <p>Acceso exclusivo para personal autorizado</p>
-  </footer>
 </div>
