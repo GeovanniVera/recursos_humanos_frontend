@@ -22,7 +22,11 @@
     <div class="head-actions">
       <a class="new-employee" routerLink="/empleados/alta">Nuevo empleado</a>
 
-      <app-button variant="secondary" [disabled]="loading()" (click)="solicitar()">
+      <app-button
+        variant="secondary"
+        [disabled]="controlesDeshabilitados()"
+        (click)="solicitar()"
+      >
         Actualizar
       </app-button>
     </div>
@@ -30,7 +34,9 @@
 
   <!--
     A real label, not only a placeholder: the field has to say what it does once
-    something is typed in it.
+    something is typed in it. The complaint is a chip under the field and is
+    linked with `aria-describedby`, so a screen reader reads the format together
+    with the field instead of leaving the rule only in colour.
   -->
   <div class="search">
     <label class="search-label" for="buscar">Buscar empleado</label>
@@ -40,14 +46,36 @@
       type="search"
       name="buscar"
       autocomplete="off"
-      placeholder="Escribí para buscar en el padrón"
+      placeholder="Escribe para buscar en el padrón"
       [attr.value]="buscar()"
+      [attr.aria-invalid]="errorBusqueda() !== null ? 'true' : null"
+      [attr.aria-describedby]="errorBusqueda() !== null ? 'buscar-error' : 'buscar-hint'"
       (input)="alBuscar($event)"
     />
-    <p class="search-hint">La búsqueda recorre todo el padrón y vuelve a la primera página.</p>
+
+    @if (errorBusqueda(); as mensajeError) {
+      <p class="field-error" id="buscar-error" role="alert">
+        <span class="field-error-icon" aria-hidden="true">
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M8 4v5M8 12h.01" />
+          </svg>
+        </span>
+        {{ mensajeError }}
+      </p>
+    }
+
+    <p class="search-hint" id="buscar-hint">
+      La búsqueda recorre todo el padrón y vuelve a la primera página.
+    </p>
   </div>
 
-  @if (error(); as fallo) {
+  @if (falla(); as fallo) {
     <!--
       `role="alert"` announces the failure as soon as it renders. The icon ✕
       carries the state together with the colour, so the message survives a
@@ -76,11 +104,15 @@
 
       @switch (fallo.accion) {
         @case ('reintentar') {
-          <!-- A `429` locks this button until the wait it announced is over. -->
+          <!--
+            The retry targets the block that failed, which may be a page the
+            screen never reached; `solicitar()` would refresh the visible page
+            instead and leave the jump unanswered.
+          -->
           <app-button
             variant="secondary"
-            [disabled]="loading() || espera() > 0"
-            (click)="solicitar()"
+            [disabled]="cargando() || espera() > 0"
+            (click)="reintentar()"
           >
             Reintentar
           </app-button>
@@ -93,6 +125,19 @@
   }
 
   <!--
+    While a new block travels, the rows that are already on screen stay put and
+    this line says what is happening. It is a `status` region, so assistive tech
+    announces the wait without stealing focus from the pager. The skeleton is
+    reserved for the first load, when there is nothing to keep.
+  -->
+  @if (cargandoBloque()) {
+    <p class="block-loading" role="status" aria-live="polite">
+      <span class="block-loading-dot" aria-hidden="true"></span>
+      Cargando la página {{ paginaObjetivo() ?? paginaActual() }}…
+    </p>
+  }
+
+  <!--
     The state and the name are the two columns with a shape of their own; the
     projected renderer receives the row, the column and the value, so the table
     stays generic. The name is a real `<button>`: the row click is a pointer
@@ -101,7 +146,7 @@
   <app-data-table
     [columns]="columnas"
     [rows]="filas()"
-    [loading]="loading()"
+    [loading]="cargandoInicial()"
     [emptyMessage]="mensajeVacio()"
     caption="Padrón de empleados"
     rowKey="id"
@@ -136,7 +181,7 @@
     </ng-template>
   </app-data-table>
 
-  @if (padron()) {
+  @if (hayDatos()) {
     <footer class="pager">
       <div class="pager-meta">
         <p class="pager-range" aria-live="polite">{{ rango() }}</p>
@@ -147,16 +192,27 @@
             id="porPagina"
             class="page-size-select"
             [value]="porPagina()"
+            [disabled]="controlesDeshabilitados()"
             (change)="cambiarPorPagina($event)"
           >
             @for (tamano of tamanosPagina; track tamano) {
-              <option [value]="tamano">{{ tamano }}</option>
+              <option [value]="tamano" [selected]="tamano === porPagina()">{{ tamano }}</option>
             }
           </select>
         </div>
       </div>
 
       <div class="pager-controls">
+        <app-button
+          variant="secondary"
+          [disabled]="primeraDeshabilitado()"
+          (click)="irAPrimera()"
+        >
+          <!-- The chevron is decoration: the accessible name stays "Primera". -->
+          <span aria-hidden="true">«</span>
+          Primera
+        </app-button>
+
         <app-button
           variant="secondary"
           [disabled]="anteriorDeshabilitado()"
@@ -174,7 +230,59 @@
         >
           Siguiente
         </app-button>
+
+        <app-button
+          variant="secondary"
+          [disabled]="ultimaDeshabilitado()"
+          (click)="irAUltima()"
+        >
+          Última
+          <!-- Same rule as the opening chevron, on the other end. -->
+          <span aria-hidden="true">»</span>
+        </app-button>
       </div>
+
+      <!--
+        Direct jump. The range is checked here as well as by `min`/`max`: a
+        number input still lets a typed value through, and a page out of range
+        would spend a request on an answer the backend cannot give.
+      -->
+      <form class="pager-jump" (submit)="irAPaginaDesdeCampo($event, campoPagina.value)">
+        <label class="jump-label" for="pagina">Ir a página</label>
+        <input
+          #campoPagina
+          id="pagina"
+          class="jump-field"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          [attr.max]="totalPaginasMax()"
+          [value]="paginaActual()"
+          [disabled]="controlesDeshabilitados()"
+          [attr.aria-invalid]="errorPagina() !== null ? 'true' : null"
+          [attr.aria-describedby]="errorPagina() !== null ? 'pagina-error' : null"
+        />
+        <app-button variant="secondary" type="submit" [disabled]="controlesDeshabilitados()">
+          Ir
+        </app-button>
+      </form>
+
+      @if (errorPagina(); as mensajePagina) {
+        <p class="field-error jump-error" id="pagina-error" role="alert">
+          <span class="field-error-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <path d="M8 4v5M8 12h.01" />
+            </svg>
+          </span>
+          {{ mensajePagina }}
+        </p>
+      }
     </footer>
   }
 </section>

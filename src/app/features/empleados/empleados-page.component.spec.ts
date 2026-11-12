@@ -109,23 +109,42 @@ const LUIS: EmpleadoPadron = {
   estado: 'Baja',
 };
 
-/** One served page. `total` drives the counters, `datos` is what the table shows. */
-function pagina(meta: { pagina: number; total: number }, datos: EmpleadoPadron[]): PadronResponse {
+function rango(desde: number, hasta: number): number[] {
+  return Array.from({ length: hasta - desde + 1 }, (_, index) => desde + index);
+}
+
+function empleado(id: number): EmpleadoPadron {
+  return {
+    id,
+    num_empleado: String(10000 + id),
+    nombre: `Empleado ${id}`,
+    area: null,
+    estado: 'Activo',
+  };
+}
+
+/** One answer of the endpoint. `total` is the size of the whole filtered set. */
+function respuesta(datos: EmpleadoPadron[], total = datos.length, pagina = 1): PadronResponse {
   return {
     datos,
     meta: {
-      ...meta,
-      por_pagina: 20,
-      total_paginas: meta.total === 0 ? 0 : Math.ceil(meta.total / 20),
+      pagina,
+      por_pagina: 100,
+      total,
+      total_paginas: Math.max(1, Math.ceil(total / 100)),
     },
     enlaces: { anterior: null, siguiente: null },
   };
 }
 
-const PAGINA_UNO = pagina({ pagina: 1, total: 42 }, [ANA, LUIS]);
-const PAGINA_DOS = pagina({ pagina: 2, total: 42 }, [ANA]);
-const PAGINA_TRES = pagina({ pagina: 3, total: 42 }, [LUIS]);
-const SIN_EMPLEADOS = pagina({ pagina: 1, total: 0 }, []);
+/** A full block of 100 records, as the two-level pager asks for it. */
+function bloqueDe(pagina: number, total: number, desde: number, hasta: number): PadronResponse {
+  return respuesta(rango(desde, hasta).map(empleado), total, pagina);
+}
+
+const PRIMER_BLOQUE = bloqueDe(1, 250, 1, 100);
+const SEGUNDO_BLOQUE = bloqueDe(2, 250, 101, 200);
+const TERCER_BLOQUE = bloqueDe(3, 250, 201, 250);
 
 function host(fixture: ComponentFixture<EmpleadosPage>): HTMLElement {
   return fixture.nativeElement as HTMLElement;
@@ -181,28 +200,51 @@ function encabezados(fixture: ComponentFixture<EmpleadosPage>): string[] {
   );
 }
 
+/** Submits the "Ir a página" form the way the keyboard does. */
+function irAPagina(fixture: ComponentFixture<EmpleadosPage>, valor: string): void {
+  const form = host(fixture).querySelector<HTMLFormElement>('.pager-jump');
+  const campo = host(fixture).querySelector<HTMLInputElement>('#pagina');
+  if (form === null || campo === null) {
+    throw new Error('No jump control rendered');
+  }
+  campo.value = valor;
+  form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+}
+
 describe('EmpleadosPage', () => {
   let httpMock: HttpTestingController;
+  let router: Router;
 
   beforeEach(async () => {
     sessionStorage.clear();
     patchDialogPrototype();
     await TestBed.configureTestingModule({
       imports: [EmpleadosPage],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        // A real route, so `RouterLink` and `?pagina=` behave the way they do
+        // in the shell. The screen is also created directly, which is what lets
+        // the test answer one request at a time.
+        provideRouter([{ path: '', component: EmpleadosPage }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
   });
 
   afterEach(() => {
     // The throttle countdown runs on a real interval: restore the clock before
     // tearing the fixture down so the cleanup reaches the real `clearInterval`.
     vi.useRealTimers();
-    httpMock.verify();
+    // Reset first: destroying the module cancels the requests still in flight,
+    // so one failing expectation cannot leave an open request that breaks the
+    // next test's module configuration.
     TestBed.resetTestingModule();
+    httpMock.verify();
   });
 
-  /** Creates the screen; the constructor already asked for the first page. */
+  /** Creates the screen; the constructor already asked for the first block. */
   async function render(): Promise<ComponentFixture<EmpleadosPage>> {
     const fixture = TestBed.createComponent(EmpleadosPage);
     await fixture.whenStable();
@@ -214,7 +256,7 @@ describe('EmpleadosPage', () => {
     return httpMock.match((request) => request.url === URL_PADRON);
   }
 
-  /** Answers the single request in flight with one page. */
+  /** Answers the single request in flight with one block. */
   async function responder(
     fixture: ComponentFixture<EmpleadosPage>,
     cuerpo: PadronResponse,
@@ -226,9 +268,13 @@ describe('EmpleadosPage', () => {
     return abiertas[0];
   }
 
+  function rangoMostrado(fixture: ComponentFixture<EmpleadosPage>): string {
+    return host(fixture).querySelector('.pager-range')?.textContent?.trim() ?? '';
+  }
+
   it('renders one row per employee with the four columns of the roster', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA, LUIS]));
 
     expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área', 'Estado']);
 
@@ -240,7 +286,7 @@ describe('EmpleadosPage', () => {
 
   it('leads to the registration of a new employee from the header', async () => {
     const fixture = await render();
-    peticiones()[0].flush(PAGINA_UNO);
+    peticiones()[0].flush(respuesta([ANA]));
     await fixture.whenStable();
 
     // A real link, so the alta is reachable with the middle click, the context
@@ -252,7 +298,7 @@ describe('EmpleadosPage', () => {
 
   it('shows the placeholder for a missing area and the state as a badge', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA, LUIS]));
 
     const cuerpo = host(fixture).querySelectorAll('tbody tr');
     const area = cuerpo[1].querySelectorAll('td')[2];
@@ -267,38 +313,221 @@ describe('EmpleadosPage', () => {
     expect(baja?.classList.contains('is-baja')).toBe(true);
   });
 
-  it('lists the range and the page it is showing', async () => {
+  it('asks for 100 records and serves five logical pages out of that block', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
 
-    expect(texto(fixture)).toContain('Mostrando 1–20 de 42');
-    expect(texto(fixture)).toContain('Página 1 de 3');
-    expect(boton(fixture, 'Anterior').disabled).toBe(true);
-    expect(boton(fixture, 'Siguiente').disabled).toBe(false);
+    const inicial = peticiones();
+    expect(inicial.length).toBe(1);
+    expect(inicial[0].request.params.get('pagina')).toBe('1');
+    // The network page is the block; the screen's page is 20 rows.
+    expect(inicial[0].request.params.get('por_pagina')).toBe('100');
+
+    inicial[0].flush(PRIMER_BLOQUE);
+    await fixture.whenStable();
+
+    expect(filas(fixture).length).toBe(20);
+    expect(filas(fixture)[0][0]).toBe('10001');
+    expect(rangoMostrado(fixture)).toBe('Mostrando 1–20 de 250');
+    expect(texto(fixture)).toContain('Página 1 de 13');
+
+    // Pages 2 to 5 are slices: no request leaves the browser.
+    for (let pagina = 2; pagina <= 5; pagina += 1) {
+      boton(fixture, 'Siguiente').click();
+      await fixture.whenStable();
+      expect(peticiones().length).toBe(0);
+    }
+
+    expect(filas(fixture)[0][0]).toBe('10081');
+    expect(rangoMostrado(fixture)).toBe('Mostrando 81–100 de 250');
+    expect(texto(fixture)).toContain('Página 5 de 13');
+
+    // Page 6 crosses the block edge: one request for records 101–200.
+    boton(fixture, 'Siguiente').click();
+    await fixture.whenStable();
+
+    const siguiente = peticiones();
+    expect(siguiente.length).toBe(1);
+    expect(siguiente[0].request.params.get('pagina')).toBe('2');
+    expect(siguiente[0].request.params.get('por_pagina')).toBe('100');
+
+    // While it travels, page 5 keeps its rows and the screen says it is loading.
+    expect(filas(fixture)[0][0]).toBe('10081');
+    expect(host(fixture).querySelector('.block-loading')?.textContent).toContain(
+      'Cargando la página 6',
+    );
+    expect(host(fixture).querySelector('tbody tr.skeleton-row')).toBeNull();
+
+    siguiente[0].flush(SEGUNDO_BLOQUE);
+    await fixture.whenStable();
+
+    expect(filas(fixture)[0][0]).toBe('10101');
+    expect(rangoMostrado(fixture)).toBe('Mostrando 101–120 de 250');
+    expect(texto(fixture)).toContain('Página 6 de 13');
+    expect(host(fixture).querySelector('.block-loading')).toBeNull();
   });
 
-  it('debounces the search and asks again from the first page', () => {
+  it('shows the partial last page from the last block', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    boton(fixture, 'Última').click();
+    await fixture.whenStable();
+
+    const ultimo = peticiones();
+    expect(ultimo.length).toBe(1);
+    expect(ultimo[0].request.params.get('pagina')).toBe('3');
+    ultimo[0].flush(TERCER_BLOQUE);
+    await fixture.whenStable();
+
+    expect(filas(fixture).length).toBe(10);
+    expect(filas(fixture)[0][0]).toBe('10241');
+    expect(rangoMostrado(fixture)).toBe('Mostrando 241–250 de 250');
+    expect(texto(fixture)).toContain('Página 13 de 13');
+    expect(boton(fixture, 'Siguiente').disabled).toBe(true);
+    expect(boton(fixture, 'Última').disabled).toBe(true);
+    expect(boton(fixture, 'Primera').disabled).toBe(false);
+    expect(boton(fixture, 'Anterior').disabled).toBe(false);
+
+    boton(fixture, 'Primera').click();
+    await fixture.whenStable();
+
+    // Block 1 is still cached: coming back costs no request.
+    expect(peticiones().length).toBe(0);
+    expect(filas(fixture)[0][0]).toBe('10001');
+  });
+
+  it('draws the first/last chevrons as decoration, outside the accessible name', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    for (const [etiqueta, glifo] of [
+      ['Primera', '«'],
+      ['Última', '»'],
+    ] as const) {
+      // `aria-hidden` keeps the glyph out of the name the screen reader says.
+      const flecha = boton(fixture, etiqueta).querySelector('span[aria-hidden="true"]');
+      expect(flecha?.textContent?.trim()).toBe(glifo);
+    }
+  });
+
+  it('jumps from the field and explains a page outside the range', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    irAPagina(fixture, '99');
+    fixture.detectChanges();
+
+    expect(peticiones().length).toBe(0);
+    expect(host(fixture).querySelector('#pagina-error')?.textContent).toContain(
+      'Ingresá un número entre 1 y 13.',
+    );
+
+    // A valid page inside the block is still a local slice.
+    irAPagina(fixture, '3');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(peticiones().length).toBe(0);
+    expect(texto(fixture)).toContain('Página 3 de 13');
+    expect(host(fixture).querySelector('#pagina-error')).toBeNull();
+  });
+
+  it('shows the skeleton only on the first load, never while a block changes', async () => {
+    const fixture = await render();
+
+    expect(host(fixture).querySelector('tbody tr.skeleton-row')).not.toBeNull();
+    expect(host(fixture).querySelector('.pager')).toBeNull();
+
+    peticiones()[0].flush(PRIMER_BLOQUE);
+    await fixture.whenStable();
+
+    boton(fixture, 'Siguiente').click();
+    await fixture.whenStable();
+    expect(host(fixture).querySelector('tbody tr.skeleton-row')).toBeNull();
+    expect(filas(fixture).length).toBe(20);
+  });
+
+  it('names the cause of an empty result: the search, or an empty roster', () => {
     vi.useFakeTimers();
 
     const fixture = TestBed.createComponent(EmpleadosPage);
     fixture.detectChanges();
 
-    const [inicial] = peticiones();
-    expect(inicial.request.params.get('pagina')).toBe('1');
-    expect(inicial.request.params.has('buscar')).toBe(false);
-    inicial.flush(PAGINA_UNO);
+    peticiones()[0].flush(respuesta([], 0));
+    fixture.detectChanges();
+
+    const vacio = (): string => host(fixture).querySelector('td.empty')?.textContent?.trim() ?? '';
+    expect(vacio()).toBe('Todavía no hay empleados activos.');
+    expect(rangoMostrado(fixture)).toBe('Sin empleados');
+    expect(texto(fixture)).toContain('Página 1 de 1');
+
+    escribir(fixture, 'zzz');
+    vi.advanceTimersByTime(300);
+
+    const busqueda = peticiones();
+    expect(busqueda.length).toBe(1);
+    expect(busqueda[0].request.params.get('buscar')).toBe('zzz');
+    busqueda[0].flush(respuesta([], 0));
+    fixture.detectChanges();
+
+    expect(vacio()).toBe('No hay empleados que coincidan con la búsqueda.');
+  });
+
+  it('validates the term before it travels and keeps a backend 400 term in the field', () => {
+    vi.useFakeTimers();
+
+    const fixture = TestBed.createComponent(EmpleadosPage);
+    fixture.detectChanges();
+    peticiones()[0].flush(PRIMER_BLOQUE);
+    fixture.detectChanges();
+
+    escribir(fixture, 'ana123');
+    vi.advanceTimersByTime(300);
+
+    // The client-side mirror of RN-07 catches it: no request, and the field
+    // explains the format while the user is still typing.
+    expect(peticiones().length).toBe(0);
+    expect(host(fixture).querySelector('#buscar-error')?.textContent).toContain('solo dígitos');
+    expect(campoBusqueda(fixture).getAttribute('aria-invalid')).toBe('true');
+
+    escribir(fixture, 'ana');
+    vi.advanceTimersByTime(300);
+    fixture.detectChanges();
+
+    const busqueda = peticiones();
+    expect(busqueda.length).toBe(1);
+    expect(busqueda[0].request.params.get('buscar')).toBe('ana');
+    expect(host(fixture).querySelector('#buscar-error')).toBeNull();
+
+    // A stricter backend than the local mirror is still possible: its sentence
+    // is the one shown, and the typed term stays where the user left it.
+    busqueda[0].flush(
+      {
+        mensaje: 'El término de búsqueda no cumple el formato.',
+        codigo: 'parametros_invalidos',
+      },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    fixture.detectChanges();
+
+    expect(texto(fixture)).toContain('El término de búsqueda no cumple el formato.');
+    expect(texto(fixture)).toContain('parametros_invalidos');
+    expect(campoBusqueda(fixture).value).toBe('ana');
+    expect(buscarBoton(fixture, 'Reintentar')).toBeUndefined();
+  });
+
+  it('debounces the search, drops the cached block and returns to page 1', () => {
+    vi.useFakeTimers();
+
+    const fixture = TestBed.createComponent(EmpleadosPage);
+    fixture.detectChanges();
+    peticiones()[0].flush(PRIMER_BLOQUE);
     fixture.detectChanges();
 
     // Leave page 1 first: a new term has to come back to it.
     boton(fixture, 'Siguiente').click();
     fixture.detectChanges();
 
-    const [segunda] = peticiones();
-    expect(segunda.request.params.get('pagina')).toBe('2');
-    segunda.flush(PAGINA_DOS);
-    fixture.detectChanges();
-
-    // Two keystrokes inside the window are one request, not two.
     escribir(fixture, 'an');
     vi.advanceTimersByTime(100);
     escribir(fixture, 'ana');
@@ -310,67 +539,95 @@ describe('EmpleadosPage', () => {
     expect(busquedas.length).toBe(1);
     expect(busquedas[0].request.params.get('buscar')).toBe('ana');
     expect(busquedas[0].request.params.get('pagina')).toBe('1');
-    busquedas[0].flush(SIN_EMPLEADOS);
+    expect(busquedas[0].request.params.get('por_pagina')).toBe('100');
+    busquedas[0].flush(respuesta([ANA], 1));
     fixture.detectChanges();
 
     expect(texto(fixture)).toContain('Página 1 de 1');
+    expect(filas(fixture).length).toBe(1);
   });
 
-  it('walks to the next page and stops at the last one', async () => {
+  it('changes the logical page size while the block stays at 100', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, PRIMER_BLOQUE);
 
     boton(fixture, 'Siguiente').click();
     await fixture.whenStable();
 
-    const segunda = peticiones();
-    expect(segunda.length).toBe(1);
-    expect(segunda[0].request.params.get('pagina')).toBe('2');
-    segunda[0].flush(PAGINA_DOS);
+    const selector = host(fixture).querySelector<HTMLSelectElement>('#porPagina');
+    expect(selector).not.toBeNull();
+    expect(Array.from(selector?.options ?? []).map((option) => option.value)).toEqual([
+      '10',
+      '20',
+      '50',
+      '100',
+    ]);
+    expect(selector?.value).toBe('20');
+
+    selector!.value = '50';
+    selector!.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('Página 2 de 3');
-
-    boton(fixture, 'Siguiente').click();
+    const cambio = peticiones();
+    expect(cambio.length).toBe(1);
+    // A different logical window, but still the largest block the API accepts.
+    expect(cambio[0].request.params.get('por_pagina')).toBe('100');
+    expect(cambio[0].request.params.get('pagina')).toBe('1');
+    cambio[0].flush(PRIMER_BLOQUE);
     await fixture.whenStable();
 
-    const tercera = peticiones();
-    expect(tercera[0].request.params.get('pagina')).toBe('3');
-    tercera[0].flush(PAGINA_TRES);
-    await fixture.whenStable();
+    expect(filas(fixture).length).toBe(50);
+    expect(rangoMostrado(fixture)).toBe('Mostrando 1–50 de 250');
+    expect(texto(fixture)).toContain('Página 1 de 5');
 
-    expect(texto(fixture)).toContain('Mostrando 41–42 de 42');
-    expect(boton(fixture, 'Siguiente').disabled).toBe(true);
-    expect(boton(fixture, 'Anterior').disabled).toBe(false);
-
-    // A click on a disabled button must not ask for a page that does not exist.
+    // Page 2 is inside the same block, so changing page costs no request.
     boton(fixture, 'Siguiente').click();
     await fixture.whenStable();
     expect(peticiones().length).toBe(0);
+    expect(filas(fixture).length).toBe(50);
+    expect(filas(fixture)[0][0]).toBe('10051');
   });
 
-  it('asks for the previous page and stops at the first one', async () => {
-    const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+  it('writes the logical page to ?pagina= and reads it back on a deep link', async () => {
+    await router.navigateByUrl('/?pagina=6');
 
+    const fixture = TestBed.createComponent(EmpleadosPage);
+    await fixture.whenStable();
+
+    // A deep link opens where it says: page 6 needs block 2 straight away.
+    const inicial = peticiones();
+    expect(inicial.length).toBe(1);
+    expect(inicial[0].request.params.get('pagina')).toBe('2');
+    inicial[0].flush(SEGUNDO_BLOQUE);
+    await fixture.whenStable();
+
+    expect(texto(fixture)).toContain('Página 6 de 13');
+    expect(filas(fixture)[0][0]).toBe('10101');
+
+    // A cache hit changes the URL without asking the endpoint again.
     boton(fixture, 'Siguiente').click();
     await fixture.whenStable();
-    peticiones()[0].flush(PAGINA_DOS);
-    await fixture.whenStable();
+    expect(peticiones().length).toBe(0);
+    expect(router.url).toContain('pagina=7');
 
-    boton(fixture, 'Anterior').click();
+    // The browser's back button is the same path: the URL drives the page.
+    await router.navigateByUrl('/?pagina=8');
+    await fixture.whenStable();
+    expect(texto(fixture)).toContain('Página 8 de 13');
+    expect(peticiones().length).toBe(0);
+
+    // Page 1 has a canonical URL: the param disappears. Block 1 was never
+    // loaded in this visit, so going back is a real block miss.
+    boton(fixture, 'Primera').click();
     await fixture.whenStable();
 
     const vuelta = peticiones();
+    expect(vuelta.length).toBe(1);
     expect(vuelta[0].request.params.get('pagina')).toBe('1');
-    vuelta[0].flush(PAGINA_UNO);
+    vuelta[0].flush(PRIMER_BLOQUE);
     await fixture.whenStable();
 
-    expect(boton(fixture, 'Anterior').disabled).toBe(true);
-
-    boton(fixture, 'Anterior').click();
-    await fixture.whenStable();
-    expect(peticiones().length).toBe(0);
+    expect(router.url).not.toContain('pagina=');
   });
 
   it('shows the wait the API asked for after a 429 and locks the retry', async () => {
@@ -386,10 +643,11 @@ describe('EmpleadosPage', () => {
     );
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('Hiciste demasiadas consultas. Esperá 37 segundos.');
+    expect(texto(fixture)).toContain('Hiciste demasiadas consultas. Espera 37 segundos.');
     expect(texto(fixture)).toContain('limite_consultas');
     expect(host(fixture).querySelector('[role="alert"]')).not.toBeNull();
     expect(boton(fixture, 'Reintentar').disabled).toBe(true);
+    expect(boton(fixture, 'Actualizar').disabled).toBe(true);
   });
 
   it('keeps a search typed during a 429 and sends it when the wait is over', () => {
@@ -421,7 +679,8 @@ describe('EmpleadosPage', () => {
     expect(diferida.length).toBe(1);
     expect(diferida[0].request.params.get('buscar')).toBe('ana');
     expect(diferida[0].request.params.get('pagina')).toBe('1');
-    diferida[0].flush(PAGINA_UNO);
+    expect(diferida[0].request.params.get('por_pagina')).toBe('100');
+    diferida[0].flush(respuesta([ANA], 1));
     fixture.detectChanges();
 
     expect(host(fixture).querySelector('[role="alert"]')).toBeNull();
@@ -437,17 +696,51 @@ describe('EmpleadosPage', () => {
     );
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('El servicio no está disponible. Reintentá en unos segundos.');
+    expect(texto(fixture)).toContain('El servicio no está disponible. Reintenta en unos segundos.');
 
     const reintentar = boton(fixture, 'Reintentar');
     expect(reintentar.disabled).toBe(false);
     reintentar.click();
     await fixture.whenStable();
 
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA]));
 
     expect(texto(fixture)).toContain('Ana Martínez');
     expect(host(fixture).querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('retries the block of a failed jump, not the page that stayed on screen', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    boton(fixture, 'Última').click();
+    await fixture.whenStable();
+
+    const salto = peticiones();
+    expect(salto.length).toBe(1);
+    expect(salto[0].request.params.get('pagina')).toBe('3');
+    salto[0].flush(
+      { mensaje: 'El servicio no está disponible.', codigo: 'servicio_no_disponible' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    await fixture.whenStable();
+
+    // The roster stays on page 1: the jump never landed.
+    expect(texto(fixture)).toContain('Página 1 de 13');
+    expect(filas(fixture)[0][0]).toBe('10001');
+
+    boton(fixture, 'Reintentar').click();
+    await fixture.whenStable();
+
+    const reintento = peticiones();
+    expect(reintento.length).toBe(1);
+    // The retry remembers page 13, not the visible page 1.
+    expect(reintento[0].request.params.get('pagina')).toBe('3');
+    reintento[0].flush(TERCER_BLOQUE);
+    await fixture.whenStable();
+
+    expect(texto(fixture)).toContain('Página 13 de 13');
+    expect(filas(fixture)[0][0]).toBe('10241');
   });
 
   it('explains a permission failure and shows the contract code', async () => {
@@ -467,7 +760,6 @@ describe('EmpleadosPage', () => {
 
   it('sends the user back to the login when the session expired', async () => {
     sessionStorage.setItem('utn-rh.token', 'token-vencido');
-    const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     const fixture = await render();
@@ -477,7 +769,7 @@ describe('EmpleadosPage', () => {
     );
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('Tu sesión venció. Volvé a iniciar sesión.');
+    expect(texto(fixture)).toContain('Tu sesión venció. Vuelve a iniciar sesión.');
 
     boton(fixture, 'Iniciar sesión').click();
     await fixture.whenStable();
@@ -492,85 +784,13 @@ describe('EmpleadosPage', () => {
     peticiones()[0].error(new ProgressEvent('error'), { status: 0 });
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('No pudimos conectar con el servidor. Revisá tu conexión.');
+    expect(texto(fixture)).toContain('No pudimos conectar con el servidor. Revisa tu conexión.');
     expect(boton(fixture, 'Reintentar')).toBeDefined();
-  });
-
-  it('names the cause of an empty result: the search, or an empty roster', () => {
-    vi.useFakeTimers();
-
-    const fixture = TestBed.createComponent(EmpleadosPage);
-    fixture.detectChanges();
-
-    peticiones()[0].flush(SIN_EMPLEADOS);
-    fixture.detectChanges();
-
-    const vacio = (): string => host(fixture).querySelector('td.empty')?.textContent?.trim() ?? '';
-    expect(vacio()).toBe('Todavía no hay empleados activos.');
-
-    escribir(fixture, 'zzz');
-    vi.advanceTimersByTime(300);
-    peticiones()[0].flush(SIN_EMPLEADOS);
-    fixture.detectChanges();
-
-    expect(vacio()).toBe('No hay empleados que coincidan con la búsqueda.');
-  });
-
-  it('changes the page size and restarts at the first page', async () => {
-    const fixture = await render();
-    peticiones()[0].flush(PAGINA_UNO);
-    fixture.detectChanges();
-
-    // Move away from page 1 first: a size change has to come back to it.
-    boton(fixture, 'Siguiente').click();
-    fixture.detectChanges();
-    peticiones()[0].flush(PAGINA_DOS);
-    fixture.detectChanges();
-
-    const selector = host(fixture).querySelector<HTMLSelectElement>('#porPagina');
-    expect(selector).not.toBeNull();
-    // 10, 20, 50, 100: the contract caps it at 100.
-    expect(Array.from(selector?.options ?? []).map((option) => option.value)).toEqual([
-      '10',
-      '20',
-      '50',
-      '100',
-    ]);
-
-    selector!.value = '50';
-    selector!.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    const [cambio] = peticiones();
-    expect(cambio.request.params.get('por_pagina')).toBe('50');
-    expect(cambio.request.params.get('pagina')).toBe('1');
-  });
-
-  it('holds the skeleton of the table and both paging ends while a page loads', async () => {
-    const fixture = await render();
-
-    // No answer yet: the table shows its own skeleton and nothing claims a total.
-    expect(host(fixture).querySelector('tbody tr.skeleton-row')).not.toBeNull();
-    expect(host(fixture).querySelector('.pager')).toBeNull();
-
-    peticiones()[0].flush(PAGINA_UNO);
-    await fixture.whenStable();
-
-    boton(fixture, 'Siguiente').click();
-    await fixture.whenStable();
-
-    expect(host(fixture).querySelector('tbody tr.skeleton-row')).not.toBeNull();
-    expect(boton(fixture, 'Anterior').disabled).toBe(true);
-    expect(boton(fixture, 'Siguiente').disabled).toBe(true);
-    expect(boton(fixture, 'Actualizar').disabled).toBe(true);
-
-    peticiones()[0].flush(PAGINA_DOS);
-    await fixture.whenStable();
   });
 
   it('opens the record of the clicked row and asks for that employee', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA, LUIS]));
 
     // The second row is Luis, so a click on it must address his key (`2`), not
     // the first row's and not his `num_empleado`.
@@ -591,7 +811,7 @@ describe('EmpleadosPage', () => {
 
   it('opens the same record from the name button without firing the row click twice', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA, LUIS]));
 
     const nombre = host(fixture).querySelector<HTMLButtonElement>(
       'tbody tr:nth-child(2) .name-button',
@@ -617,7 +837,7 @@ describe('EmpleadosPage', () => {
 
   it('asks the roster again after a termination so the worker disappears', async () => {
     const fixture = await render();
-    await responder(fixture, PAGINA_UNO);
+    await responder(fixture, respuesta([ANA, LUIS]));
 
     // Open the record of the second row: only a loaded record offers the baja.
     host(fixture)
@@ -675,8 +895,8 @@ describe('EmpleadosPage', () => {
     });
     await fixture.whenStable();
 
-    // The drawer left, and the page asked the roster for the page on screen: the
-    // endpoint filters inactive workers out, so the row is gone by now.
+    // The drawer left, and the page asked the roster for the block on screen:
+    // the endpoint filters inactive workers out, so the row is gone by now.
     expect(host(fixture).querySelector('app-ficha-drawer dialog')?.hasAttribute('open')).toBe(
       false,
     );
@@ -684,7 +904,8 @@ describe('EmpleadosPage', () => {
     const recarga = peticiones();
     expect(recarga.length).toBe(1);
     expect(recarga[0].request.params.get('pagina')).toBe('1');
-    recarga[0].flush(pagina({ pagina: 1, total: 41 }, [ANA]));
+    expect(recarga[0].request.params.get('por_pagina')).toBe('100');
+    recarga[0].flush(respuesta([ANA], 1));
     await fixture.whenStable();
 
     expect(filas(fixture).length).toBe(1);
