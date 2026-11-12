@@ -1,0 +1,78 @@
+<ng-template #body>
+  <!--
+    The flag marks the state of the metric on its leading edge. It is painted
+    absolutely so switching tone never changes the width of the card.
+  -->
+  <span class="flag" [class]="'flag ' + toneClass()" aria-hidden="true"></span>
+
+  <span class="head">
+    <span class="label">{{ label() }}</span>
+    <span class="icon" [class]="'icon ' + toneClass()" aria-hidden="true">
+      @switch (icon()) {
+        @case ('activos') {
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="8" cy="6.5" r="3" />
+            <path d="M2.5 16.5c0-3 2.4-4.6 5.5-4.6s5.5 1.6 5.5 4.6" />
+            <path d="M14.6 7.4l1.6 1.6 2.3-2.6" />
+          </svg>
+        }
+        @case ('bajas') {
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="8" cy="6.5" r="3" />
+            <path d="M2.5 16.5c0-3 2.4-4.6 5.5-4.6s5.5 1.6 5.5 4.6" />
+            <path d="M14 8.5h4.5" />
+          </svg>
+        }
+        @case ('semaforo') {
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 2.5h6.5L15 6v11.5H5z" />
+            <path d="M11.5 2.5V6H15" />
+            <path d="M7.6 11.4l1.7 1.7 3.1-3.5" />
+          </svg>
+        }
+      }
+    </span>
+  </span>
+
+  <span class="value">{{ value() }}</span>
+
+  @if (hint(); as hintText) {
+    <span class="hint">{{ hintText }}</span>
+  }
+</ng-template>
+
+@if (clickable()) {
+  <!--
+    No `(click)` handler of its own: the native click bubbles to the host, so
+    the caller listens `(click)` on `<app-kpi-card>` and the component stays
+    free of an output it would only forward.
+  -->
+  <button type="button" class="card is-interactive" [attr.aria-label]="accessibleName()">
+    <ng-container *ngTemplateOutlet="body" />
+  </button>
+} @else {
+  <div class="card">
+    <ng-container *ngTemplateOutlet="body" />
+  </div>
+}

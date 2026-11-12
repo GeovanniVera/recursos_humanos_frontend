@@ -1,0 +1,315 @@
+// ---------------------------------------------------------------------------
+// Login: full-height split. Left column carries the institutional identity,
+// right column the glass card. The animated backdrop sits behind both.
+// ---------------------------------------------------------------------------
+
+:host {
+  display: block;
+  min-height: 100vh;
+  // The host carries `data-theme="light"`, so this resolves to the light canvas
+  // and its gradient. Painting it here keeps the page opaque even when the
+  // document root still holds the theme the user picked inside the application.
+  background-color: var(--color-bg-canvas);
+  background-image: var(--canvas-gradient);
+}
+
+.page {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  gap: var(--space-7) var(--space-8);
+  align-items: center;
+  min-height: 100vh;
+  padding: var(--space-8);
+  overflow: hidden;
+}
+
+// --- Left column: identity -------------------------------------------------
+
+.brand-column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.overline {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-overline);
+}
+
+.headline {
+  display: flex;
+  flex-direction: column;
+  font: var(--text-display);
+  color: var(--color-text-primary);
+}
+
+.headline-accent {
+  color: var(--color-accent);
+}
+
+.lede {
+  max-width: 52ch;
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// --- Right column and card -------------------------------------------------
+
+.form-column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: var(--login-card-width);
+  padding: var(--space-7);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-md);
+}
+
+.steps {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-border-default);
+  transition:
+    width var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+// Active step: elongated and gold, so it is not signaled by color alone.
+.dot.is-active {
+  width: var(--space-6);
+  background: var(--color-accent);
+}
+
+.card-title {
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+
+.card-body {
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+.card-emphasis {
+  color: var(--color-text-primary);
+}
+
+.footnote {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+// --- Error alert -----------------------------------------------------------
+// The error surface plus an ✕ in a filled circle: shape and icon carry the
+// meaning, the color only reinforces it.
+
+.alert {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-state-error-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.alert-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-state-error-ink);
+  color: var(--color-state-error);
+  font: var(--text-label);
+}
+
+.alert-text {
+  font: var(--text-body);
+}
+
+// --- Form ------------------------------------------------------------------
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field-label {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.field {
+  width: 100%;
+  min-height: var(--space-8);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.field::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.field:hover,
+.field:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.field:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+// The only element of the screen that uses the primary action color.
+.primary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--space-8);
+  padding: var(--space-3) var(--space-6);
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-action-primary);
+  border-radius: var(--radius-pill);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(var(--hover-lift));
+  box-shadow: var(--shadow-md);
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+// Gold sheen sweeping across the verification button.
+.primary-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    100deg,
+    transparent 25%,
+    var(--color-action-sheen) 50%,
+    transparent 75%
+  );
+  transform: translateX(-100%);
+  animation: cta-shimmer var(--backdrop-cta-shimmer) var(--motion-ease)
+    var(--backdrop-cta-shimmer-delay) infinite;
+}
+
+// --- Secondary actions -----------------------------------------------------
+
+.progress {
+  height: var(--space-1);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-default);
+}
+
+.progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  transition: width var(--motion-fast) var(--motion-ease);
+}
+
+.resend {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resend-wait {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+// Link-shaped button: no chrome, still a real <button>.
+.link {
+  min-height: var(--space-8);
+  padding: 0;
+  border: 0;
+  background: var(--color-surface-ghost);
+  color: var(--color-accent);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.link:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.link-underline {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
+
+// --- Page footer -----------------------------------------------------------
+
+.page-footer {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+@keyframes cta-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}

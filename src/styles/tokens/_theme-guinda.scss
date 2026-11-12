@@ -1,0 +1,65 @@
+// ---------------------------------------------------------------------------
+// Theme: guinda (default)
+// Semantic roles only. Every value resolves to a primitive.
+// ---------------------------------------------------------------------------
+
+[data-theme='guinda'] {
+  // Surfaces
+  --color-bg-canvas: var(--guinda-700);
+  --color-surface-glass: var(--white-a08);
+  --color-surface-overlay: var(--guinda-a60);
+  // "No fill" for buttons that must read as inline links.
+  --color-surface-ghost: var(--transparent);
+
+  // Lines
+  --color-border-default: var(--white-a20);
+
+  // Text
+  --color-text-primary: var(--white);
+  --color-text-secondary: var(--gold-200);
+  // Group labels and overlines. In light this must not be gold (contrast),
+  // so the role is a token of its own instead of reusing --color-accent.
+  --color-text-overline: var(--gold-400);
+
+  // Actions
+  --color-action-primary: var(--white);
+  --color-action-on-primary: var(--guinda-800);
+  // Sheen that sweeps across the primary button. Gold over the white fill of
+  // this theme; white over a colored fill in the other two.
+  --color-action-sheen: var(--gold-400);
+
+  // Accent. `--color-accent-ink` is the readable ink on top of an accent fill
+  // (the user avatar); white would fail contrast on gold.
+  --color-accent: var(--gold-400);
+  --color-accent-ink: var(--guinda-ink);
+
+  // States. On guinda, error is a pale rose surface, never red text.
+  --color-state-error: var(--rose-50);
+  // Ink that stays readable on top of the error surface: dark on the pale rose
+  // of this theme, white on the deep red of the light theme.
+  --color-state-error-ink: var(--guinda-900);
+  --color-state-success: var(--mint-400);
+  --color-state-info: var(--sky-400);
+  --color-state-warning: var(--amber-400);
+  // Ink of a glyph drawn *inside* a state-coloured fill (the circular icon of a
+  // toast). The three fills are light in this theme, so the ink is deep guinda.
+  --color-state-success-ink: var(--guinda-900);
+  --color-state-info-ink: var(--guinda-900);
+  --color-state-warning-ink: var(--guinda-900);
+
+  // Overlays and focus
+  --color-scrim: var(--scrim);
+  --color-focus-ring: rgba(232, 199, 102, 0.25);
+
+  // Canvas: a diagonal gradient with the warm light in the upper right and the
+  // deepest tone washing up from the bottom centre. Measured from the canvas,
+  // not invented: a flat fill leaves the glass with nothing to refract.
+  --canvas-glow: rgba(190, 120, 55, 0.55);
+  --canvas-wash: rgba(40, 4, 14, 0.18);
+  --canvas-gradient:
+    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
+    linear-gradient(125deg, var(--guinda-canvas-hi) 0%, var(--guinda-600) 50%, var(--guinda-canvas-lo) 100%);
+
+  color-scheme: dark;
+}

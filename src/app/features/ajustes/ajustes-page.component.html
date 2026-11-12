@@ -1,0 +1,52 @@
+<section class="page">
+  <header class="head">
+    <p class="overline">Preferencias</p>
+    <h1 class="title">Ajustes</h1>
+    <p class="body">
+      Elige el tema de la interfaz. Los tres comparten los mismos nombres de token, así que ningún
+      dato, tabla o estado cambia de lugar: solo cambia el color. La elección se guarda en este
+      equipo y se aplica de inmediato, sin botón de guardar.
+    </p>
+    <p class="status" aria-live="polite">
+      Tema activo: <strong class="status-name">{{ activeLabel() }}</strong>
+    </p>
+  </header>
+
+  <!--
+    A fieldset groups the options with its legend, so the group is announced
+    once and every card keeps the native button contract. The cards are toggle
+    buttons, not radios: `aria-pressed` describes them without promising the
+    arrow-key navigation that a radiogroup would require.
+  -->
+  <fieldset class="group">
+    <legend class="legend">Tema de la interfaz</legend>
+
+    <div class="options">
+      @for (option of themes; track option) {
+        <button
+          type="button"
+          class="option"
+          [class.is-active]="option === theme()"
+          [attr.aria-pressed]="option === theme()"
+          (click)="select(option)"
+        >
+          <!--
+            The preview carries no information of its own, so it leaves the
+            accessibility tree. `data-theme` on this element makes the token
+            cascade resolve the values of the target theme, even when it is not
+            the active one.
+          -->
+          <span class="preview" [attr.data-theme]="option" aria-hidden="true">
+            <span class="swatch swatch-canvas"></span>
+            <span class="swatch swatch-text"></span>
+            <span class="swatch swatch-accent"></span>
+          </span>
+
+          <span class="option-name">{{ label(option) }}</span>
+          <span class="option-id">{{ option }}</span>
+          <span class="option-hint">{{ hint(option) }}</span>
+        </button>
+      }
+    </div>
+  </fieldset>
+</section>

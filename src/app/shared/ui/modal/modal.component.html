@@ -1,0 +1,37 @@
+<dialog
+  #dialog
+  class="dialog enter-modal is-{{ size() }}"
+  [attr.aria-labelledby]="titleId"
+  (cancel)="onCancel($event)"
+  (close)="onClose()"
+  (click)="onBackdropClick($event)"
+>
+  <header class="header">
+    <h2 class="title" [id]="titleId">{{ title() }}</h2>
+
+    @if (dismissible()) {
+      <button type="button" class="close" aria-label="Cerrar" (click)="requestClose()">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+        </svg>
+      </button>
+    }
+  </header>
+
+  <div class="body">
+    <ng-content />
+  </div>
+
+  @if (actions(); as actionsTemplate) {
+    <footer class="footer">
+      <ng-container *ngTemplateOutlet="actionsTemplate" />
+    </footer>
+  }
+</dialog>

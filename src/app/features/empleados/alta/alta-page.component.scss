@@ -1,0 +1,381 @@
+// ---------------------------------------------------------------------------
+// Registration wizard: stepper on top, one glass card per step, two actions at
+// the bottom. Nothing here declares a colour, a radius, a shadow or a duration:
+// every value comes from a token.
+// ---------------------------------------------------------------------------
+
+:host {
+  display: block;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+// --- Heading ---------------------------------------------------------------
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.overline {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.title {
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+
+.sub {
+  max-width: var(--content-max-width);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// --- Stepper ---------------------------------------------------------------
+// Four stops whose shape carries the state: filled for the current one, a check
+// for the ones already answered. The colour reinforces it, it does not carry it.
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.stop-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.stop.is-done .stop-mark {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+// The one element of the screen that uses the primary action fill.
+.stop.is-active .stop-mark {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+.stop.is-active {
+  color: var(--color-text-primary);
+}
+
+// Hairline between two stops. It is drawn by the stop that has a next one.
+.stop:not(:last-child)::after {
+  content: '';
+  flex: 1 1 auto;
+  min-width: var(--space-4);
+  height: var(--border-width);
+  background: var(--color-border-default);
+}
+
+// --- Card ------------------------------------------------------------------
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-7);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-sm);
+}
+
+// --- One step --------------------------------------------------------------
+
+// A fieldset carries the grouping for a screen reader; the frame is reset so the
+// card stays the only surface.
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: var(--border-width) solid var(--transparent);
+}
+
+.group-title {
+  padding: 0;
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+}
+
+.group-hint {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+// Two fields per row, never more: a form with four columns reads as a data dump
+// and every field gets too narrow to type into. The breakpoint collapses it to
+// one column when the panel cannot hold two 320px fields plus the gutters.
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+// The observations box spans the row: a 2000 character field on half a row
+// would show two lines and hide the rest of a sentence.
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.grid-note {
+  grid-column: 1 / -1;
+}
+
+.label {
+  // 13px, not the 11px label step: a caption smaller than the control it names
+  // reads as an afterthought once the field is 15px.
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+.control {
+  width: 100%;
+  min-height: var(--control-height-md);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+  font: var(--text-field);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.control:hover,
+.control:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.control-area {
+  min-height: calc(var(--control-height-md) * 2);
+  resize: vertical;
+}
+
+// A control the form fills by itself: a complete CURP already carries the birth
+// date and the sex, so the two are shown instead of asked. The note underneath
+// is what says so; this only keeps the value readable in the three themes, where
+// the browser default for a disabled control would fail contrast.
+.control:disabled {
+  border-color: var(--color-border-default);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+// A field the backend rejected: the pale rose of the error state in this theme,
+// paired with the message underneath, so the state never rests on colour alone.
+.control.is-invalid {
+  border-color: var(--color-state-error);
+}
+
+.field-error {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-state-error);
+}
+
+.field-error::before {
+  content: '✕ ';
+}
+
+// Where a value came from when the form filled it. It sits where the error note
+// would, so the two never fight for the same line.
+.field-hint {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.field-hint::before {
+  content: '· ';
+}
+
+.note {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-ghost);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// --- Failure ---------------------------------------------------------------
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-pill);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+  font: var(--text-label);
+}
+
+.alert-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.alert-message {
+  font: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+// --- Loading ---------------------------------------------------------------
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+}
+
+.loading-text {
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// --- Summary ---------------------------------------------------------------
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-width), 1fr));
+  gap: var(--space-5);
+}
+
+.summary-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.summary-title {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+}
+
+.summary-label {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.summary-value {
+  margin: 0;
+  font: var(--text-body);
+  color: var(--color-text-primary);
+  text-align: end;
+}
+
+// --- Actions ---------------------------------------------------------------
+
+// Back on the left, forward on the right: the pair never moves, so the primary
+// action keeps the same place on every step.
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}

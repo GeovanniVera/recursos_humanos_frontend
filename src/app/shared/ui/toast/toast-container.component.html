@@ -1,0 +1,80 @@
+<div class="stack" aria-live="polite" aria-atomic="false">
+  @for (toast of toasts(); track toast.id) {
+    <article class="toast enter-rise is-{{ toast.type }}" [attr.role]="role(toast.type)">
+      <span class="icon" aria-hidden="true">
+        @switch (toast.type) {
+          @case ('success') {
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+            </svg>
+          }
+          @case ('error') {
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <path d="M5 5l6 6M11 5l-6 6" />
+            </svg>
+          }
+          @case ('info') {
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <path d="M8 7.5v4.5M8 4.4v.1" />
+            </svg>
+          }
+          @case ('warning') {
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <path d="M8 4v4.4M8 11.6v.1" />
+            </svg>
+          }
+        }
+      </span>
+
+      <div class="copy">
+        <p class="title">{{ toast.title }}</p>
+        @if (toast.message) {
+          <p class="message">{{ toast.message }}</p>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="close"
+        aria-label="Cerrar notificación"
+        (click)="dismiss(toast.id)"
+      >
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+        </svg>
+      </button>
+    </article>
+  }
+</div>

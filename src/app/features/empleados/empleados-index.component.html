@@ -1,0 +1,42 @@
+<section class="page">
+  <header class="head">
+    <p class="overline">Recursos Humanos</p>
+    <h1 class="title">Empleados</h1>
+    <p class="sub">
+      Elegí la sección que querés consultar. Cada una tiene su propia pantalla, con su búsqueda y su
+      paginación.
+    </p>
+  </header>
+
+  <ul class="sections">
+    @for (seccion of secciones; track seccion.ruta) {
+      <li>
+        <!--
+          A real link, not a click handler: the destination is a route, so the
+          keyboard, the context menu and the middle click all work.
+        -->
+        <a class="section-link" [routerLink]="seccion.ruta">
+          <span class="flag" [class]="'flag is-' + seccion.tono" aria-hidden="true"></span>
+
+          <span class="section-body">
+            <span class="section-title">{{ seccion.titulo }}</span>
+            <span class="section-text">{{ seccion.descripcion }}</span>
+          </span>
+
+          <svg
+            class="arrow"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </a>
+      </li>
+    }
+  </ul>
+</section>

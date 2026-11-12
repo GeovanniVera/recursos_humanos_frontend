@@ -1,0 +1,138 @@
+<main class="stage">
+  <header class="bar">
+    <div class="identity">
+      <p class="overline">Sistema de Recursos Humanos · UTN</p>
+      <h1 class="display">UI kit</h1>
+      <p class="sub">Botón, notificaciones, capas y tabla de datos · tokens, no valores</p>
+    </div>
+  </header>
+
+  <section class="card enter-rise">
+    <h2 class="heading">Botón</h2>
+    <p class="sub">Una sola acción principal por vista o capa.</p>
+
+    <div class="group">
+      <p class="label">Variantes</p>
+      <div class="row">
+        <app-button variant="primary">Aplicar</app-button>
+        <app-button variant="secondary">Cancelar</app-button>
+        <app-button variant="ghost">Editar</app-button>
+        <app-button variant="danger">Sí, eliminar</app-button>
+      </div>
+    </div>
+
+    <div class="group">
+      <p class="label">Tamaños y estados</p>
+      <div class="row">
+        <app-button variant="primary" size="sm">Compacto</app-button>
+        <app-button variant="secondary" size="sm">Compacto</app-button>
+        <app-button variant="primary" [loading]="true">Guardando</app-button>
+        <app-button variant="secondary" [disabled]="true">Deshabilitado</app-button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card enter-rise">
+    <h2 class="heading">Notificaciones</h2>
+    <p class="sub">
+      Máximo cuatro visibles. Error y advertencia se anuncian como alerta; éxito e información, de
+      forma cortés.
+    </p>
+
+    <div class="row">
+      @for (example of toastExamples; track example.type) {
+        <app-button variant="secondary" (click)="notify(example)">{{ example.label }}</app-button>
+      }
+      <app-button variant="ghost" (click)="notifyPinned()">Sin cierre automático</app-button>
+      <app-button variant="ghost" (click)="dismissAll()">Cerrar todas</app-button>
+    </div>
+  </section>
+
+  <section class="card enter-rise">
+    <h2 class="heading">Tabla de datos</h2>
+    <p class="sub">
+      La fila marcada usa el acento como testigo en su borde inicial. Las columnas numéricas se
+      alinean al final.
+    </p>
+
+    <app-data-table
+      [columns]="columns"
+      [rows]="employees"
+      [activeKey]="selectedKey()"
+      rowKey="folio"
+      caption="Empleados activos"
+    >
+      <ng-template #rowActions let-row>
+        <app-button variant="ghost" size="sm" (click)="select(row)">Abrir</app-button>
+      </ng-template>
+    </app-data-table>
+
+    <div class="group">
+      <p class="label">Estados de carga y vacío</p>
+      <div class="row">
+        <app-button variant="secondary" size="sm" (click)="toggleLoading()">
+          {{ tableLoading() ? 'Quitar carga' : 'Simular carga' }}
+        </app-button>
+        <app-button variant="secondary" size="sm" (click)="toggleEmpty()">
+          {{ tableEmpty() ? 'Rellenar' : 'Vaciar' }}
+        </app-button>
+      </div>
+
+      <app-data-table
+        [columns]="columns"
+        [rows]="previewRows()"
+        [loading]="tableLoading()"
+        emptyMessage="No hay registros para mostrar."
+        caption="Vista previa de la tabla"
+      />
+    </div>
+  </section>
+
+  <section class="card enter-rise">
+    <h2 class="heading">Capas</h2>
+    <p class="sub">
+      Modal y drawer son <code>&lt;dialog&gt;</code> nativos: foco atrapado, fondo inerte y Escape
+      vienen de la plataforma.
+    </p>
+
+    <div class="row">
+      <app-button variant="primary" (click)="modalOpen.set(true)">Modal</app-button>
+      <app-button variant="secondary" (click)="wideModalOpen.set(true)">Modal amplio</app-button>
+      <app-button variant="secondary" (click)="openDrawer('right')">Drawer derecho</app-button>
+      <app-button variant="secondary" (click)="openDrawer('left')">Drawer izquierdo</app-button>
+    </div>
+  </section>
+</main>
+
+<app-modal title="Eliminar empleado" [(open)]="modalOpen">
+  <p>
+    Se eliminará <strong>Ana Martínez</strong> y su historial. Esta acción no se puede deshacer.
+  </p>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="modalOpen.set(false)">Cancelar</app-button>
+    <app-button variant="danger" (click)="modalOpen.set(false)">Sí, eliminar</app-button>
+  </ng-template>
+</app-modal>
+
+<app-modal title="Invitar al equipo" size="lg" [(open)]="wideModalOpen">
+  <p>
+    Enviaremos una invitación por correo. El ancho amplio es para formularios: la confirmación
+    siempre cabe en 440 px.
+  </p>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="wideModalOpen.set(false)">Cancelar</app-button>
+    <app-button variant="primary" (click)="wideModalOpen.set(false)">Enviar invitación</app-button>
+  </ng-template>
+</app-modal>
+
+<app-drawer title="Filtros" [side]="drawerSide()" [(open)]="drawerOpen">
+  <p>
+    El panel se ancla al borde elegido, mide 380 px en escritorio y deja el cuerpo con
+    desplazamiento propio.
+  </p>
+  <p>Estado, área y antigüedad llegarán con la pantalla de empleados.</p>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="drawerOpen.set(false)">Limpiar</app-button>
+    <app-button variant="primary" (click)="drawerOpen.set(false)">Aplicar</app-button>
+  </ng-template>
+</app-drawer>

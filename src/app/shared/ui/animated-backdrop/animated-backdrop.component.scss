@@ -1,0 +1,213 @@
+// ---------------------------------------------------------------------------
+// Animated backdrop — login and public screens only.
+// Decorative: fixed behind the content of the host screen, out of the pointer
+// path and out of the accessibility tree. Every color, size and duration comes
+// from a `--backdrop-*` token; the keyframes live here and consume tokens too.
+// ---------------------------------------------------------------------------
+
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+// --- Auroras: three slow drifting lights ------------------------------------
+
+.aurora {
+  position: absolute;
+  width: var(--backdrop-aurora-size);
+  height: var(--backdrop-aurora-size);
+  border-radius: var(--radius-pill);
+  filter: blur(var(--blur-glass));
+}
+
+.aurora-gold {
+  top: -14%;
+  left: -12%;
+  background-image: radial-gradient(
+    circle,
+    var(--backdrop-color-gold) 0%,
+    transparent 68%
+  );
+  animation: aurora-drift var(--backdrop-aurora-1) var(--motion-ease) infinite alternate;
+}
+
+.aurora-red {
+  right: -16%;
+  bottom: -20%;
+  background-image: radial-gradient(
+    circle,
+    var(--backdrop-color-red) 0%,
+    transparent 70%
+  );
+  animation: aurora-drift var(--backdrop-aurora-2) var(--motion-ease) infinite alternate-reverse;
+}
+
+.aurora-white {
+  top: 28%;
+  left: 38%;
+  background-image: radial-gradient(
+    circle,
+    var(--backdrop-color-white) 0%,
+    transparent 72%
+  );
+  animation: aurora-drift var(--backdrop-aurora-3) var(--motion-ease) infinite alternate;
+}
+
+// --- Grid and gold sweep ---------------------------------------------------
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      var(--backdrop-grid-color) var(--border-width),
+      transparent var(--border-width)
+    ),
+    linear-gradient(
+      to bottom,
+      var(--backdrop-grid-color) var(--border-width),
+      transparent var(--border-width)
+    );
+  background-size: var(--backdrop-grid) var(--backdrop-grid);
+  -webkit-mask-image: var(--backdrop-grid-mask);
+  mask-image: var(--backdrop-grid-mask);
+}
+
+.sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--backdrop-sweep-height);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--backdrop-sweep-color) 50%,
+    transparent 100%
+  );
+  animation: backdrop-sweep var(--backdrop-sweep) var(--motion-ease) infinite;
+}
+
+// --- Rings: three circles expanding from the center ------------------------
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--backdrop-ring-size);
+  height: var(--backdrop-ring-size);
+  border: var(--border-width) solid var(--backdrop-ring-color);
+  border-radius: var(--radius-pill);
+  animation: backdrop-ring var(--backdrop-ring) var(--motion-ease) infinite;
+}
+
+.ring-2 {
+  animation-delay: var(--backdrop-ring-stagger);
+}
+
+.ring-3 {
+  animation-delay: calc(var(--backdrop-ring-stagger) * 2);
+}
+
+// --- Particles: 22 dots rising from the bottom edge ------------------------
+
+.particles {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  // One column per particle, bottom aligned; the count comes from the markup,
+  // so nothing here repeats the particle number.
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: end;
+}
+
+.particle {
+  justify-self: center;
+  width: var(--backdrop-particle-size);
+  height: var(--backdrop-particle-size);
+  border-radius: var(--radius-pill);
+  background: var(--backdrop-particle-color);
+  // `--particle-index` is the position in the row, set inline by the template.
+  // It staggers the start of each particle without a rule per particle.
+  animation: backdrop-particle var(--backdrop-particle-min) var(--motion-ease) infinite;
+  animation-delay: calc(var(--motion-stagger) * var(--particle-index) * -1);
+}
+
+// Two of every three particles rise at a different speed. The middle value is
+// derived from the two duration tokens, so no raw time enters the stylesheet.
+.particle:nth-child(3n) {
+  animation-duration: var(--backdrop-particle-max);
+  width: calc(var(--backdrop-particle-size) * 1.6);
+  height: calc(var(--backdrop-particle-size) * 1.6);
+}
+
+.particle:nth-child(3n + 2) {
+  animation-duration: calc(
+    (var(--backdrop-particle-min) + var(--backdrop-particle-max)) / 2
+  );
+}
+
+// --- Keyframes -------------------------------------------------------------
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, -8%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-5%, 5%, 0) scale(1.04);
+  }
+}
+
+@keyframes backdrop-sweep {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes backdrop-ring {
+  from {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(var(--backdrop-ring-scale));
+  }
+}
+
+@keyframes backdrop-particle {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-108vh);
+  }
+}

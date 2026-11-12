@@ -1,0 +1,43 @@
+<div class="logos" [class.is-lg]="variant() === 'lg'">
+  <!--
+    A slot is either the real logo or a dashed placeholder. The fallback keeps
+    a missing asset visible instead of rendering a broken image icon.
+    `plated` decides whether the slot paints the white field the official marks
+    assume; the sidebar turns it off and lets the glass rail show through.
+  -->
+  <div
+    class="slot"
+    [class.is-plated]="plated()"
+    [class.is-placeholder]="utnFailed()"
+    role="img"
+    aria-label="Logotipo de la Universidad Tecnológica de Nezahualcóyotl"
+  >
+    @if (utnFailed()) {
+      <span class="label">LOGO UTN</span>
+    } @else {
+      <img class="logo" [src]="utnSrc" alt="" (error)="utnFailed.set(true)" />
+    }
+  </div>
+
+  @if (variant() === 'lg') {
+    <span class="separator" aria-hidden="true"></span>
+  }
+
+  <div
+    class="slot"
+    [class.is-plated]="plated()"
+    [class.is-placeholder]="edomexFailed()"
+    role="img"
+    aria-label="Logotipo del Gobierno del Estado de México"
+  >
+    @if (edomexFailed()) {
+      <span class="label">LOGO GOB. EDOMEX</span>
+    } @else {
+      <img class="logo" [src]="edomexSrc" alt="" (error)="edomexFailed.set(true)" />
+    }
+  </div>
+</div>
+
+@if (showCaption()) {
+  <p class="caption">Sistema de Recursos Humanos</p>
+}

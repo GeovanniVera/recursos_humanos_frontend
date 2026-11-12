@@ -1,0 +1,145 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.overline {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.title {
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+
+.body {
+  max-width: var(--content-max-width);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// The status line duplicates what the pressed card already says, which is the
+// point: the active theme stays readable without decoding a swatch.
+.status {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.status-name {
+  color: var(--color-text-primary);
+}
+
+// A fieldset ships a border, a padding and a min-width of its own; all three
+// fight the grid, so they are reset instead of overridden rule by rule.
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.legend {
+  padding: 0;
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: var(--space-8);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.option:hover {
+  transform: translateY(var(--hover-lift));
+}
+
+// Selection, not a call to action: the same filled marker the sidebar uses for
+// the current destination, so "this is the one" reads the same everywhere.
+.option.is-active {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+.preview {
+  display: flex;
+  gap: var(--space-1);
+}
+
+// The three swatches are the theme's own canvas, text and accent. They resolve
+// against the `data-theme` scoped on `.preview`, never against the active
+// theme, so a card can advertise a theme that is not applied.
+.swatch {
+  width: var(--space-7);
+  height: var(--space-7);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.swatch-canvas {
+  background: var(--color-bg-canvas);
+}
+
+.swatch-text {
+  background: var(--color-text-primary);
+}
+
+.swatch-accent {
+  background: var(--color-accent);
+}
+
+.option-name {
+  font: var(--text-heading);
+}
+
+.option-id {
+  font: var(--text-overline);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+.option.is-active .option-id,
+.option.is-active .option-hint {
+  color: inherit;
+}
+
+.option-hint {
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}

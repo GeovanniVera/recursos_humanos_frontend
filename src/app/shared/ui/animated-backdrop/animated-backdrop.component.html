@@ -1,0 +1,21 @@
+<!--
+  Four decorative layers, back to front: three drifting auroras, the masked
+  grid with its gold sweep, three expanding rings and the rising particles.
+  Nothing here is focusable or clickable.
+-->
+<span class="aurora aurora-gold"></span>
+<span class="aurora aurora-red"></span>
+<span class="aurora aurora-white"></span>
+
+<div class="grid"></div>
+<span class="sweep"></span>
+
+<span class="ring"></span>
+<span class="ring ring-2"></span>
+<span class="ring ring-3"></span>
+
+<div class="particles">
+  @for (particula of particulas; track particula) {
+    <span class="particle" [style.--particle-index]="particula + 1"></span>
+  }
+</div>

@@ -1,0 +1,85 @@
+// Shared bar for every screen behind the shell.
+//
+// It is a header strip, not a card: no radius, no border box, no shadow. The
+// drawer and the cards are the containers of this interface; if the bar also
+// looked like one, four floating surfaces would compete at once. What is left is
+// a thin glass band that blurs whatever scrolls under it, closed by a hairline.
+:host {
+  position: sticky;
+  // Flush to the viewport top so nothing scrolls into the gap above it. The top
+  // padding keeps the text aligned with the drawer's own gutter.
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.breadcrumb {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  font: var(--text-body);
+}
+
+.trail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.crumb {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+// Only the ancestors are links; the last step is the page you are on.
+.crumb.is-link {
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.crumb.is-link:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+.crumb.is-current {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font: var(--text-nav-branch);
+  text-overflow: ellipsis;
+}
+
+.separator {
+  color: var(--color-text-secondary);
+}
+
+// A hairline separates the clock from the location trail. No second glass pill:
+// the bar is already glass, so nesting another one only muddied the surface.
+.clock {
+  flex: none;
+  padding-left: var(--space-4);
+  border-left: var(--border-width) solid var(--color-border-default);
+  color: var(--color-text-secondary);
+  font: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

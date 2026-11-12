@@ -1,0 +1,8 @@
+<button
+  [class]="buttonClass()"
+  [type]="type()"
+  [disabled]="isDisabled()"
+  [attr.aria-busy]="loading() ? 'true' : null"
+>
+  <ng-content />
+</button>

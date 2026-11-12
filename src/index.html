@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sistema de Recursos Humanos · UTN</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Applies the stored theme before the first paint. Without this, the static
+      // data-theme="light" above stays visible until Angular boots, which looks
+      // exactly like the preference being lost on every reload.
+      //
+      // Inline and synchronous on purpose: an external file would be requested
+      // after the document is already on screen.
+      (function () {
+        try {
+          var stored = localStorage.getItem('utn-rh.theme');
+          if (stored === 'guinda' || stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored);
+          }
+        } catch (error) {
+          // Storage blocked: the default attribute stands.
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

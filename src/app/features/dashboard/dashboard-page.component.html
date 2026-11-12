@@ -1,0 +1,152 @@
+<section class="page">
+  <header class="head">
+    <div class="identity">
+      <p class="overline">Resumen de Recursos Humanos</p>
+      <h1 class="title">Panel general</h1>
+      <p class="sub">
+        Plantilla y expedientes del personal. Las cifras se actualizan al entrar al panel o al
+        pedir una nueva lectura.
+      </p>
+    </div>
+
+    <app-button variant="secondary" [disabled]="loading()" (click)="cargar()">
+      Actualizar
+    </app-button>
+  </header>
+
+  @if (error(); as fallo) {
+    <!--
+      `role="alert"` announces the failure as soon as it renders. The icon ✕
+      carries the state together with the colour, so the message survives a
+      screen read in grayscale.
+    -->
+    <div class="alert" role="alert">
+      <span class="alert-icon" aria-hidden="true">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+        </svg>
+      </span>
+
+      <div class="alert-copy">
+        <p class="alert-message">{{ fallo.mensaje }}</p>
+        @if (fallo.codigo) {
+          <!-- A contract code, not copy: it is shown as it arrives. -->
+          <p class="alert-code">{{ fallo.codigo }}</p>
+        }
+      </div>
+
+      @switch (fallo.accion) {
+        @case ('reintentar') {
+          <app-button variant="secondary" (click)="cargar()">Reintentar</app-button>
+        }
+        @case ('iniciar-sesion') {
+          <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+        }
+      }
+    </div>
+  }
+
+  <!--
+    While loading, the region announces itself as busy and every figure is the
+    unknown placeholder: no number is shown before the backend sent one.
+  -->
+  <section
+    class="kpis"
+    aria-label="Indicadores del panel general"
+    [attr.aria-busy]="loading() ? 'true' : null"
+  >
+    <app-kpi-card
+      label="Empleados activos"
+      [value]="valorActivos()"
+      tone="success"
+      icon="activos"
+      hint="Activos y sin fecha de baja"
+      [clickable]="true"
+      (click)="accesoActivos.set(true)"
+    />
+
+    <app-kpi-card
+      label="Empleados baja"
+      [value]="valorBaja()"
+      tone="danger"
+      icon="bajas"
+      hint="Cuentas inactivas"
+      [clickable]="true"
+      (click)="accesoBaja.set(true)"
+    />
+
+    <app-kpi-card
+      label="Expedientes completos"
+      [value]="valorExpedientes()"
+      tone="warning"
+      icon="semaforo"
+      [hint]="pistaExpedientes()"
+      [clickable]="true"
+      (click)="detalleAbierto.set(true)"
+    />
+  </section>
+</section>
+
+<app-modal title="Empleados activos" [(open)]="accesoActivos">
+  <p>
+    Cuenta a los empleados con la cuenta activa y sin fecha de baja: la plantilla vigente. Los
+    historiales, las adscripciones y las bajas no entran en esta cifra.
+  </p>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="accesoActivos.set(false)">Cancelar</app-button>
+    <app-button variant="primary" (click)="ir('/empleados/activos')">
+      Ir a empleados activos
+    </app-button>
+  </ng-template>
+</app-modal>
+
+<app-modal title="Empleados baja" [(open)]="accesoBaja">
+  <p>
+    Cuenta las cuentas inactivas. El historial de cada baja, con su fecha, su motivo y su archivo,
+    vive en la pantalla de empleados baja.
+  </p>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="accesoBaja.set(false)">Cancelar</app-button>
+    <app-button variant="primary" (click)="ir('/empleados/baja')">Ir a empleados baja</app-button>
+  </ng-template>
+</app-modal>
+
+<app-modal title="Expedientes completos" [(open)]="detalleAbierto">
+  <p>
+    Cuenta a los empleados activos cuyo expediente está completo: los quince campos vigentes del
+    expediente están llenos. Un empleado dado de baja no suma, y un expediente al que le falta un
+    campo tampoco.
+  </p>
+
+  <dl class="figures">
+    <div class="figure">
+      <dt class="figure-label">Expedientes completos</dt>
+      <dd class="figure-value">{{ valorExpedientes() }}</dd>
+    </div>
+
+    <div class="figure">
+      <dt class="figure-label">Del total de activos</dt>
+      <dd class="figure-value">{{ porcentajeTexto() }}</dd>
+    </div>
+  </dl>
+
+  <p class="figure-note">
+    El porcentaje lo calcula el panel a partir de las dos cifras del servidor; no viene en la
+    respuesta.
+  </p>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="detalleAbierto.set(false)">Cancelar</app-button>
+    <app-button variant="primary" (click)="ir('/semaforo-documentos')">
+      Ir a semáforo de documentos
+    </app-button>
+  </ng-template>
+</app-modal>

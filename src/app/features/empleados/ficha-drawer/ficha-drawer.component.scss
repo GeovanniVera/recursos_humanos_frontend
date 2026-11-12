@@ -1,0 +1,365 @@
+// The drawer's own body is the only scroll container and the header and footer
+// are pinned by the component, so this file only lays out the record. Nothing
+// here sets a height: a long file scrolls, the title and the `Cerrar` stay put.
+//
+// The record reads as a document: a masthead that names its subject, then six
+// sheets. Every measurement stays fluid — the panel is 760px on a desktop and
+// as narrow as the phone allows — so there is no media query in this file.
+//
+// --- Footer actions ---------------------------------------------------------
+// The two pending actions sit on the left, the way out on the right. The drawer
+// footer is a flex row justified to the end, so the auto margin on this group is
+// what separates the two sides.
+.actions-left {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-end: auto;
+}
+
+.icon-action {
+  display: grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.icon-action svg {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.ficha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+// ---------------------------------------------------------------------------
+// Masthead
+// ---------------------------------------------------------------------------
+
+.document-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  // The rule closes the head and separates it from the first sheet.
+  padding-block-end: var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+}
+
+// The name of the worker is the title of the document, so it takes the title
+// role of the scale — the panel's own chrome title sits one step below it.
+.document-name {
+  margin: 0;
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+
+// The number and the area are the identity of the file under the name.
+.document-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+// The number is a code, so it gets the monospace; the area is a name and keeps
+// the sans of the line it sits in.
+.document-number {
+  font-family: var(--font-mono);
+}
+
+.document-states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+// ---------------------------------------------------------------------------
+// Sheets
+// ---------------------------------------------------------------------------
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+}
+
+// The index and the heading share one row: the number is what makes the six
+// sheets read as numbered sections of a single document.
+.block-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+}
+
+// Native accordion: `summary` is the control, so the keyboard, the screen reader
+// and the open/closed state come from the platform instead of a click handler.
+// Every section opens independently: two of them can be open at once.
+.block > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+// The UA marker is a triangle that does not follow the type scale; the chevron
+// below replaces it.
+.block > summary::-webkit-details-marker {
+  display: none;
+}
+
+.block > summary:hover .block-title {
+  color: var(--color-accent);
+}
+
+.block-chevron {
+  flex: none;
+  align-self: center;
+  width: var(--space-4);
+  height: var(--space-4);
+  margin-inline-start: auto;
+  color: var(--color-text-secondary);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.block[open] .block-chevron {
+  transform: rotate(180deg);
+}
+
+// Decorative: `01` is a position on the page, and reading it aloud before every
+// heading would be noise. The order of the headings already says where we are.
+.block-index {
+  flex: none;
+  font: var(--text-overline);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-overline);
+}
+
+.block-title {
+  min-width: 0;
+  font: var(--text-nav-branch);
+  color: var(--color-text-primary);
+}
+
+// ---------------------------------------------------------------------------
+// Rows
+// ---------------------------------------------------------------------------
+
+// A `dl` may group each `dt` with its `dd` in a `div`, which is what gives the
+// row its own box to stripe and to indent.
+.pairs {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+// Label on the leading edge, value taking the rest and wrapping there: at 380px
+// a CURP has no spaces to break on, so the value column is allowed to shrink.
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 42%) 1fr;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+// Zebra, not hairlines: a long record is read row by row, and alternating fills
+// survive a wrapped value where a rule between rows would break in two.
+.pair:nth-child(even) {
+  background: var(--color-surface-glass);
+}
+
+.pair-label {
+  min-width: 0;
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.pair-value {
+  min-width: 0;
+  margin: 0;
+  font: var(--text-body);
+  color: var(--color-text-primary);
+  // A CURP or an email has no spaces to break on.
+  overflow-wrap: anywhere;
+}
+
+// The two rows that decide what the record means, not just what it contains.
+// The lane is a border and the padding gives back exactly what the border took,
+// so the value starts on the same vertical line as every other row.
+.pair.is-emphasis {
+  padding-inline-start: calc(var(--space-3) - var(--border-width) * 3);
+  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
+}
+
+.pair.is-emphasis .pair-value {
+  font: var(--text-nav-branch);
+}
+
+// ---------------------------------------------------------------------------
+// Missing fields
+// ---------------------------------------------------------------------------
+
+// The sentence counts, the chips name. Both wrap freely: the list of missing
+// fields is as long as the backend says it is.
+.missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.missing-count {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.chip {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+// ---------------------------------------------------------------------------
+// Loading and failure
+// ---------------------------------------------------------------------------
+
+// Static lines: a pulse would fight `prefers-reduced-motion`.
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeleton-line {
+  display: block;
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-border-default);
+}
+
+.skeleton-line.is-short {
+  width: 58%;
+}
+
+// A glass card with a coloured disc, the same failure treatment the screens use:
+// a filled red panel would repaint anything sitting inside it.
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+}
+
+.alert-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-pill);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.alert-icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.alert-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.alert-message {
+  font: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+// The contract value is monospace and muted: it is there for support, not to be
+// read as part of the sentence.
+.alert-detail {
+  font: var(--text-overline);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+// ---------------------------------------------------------------------------
+// States
+// ---------------------------------------------------------------------------
+
+// One pill shape, two meanings: the employment state of the worker and the
+// state of the file. The fill carries the state, the word carries it again.
+.pill,
+.status {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: var(--text-label);
+  white-space: nowrap;
+}
+
+.status.is-activo {
+  background: var(--color-state-success);
+  color: var(--color-state-success-ink);
+}
+
+.status.is-baja {
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.pill.is-completo {
+  background: var(--color-state-success);
+  color: var(--color-state-success-ink);
+}
+
+.pill.is-casi-completo {
+  background: var(--color-state-warning);
+  color: var(--color-state-warning-ink);
+}
+
+.pill.is-incompleto {
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}

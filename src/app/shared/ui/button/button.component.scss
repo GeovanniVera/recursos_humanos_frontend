@@ -1,0 +1,97 @@
+// Every variant keeps the same box: same border width, same radius, same
+// height. Only the fill and the ink change, so switching variants never shifts
+// the layout of a toolbar.
+:host {
+  display: inline-flex;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--space-8);
+  padding-inline: var(--space-6);
+  // Always a border, transparent when the variant has no line: the box then
+  // measures the same in `secondary` and in `ghost`.
+  border: var(--border-width) solid var(--transparent);
+  border-radius: var(--radius-pill);
+  font: var(--text-nav-branch);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.button:hover {
+  transform: translateY(var(--hover-lift));
+}
+
+.button:active {
+  transform: none;
+}
+
+// The one action of the view: a filled pill.
+.button.is-primary {
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+// Everything that competes with the primary action: a hairline over the glass.
+.button.is-secondary {
+  background: var(--color-surface-ghost);
+  border-color: var(--color-border-default);
+  color: var(--color-text-primary);
+}
+
+.button.is-secondary:hover {
+  background: var(--color-surface-glass);
+}
+
+// Inline actions inside dense rows and cards: no line, no fill, only ink.
+.button.is-ghost {
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+}
+
+.button.is-ghost:hover {
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+// Destructive emphasis uses the pale rose surface, never a red fill: on the
+// guinda canvas red on red is unreadable, and a filled red button reads as a
+// second primary action.
+.button.is-danger {
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.button.is-sm {
+  min-height: var(--control-height-sm);
+  padding-inline: var(--space-4);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+}
+
+// No lift, no pointer, no hover paint: a disabled control still occupies its
+// box so the layout does not jump.
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.button.is-loading {
+  cursor: progress;
+}
+
+// The label is a text node, so it inherits the family of the button; this only
+// keeps a projected icon from stretching.
+.button svg {
+  flex: none;
+  width: var(--space-5);
+  height: var(--space-5);
+}

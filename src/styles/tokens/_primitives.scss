@@ -1,0 +1,197 @@
+// ---------------------------------------------------------------------------
+// Level 1 — Primitives
+// Raw values only. Components never consume these directly; the theme files
+// map them to semantic roles. Values come from AGENTS.md (sections 4 and 5)
+// and the design canvas (docs/design/Especificación de tokens.png).
+// ---------------------------------------------------------------------------
+
+:root {
+  // Guinda scale — ordered dark to light by measured luminance.
+  --guinda-950: #17030b;
+  --guinda-900: #2b0613;
+  --guinda-850: #46081c;
+  --guinda-800: #5c0a1f;
+  --guinda-700: #6b0f26;
+  --guinda-600: #7a1a2e;
+  --guinda-500: #8e1b2d;
+  --guinda-400: #b30d28;
+  // Deep ink used for text on light surfaces. Slightly lighter than 850,
+  // so it does not belong to the scale.
+  --guinda-ink: #4a0a1d;
+
+  // Guinda with alpha — the spec uses explicit rgba() for overlays and borders.
+  --guinda-a60: rgba(70, 8, 28, 0.6);
+  --guinda-a80: rgba(30, 5, 14, 0.8);
+  --guinda-a14: rgba(142, 27, 45, 0.14);
+
+  // Gold
+  --gold-200: #f1dda0;
+  --gold-400: #e8c766;
+  --gold-600: #b8941f;
+
+  // Neutral and rose-tinted surfaces
+  --white: #ffffff;
+  // Fully transparent. `background: none` is rejected by the stylelint rules,
+  // so "no fill" has to be a name a component can ask for.
+  --transparent: rgba(255, 255, 255, 0);
+  --rose-50: #fff1f2;
+  --rose-100: #f7ecee;
+  --rose-300: #d9b8c0;
+
+  // White with alpha — glass surfaces and borders
+  --white-a05: rgba(255, 255, 255, 0.05);
+  --white-a08: rgba(255, 255, 255, 0.08);
+  --white-a12: rgba(255, 255, 255, 0.12);
+  --white-a20: rgba(255, 255, 255, 0.2);
+  --white-a72: rgba(255, 255, 255, 0.72);
+  --white-a92: rgba(255, 255, 255, 0.92);
+
+  // State colors
+  --mint-400: #7ee2b8;
+  --mint-700: #0f7b55;
+  --sky-400: #8cc8ff;
+  --sky-700: #1d6fb8;
+  --amber-400: #ffb547;
+  --amber-700: #b26a00;
+
+  // Typography families
+  --font-sans: 'Sora', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  // Spacing scale
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 44px;
+
+  // Layout — the shell is desktop-first against a fixed 1280px canvas.
+  --sidebar-width: 280px;
+  // Icon-only rail of the same drawer: 44px square items plus the same 16px
+  // gutter the open drawer gives them (16 + 44 + 16, with the 1px edge border
+  // rounding the last pixel away).
+  --sidebar-width-collapsed: 76px;
+  // Reading width for the routed content. The design canvas is 1280 wide in
+  // total, so the content column never needs more than this to stay centred
+  // and readable on a wide monitor.
+  --content-max-width: 1120px;
+  // Overlay layers. The design canvas annotates the drawer at 380px and the
+  // modal at 440 / 720: two sizes, because a confirmation and a form do not
+  // need the same width.
+  --drawer-width-sm: 380px;
+  --drawer-width-md: 560px;
+  --drawer-width-lg: 760px;
+  --modal-width-md: 440px;
+  --modal-width-lg: 720px;
+  // Width of the toast stack. Wide enough for a title and a two-line message
+  // without wrapping the sentence, narrow enough to leave the page usable.
+  --toast-width: 400px;
+
+  // Radii
+  // A square corner is a design decision too (the anchored edge of a drawer),
+  // and `border-radius: 0` is rejected by the stylelint allowed-list.
+  --radius-none: 0;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  // Effects
+  --blur-glass: 20px;
+  --border-width: 1px;
+  --scrim: rgba(107, 15, 38, 0.55);
+  --hover-lift: -6px;
+  --focus-ring-width: 4px;
+  --focus-ring-offset: 2px;
+
+  // Controls. The one-time-code input needs a box size of its own: it is not a
+  // spacing step and it is not a radius.
+  --otp-box-size: 52px;
+  // Small control height. AGENTS.md §8.6 asks for a 44px touch target, which is
+  // what `--space-8` gives the default button; a compact button in a dense
+  // toolbar is allowed to shrink to 32px, and never below that.
+  --control-height-sm: 32px;
+  // Default height of a form control. Taller than a button on purpose: a field
+  // is typed into, and 48px leaves room for 15px text plus padding without
+  // feeling cramped.
+  --control-height-md: 48px;
+  // Login card. Wide enough for six OTP boxes side by side plus the padding.
+  --login-card-width: 480px;
+  // Narrowest column of a two-per-row form. Below it the fields stack: a date
+  // input narrower than this clips its own year.
+  --field-min-width: 320px;
+
+  // Elevation. The canvas annotates these as "0 8 28 · 8%", meaning
+  // blur radius followed by shadow opacity, over the darkest guinda.
+  --shadow-sm: 0 8px 28px rgba(23, 3, 11, 0.08);
+  --shadow-md: 0 14px 34px rgba(23, 3, 11, 0.35);
+  --shadow-lg: 0 20px 44px rgba(23, 3, 11, 0.45);
+
+  // Institutional logo slots — identical in all three themes. The slot is
+  // always white, so its ink and its placeholder outline cannot come from the
+  // theme: they are fixed guinda values that stay legible on white.
+  --logo-slot-bg: #ffffff;
+  --logo-slot-border-width: 1.5px;
+  --logo-slot-ink: var(--guinda-ink);
+  --logo-slot-border: var(--guinda-a60);
+  --logo-slot-radius-sm: 12px;
+  --logo-slot-radius-lg: 14px;
+  --logo-slot-height-sm: 56px;
+  --logo-slot-height-lg: 56px;
+  --logo-slot-min-width: 150px;
+  --logo-gap-sm: 8px;
+  --logo-gap-lg: 18px;
+
+  // Canvas stops measured from docs/design with scripts/png-sample.mjs.
+  // The canvas is a diagonal gradient, not a flat fill: these are its ends.
+  --guinda-canvas-hi: #9a1a2f;
+  --guinda-canvas-lo: #3f0818;
+  --light-canvas-hi: #fefefe;
+  --light-canvas-edge: #fbf4f5;
+  --light-canvas-lo: #edcdd4;
+  --dark-canvas-hi: #23040f;
+  --dark-canvas-lo: #0e0206;
+
+  // Animated backdrop — login and public screens only.
+  --backdrop-aurora-1: 16s;
+  --backdrop-aurora-2: 20s;
+  --backdrop-aurora-3: 24s;
+  --backdrop-ring: 9s;
+  --backdrop-ring-stagger: 3s;
+  --backdrop-sweep: 9s;
+  --backdrop-particles: 22;
+  --backdrop-particle-min: 9s;
+  --backdrop-particle-max: 18s;
+  --backdrop-grid: 56px;
+  --backdrop-cta-shimmer: 3.2s;
+  --backdrop-cta-shimmer-delay: 1.5s;
+
+  // Backdrop geometry. Sizes only; colors live in the block below.
+  --backdrop-aurora-size: 46vmax;
+  --backdrop-ring-size: 320px;
+  --backdrop-ring-scale: 3;
+  --backdrop-sweep-height: 2px;
+  --backdrop-particle-size: 3px;
+  // Mask of the grid layer. A mask only reads alpha, so the shape is spelled
+  // out here instead of using the `black` keyword inside a component.
+  --backdrop-grid-mask: radial-gradient(
+    circle at 50% 45%,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 72%
+  );
+
+  // Backdrop colors. Raw rgba() belongs here, never in a component.
+  --backdrop-color-gold: rgba(232, 199, 102, 0.22);
+  --backdrop-color-red: rgba(179, 13, 40, 0.35);
+  --backdrop-color-white: rgba(255, 255, 255, 0.12);
+  --backdrop-grid-color: rgba(255, 255, 255, 0.06);
+  --backdrop-ring-color: rgba(232, 199, 102, 0.25);
+  --backdrop-sweep-color: rgba(232, 199, 102, 0.18);
+  --backdrop-particle-color: rgba(245, 229, 180, 0.55);
+  --backdrop-shimmer-color: rgba(255, 255, 255, 0.55);
+}

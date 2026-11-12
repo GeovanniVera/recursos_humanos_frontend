@@ -1,0 +1,270 @@
+<header class="header">
+  @if (!collapsed()) {
+    <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
+  }
+
+  <!--
+    One control, two states. `aria-expanded` describes the navigation it
+    controls, so it reads `true` while the drawer shows its labels. The
+    accessible name always contains the visible word, so label-in-name holds.
+  -->
+  <button
+    type="button"
+    class="toggle"
+    aria-controls="sidebar-nav"
+    [attr.aria-expanded]="!collapsed()"
+    [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
+    (click)="toggleCollapsed()"
+  >
+    <svg
+      class="chevron"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 6l-6 6 6 6" />
+    </svg>
+
+    @if (!collapsed()) {
+      <span class="toggle-label">Colapsar</span>
+    }
+  </button>
+</header>
+
+<nav class="nav" id="sidebar-nav" aria-label="Menú principal">
+  <ul class="list">
+    <li>
+      <!--
+        Home. `exact` matters: without it the `/` link stays active on every
+        nested route and the rail would light up the wrong entry.
+      -->
+      <a
+        class="item"
+        routerLink="/"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        ariaCurrentWhenActive="page"
+        [attr.aria-label]="collapsed() ? 'Dashboard' : null"
+        [attr.title]="collapsed() ? 'Dashboard' : null"
+      >
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+          <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+          <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+          <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+        </svg>
+        <span class="item-label">Dashboard</span>
+      </a>
+    </li>
+
+    <li>
+      <!--
+        The employees branch. In the rail a submenu cannot fit inside 76px, so
+        the branch collapses into a single link to its landing screen. That is
+        the deliberate trade-off: the rail never nests anything.
+      -->
+      @if (collapsed()) {
+        <a
+          class="item"
+          routerLink="/empleados/activos"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+          aria-label="Empleados"
+          title="Empleados"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
+            <circle cx="10" cy="8" r="3.6" />
+            <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
+            <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+          </svg>
+          <span class="item-label">Empleados</span>
+        </a>
+      } @else {
+        <button
+          type="button"
+          class="item is-branch"
+          aria-controls="submenu-empleados"
+          [attr.aria-expanded]="submenuOpen()"
+          (click)="toggleSubmenu()"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
+            <circle cx="10" cy="8" r="3.6" />
+            <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
+            <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+          </svg>
+          <span class="item-label">Empleados</span>
+          <svg
+            class="item-chevron"
+            [class.is-open]="submenuOpen()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+
+        @if (submenuOpen()) {
+          <ul class="sublist" id="submenu-empleados">
+            <li>
+              <a
+                class="item is-child"
+                routerLink="/empleados/activos"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Empleados Activos</span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="item is-child"
+                routerLink="/empleados/baja"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Empleados Baja</span>
+              </a>
+            </li>
+          </ul>
+        }
+      }
+    </li>
+
+    <li>
+      <a
+        class="item"
+        routerLink="/semaforo-documentos"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        [attr.aria-label]="collapsed() ? 'Semaforo de documentos' : null"
+        [attr.title]="collapsed() ? 'Semaforo de documentos' : null"
+      >
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="7.5" y="2.5" width="9" height="19" rx="4.5" />
+          <circle cx="12" cy="7.5" r="1.4" />
+          <circle cx="12" cy="12" r="1.4" />
+          <circle cx="12" cy="16.5" r="1.4" />
+        </svg>
+        <span class="item-label">Semaforo de documentos</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<!--
+  Account section. It sits outside the scroll container so the entries and the
+  session card stay reachable while a long menu scrolls underneath.
+-->
+<footer class="footer">
+  <ul class="list">
+    <li>
+      <a
+        class="item"
+        routerLink="/ajustes"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        [attr.aria-label]="collapsed() ? 'Ajustes' : null"
+        [attr.title]="collapsed() ? 'Ajustes' : null"
+      >
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 7h9" />
+          <path d="M17 7h3" />
+          <path d="M4 17h4" />
+          <path d="M12 17h8" />
+          <circle cx="15" cy="7" r="2" />
+          <circle cx="10" cy="17" r="2" />
+        </svg>
+        <span class="item-label">Ajustes</span>
+      </a>
+    </li>
+    <li>
+      <button
+        type="button"
+        class="item"
+        [attr.aria-label]="collapsed() ? 'Cerrar Sesión' : null"
+        [attr.title]="collapsed() ? 'Cerrar Sesión' : null"
+        (click)="cerrarSesion()"
+      >
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+          <path d="M9 8l-4 4 4 4" />
+          <path d="M5 12h10" />
+        </svg>
+        <span class="item-label">Cerrar Sesión</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="user">
+    <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+    <span class="user-meta">
+      <span class="user-name">{{ userName() }}</span>
+      <span class="user-role">{{ userRole() }}</span>
+    </span>
+  </div>
+</footer>

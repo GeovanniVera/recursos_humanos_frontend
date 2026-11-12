@@ -1,0 +1,90 @@
+// ---------------------------------------------------------------------------
+// Motion — durations, the single easing curve, entry animations.
+// No component may declare its own duration, curve or keyframe.
+// ---------------------------------------------------------------------------
+
+:root {
+  --motion-fast: 300ms;
+  --motion-base: 600ms;
+  --motion-slow: 900ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  // The canvas specifies 70-100ms between list items; 80ms is the midpoint.
+  --motion-stagger: 80ms;
+
+  // Entry offsets
+  --enter-rise-y: 20px;
+  --enter-drawer-x: 70px;
+  // A drawer flush against the left edge enters from its own edge, so it needs
+  // the same offset with the opposite sign.
+  --enter-drawer-x-left: -70px;
+  --enter-modal-y: 24px;
+  --enter-modal-scale: 0.95;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-rise-y));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawer {
+  from {
+    opacity: 0;
+    transform: translateX(var(--enter-drawer-x));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes modal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-modal-y)) scale(var(--enter-modal-scale));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes halo-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0) scale(1.08);
+  }
+}
+
+// Entrance utilities. Consumers add the class; the duration still comes
+// from tokens so it stays themeable.
+.enter-rise {
+  animation: rise var(--motion-base) var(--motion-ease) both;
+}
+
+.enter-drawer {
+  animation: drawer var(--motion-base) var(--motion-ease) both;
+}
+
+.enter-modal {
+  animation: modal var(--motion-fast) var(--motion-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,418 @@
+<app-drawer title="Ficha del trabajador" side="right" size="lg" [(open)]="open">
+  <!--
+    The busy flag sits on the container of the record: while it is true the
+    skeleton is the only thing inside, so assistive tech is told that the panel
+    is working instead of reading an empty document.
+  -->
+  <div class="ficha" [attr.aria-busy]="loading() ? 'true' : null">
+    @if (loading()) {
+      <!--
+        Static lines, not a shimmer: a pulse would fight `prefers-reduced-motion`
+        and motion in this system is a signal, not decoration. Hidden from
+        assistive tech because it says nothing a reader can use.
+      -->
+      <div class="skeleton" aria-hidden="true">
+        @for (line of skeletons; track line) {
+          <span class="skeleton-line" [class.is-short]="line % 3 === 1"></span>
+        }
+      </div>
+    } @else if (error(); as failure) {
+      <!-- `role="alert"` announces the failure as soon as it renders. -->
+      <div class="alert" role="alert">
+        <span class="alert-icon" aria-hidden="true">
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+          </svg>
+        </span>
+
+        <div class="alert-copy">
+          <p class="alert-message">{{ failure.mensaje }}</p>
+          @if (failure.detalle) {
+            <!-- A contract value, not copy: it is shown as it arrives. -->
+            <p class="alert-detail">{{ failure.detalle }}</p>
+          }
+        </div>
+
+        @if (failure.accion === 'reintentar') {
+          <app-button variant="secondary" (click)="reintentar()">Reintentar</app-button>
+        }
+      </div>
+    } @else if (ficha(); as record) {
+      <!--
+        Masthead of the document. It states the subject before any section does:
+        the name and the number also appear under `Identificación`, and that
+        repetition is the point — a document names who it is about at the top,
+        and the reader does not have to hunt for it once the sheets scroll.
+      -->
+      <div class="document-head">
+        <h2 class="document-name">{{ texto(record.identificacion.nombre) }}</h2>
+
+        <p class="document-meta">
+          <!-- `N.º` is copy, not a field: the number stays the backend's string. -->
+          <span class="document-number">N.º {{ texto(record.identificacion.num_empleado) }}</span>
+          <span class="document-dot" aria-hidden="true">·</span>
+          <span class="document-area">{{ texto(record.plaza.area) }}</span>
+        </p>
+
+        <div class="document-states">
+          <!--
+            Employment state, not the file's: it is the fact that decides whether
+            the rest of the record is history. Same pill shape as the file state
+            beside it, its own two tones.
+          -->
+          <span
+            class="status"
+            [class.is-activo]="record.gestion_interna.activo"
+            [class.is-baja]="!record.gestion_interna.activo"
+          >
+            {{ record.gestion_interna.activo ? 'Activo' : 'Baja' }}
+          </span>
+
+          <!--
+            The traffic light of the contract: a fill per state *plus* the word,
+            so the state survives a grayscale screen and a colour-blind reader.
+          -->
+          <span
+            class="pill"
+            [class.is-completo]="record.gestion_interna.estado_expediente.estado === 'completo'"
+            [class.is-casi-completo]="
+              record.gestion_interna.estado_expediente.estado === 'casi_completo'
+            "
+            [class.is-incompleto]="
+              record.gestion_interna.estado_expediente.estado === 'incompleto'
+            "
+          >
+            {{ etiquetaExpediente(record.gestion_interna.estado_expediente.estado) }}
+          </span>
+        </div>
+      </div>
+
+      <details class="block" open>
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">01</span>
+          <h3 class="block-title">Identificación</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Número de empleado</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.num_empleado) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Nombre</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.nombre) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">CURP</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.curp) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Fecha de nacimiento</dt>
+            <dd class="pair-value">{{ fecha(record.identificacion.fecha_nacimiento) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Sexo</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.sexo) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Estado civil</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.estado_civil) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Municipio</dt>
+            <dd class="pair-value">{{ texto(record.identificacion.municipio) }}</dd>
+          </div>
+        </dl>
+      </details>
+
+      <details class="block">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">02</span>
+          <h3 class="block-title">Plaza</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Área</dt>
+            <dd class="pair-value">{{ texto(record.plaza.area) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Puesto</dt>
+            <dd class="pair-value">{{ texto(record.plaza.puesto) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Tipo de puesto</dt>
+            <dd class="pair-value">{{ texto(record.plaza.tipo_puesto) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Categoría CCT</dt>
+            <dd class="pair-value">{{ texto(record.plaza.categoria_cct_clave) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Tipo de personal</dt>
+            <dd class="pair-value">{{ texto(record.plaza.tipo_personal) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Tipo de jornada</dt>
+            <dd class="pair-value">{{ texto(record.plaza.tipo_jornada) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Inicio en el puesto</dt>
+            <dd class="pair-value">{{ fecha(record.plaza.fecha_inicio_puesto) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Ingreso a la institución</dt>
+            <dd class="pair-value">{{ fecha(record.plaza.fecha_ingreso_institucion) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Ingreso al gobierno</dt>
+            <dd class="pair-value">{{ fecha(record.plaza.fecha_ingreso_gobierno) }}</dd>
+          </div>
+
+          <!--
+            The backend already built the sentence (`7 años, 4 meses`, or `Sin
+            fecha de inicio registrada`), so it is shown as it arrives instead of
+            being recomposed from the three numbers. It is the age of the
+            relationship, which is why it gets emphasis.
+          -->
+          <div class="pair is-emphasis">
+            <dt class="pair-label">Antigüedad</dt>
+            <dd class="pair-value">{{ texto(record.plaza.antiguedad.texto) }}</dd>
+          </div>
+        </dl>
+      </details>
+
+      <details class="block">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">03</span>
+          <h3 class="block-title">Contacto</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Correo institucional</dt>
+            <dd class="pair-value">{{ texto(record.contacto.correo_institucional) }}</dd>
+          </div>
+        </dl>
+      </details>
+
+      <details class="block">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">04</span>
+          <h3 class="block-title">Estudios</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Nivel de estudios</dt>
+            <dd class="pair-value">{{ texto(record.estudios.nivel_estudios) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Escuela de procedencia</dt>
+            <dd class="pair-value">{{ texto(record.estudios.escuela_procedencia) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Generación</dt>
+            <dd class="pair-value">{{ texto(record.estudios.generacion) }}</dd>
+          </div>
+        </dl>
+      </details>
+
+      <details class="block">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">05</span>
+          <h3 class="block-title">Experiencia</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Años en el sector público</dt>
+            <dd class="pair-value">{{ numero(record.experiencia.exp_publico_anios) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Años en el sector privado</dt>
+            <dd class="pair-value">{{ numero(record.experiencia.exp_privado_anios) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">¿Trabaja en otro lugar?</dt>
+            <dd class="pair-value">{{ texto(record.experiencia.trabaja_otro_lugar) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Dónde</dt>
+            <dd class="pair-value">{{ texto(record.experiencia.trabaja_otro_donde) }}</dd>
+          </div>
+        </dl>
+      </details>
+
+      <details class="block">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">06</span>
+          <h3 class="block-title">Gestión interna</h3>
+          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </summary>
+
+        <dl class="pairs">
+          <div class="pair">
+            <dt class="pair-label">Estado</dt>
+            <dd class="pair-value">{{ record.gestion_interna.activo ? 'Activo' : 'Baja' }}</dd>
+          </div>
+
+          <!--
+            The three fields of a baja are on screen for every worker, so the
+            record has the same shape whoever it belongs to: for an active one
+            they read `—` and the `Estado` row above already says `Activo`.
+          -->
+          <div class="pair">
+            <dt class="pair-label">Fecha de baja</dt>
+            <dd class="pair-value">{{ fecha(record.gestion_interna.fecha_baja) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Motivo de baja</dt>
+            <dd class="pair-value">{{ texto(record.gestion_interna.motivo_baja) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Nota de baja</dt>
+            <dd class="pair-value">{{ texto(record.gestion_interna.nota_baja) }}</dd>
+          </div>
+
+          <div class="pair">
+            <dt class="pair-label">Observaciones</dt>
+            <dd class="pair-value">{{ texto(record.gestion_interna.observaciones) }}</dd>
+          </div>
+
+          <!--
+            The state of the file is the second thing that decides what can be
+            done with this worker, so it gets emphasis too. The pill in the
+            masthead is a badge; here the same state sits next to its own
+            reason — the word, then the fields that are missing.
+          -->
+          <div class="pair is-emphasis">
+            <dt class="pair-label">Estado del expediente</dt>
+            <dd class="pair-value">
+              {{ etiquetaExpediente(record.gestion_interna.estado_expediente.estado) }}
+
+              @if (record.gestion_interna.estado_expediente.total_faltantes > 0) {
+                <span class="missing">
+                  <span class="missing-count">
+                    {{ faltantes(record.gestion_interna.estado_expediente) }}
+                  </span>
+
+                  @for (
+                    campo of camposFaltantes(record.gestion_interna.estado_expediente);
+                    track campo
+                  ) {
+                    <!-- A contract key (`curp`), printed as the backend spells it. -->
+                    <span class="chip">{{ campo }}</span>
+                  }
+                </span>
+              }
+            </dd>
+          </div>
+        </dl>
+      </details>
+    }
+  </div>
+
+  <ng-template #actions>
+    <!--
+      The termination sits on the left, next to the pending edition; the way out
+      on the right. The act is irreversible, so the button says when it cannot be
+      pressed instead of only looking disabled: for an inactive worker it reads
+      `Ya está dado de baja`.
+    -->
+    <div class="actions-left">
+      <button
+        type="button"
+        class="icon-action"
+        aria-label="Editar la ficha"
+        title="Editar la ficha"
+        disabled
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z" />
+          <path d="M13.5 6.5l4 4" />
+        </svg>
+      </button>
+
+      <app-button
+        variant="danger"
+        [disabled]="bajaBloqueada()"
+        [attr.title]="tituloBaja()"
+        (click)="abrirBaja()"
+      >
+        {{ etiquetaBaja() }}
+      </app-button>
+    </div>
+
+    <app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button>
+  </ng-template>
+</app-drawer>
+
+<!--
+  Sibling of the panel, never a child: two nested `<dialog>` elements compete for
+  the top layer and for the focus trap, and the inner one wins by accident.
+-->
+<app-baja-modal
+  [empleadoId]="empleadoId()"
+  [empleadoEtiqueta]="etiquetaEmpleado()"
+  [(open)]="bajaAbierta"
+  (bajaRegistrada)="alRegistrarBaja()"
+/>

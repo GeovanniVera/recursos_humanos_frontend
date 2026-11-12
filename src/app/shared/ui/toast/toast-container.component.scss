@@ -1,0 +1,124 @@
+// The stack is anchored to the top-right corner of the viewport, above the
+// page but below the top layer of a native modal.
+.stack {
+  position: fixed;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  // Wide enough for a full sentence, narrow enough to leave the page readable
+  // behind it, and never wider than the viewport on a phone.
+  width: min(var(--toast-width), calc(100vw - var(--space-6) * 2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  z-index: 60;
+  // The container covers a corner of every screen. It must let clicks through
+  // to whatever is underneath; only the cards take the pointer back.
+  pointer-events: none;
+}
+
+// A glass card over the canvas, the same material as the rest of the system.
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+// Each state is a coloured disc, not a coloured word: the shape and the icon
+// carry the meaning, so the state survives a grayscale screen.
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-pill);
+}
+
+.icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.is-success .icon {
+  background: var(--color-state-success);
+  color: var(--color-state-success-ink);
+}
+
+.is-error .icon {
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.is-info .icon {
+  background: var(--color-state-info);
+  color: var(--color-state-info-ink);
+}
+
+.is-warning .icon {
+  background: var(--color-state-warning);
+  color: var(--color-state-warning-ink);
+}
+
+.copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font: var(--text-nav-branch);
+  color: var(--color-text-primary);
+}
+
+.message {
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// Icon-only, so it needs a name of its own.
+.close {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0 0;
+  padding: 0;
+  border: var(--border-width) solid var(--transparent);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+// AGENTS.md §8.6 asks for a 44px target. A 44px disc would outweigh the title,
+// so the visible box stays small and an invisible pseudo-element widens the
+// pointer area instead.
+.close::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-2) * -1);
+}
+
+.close:hover {
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+.close svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}

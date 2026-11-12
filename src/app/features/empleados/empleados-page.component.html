@@ -1,0 +1,192 @@
+<section class="page">
+  <header class="head">
+    <div class="identity">
+      <p class="overline">Recursos Humanos</p>
+      <h1 class="title">Empleados activos</h1>
+      <p class="sub">
+        La plantilla vigente: empleados con la cuenta activa y sin fecha de baja. La consulta filtra
+        por estado en el servidor, así que las cifras de abajo son las de esta lista y no las de todo
+        el padrón.
+      </p>
+    </div>
+
+    <!--
+      The alta is the one action of the screen, so it is the primary button; the
+      refresh is secondary. Both sit together at the top right, where the canvas
+      places the action of a listing.
+
+      The alta is an `<a>`, not an `app-button`: its destination is a route, so
+      the platform has to provide the link (middle click, context menu, announced
+      as a link). The pill is painted from the same tokens the button uses.
+    -->
+    <div class="head-actions">
+      <a class="new-employee" routerLink="/empleados/alta">Nuevo empleado</a>
+
+      <app-button variant="secondary" [disabled]="loading()" (click)="solicitar()">
+        Actualizar
+      </app-button>
+    </div>
+  </header>
+
+  <!--
+    A real label, not only a placeholder: the field has to say what it does once
+    something is typed in it.
+  -->
+  <div class="search">
+    <label class="search-label" for="buscar">Buscar empleado</label>
+    <input
+      id="buscar"
+      class="search-field"
+      type="search"
+      name="buscar"
+      autocomplete="off"
+      placeholder="Escribí para buscar en el padrón"
+      [attr.value]="buscar()"
+      (input)="alBuscar($event)"
+    />
+    <p class="search-hint">La búsqueda recorre todo el padrón y vuelve a la primera página.</p>
+  </div>
+
+  @if (error(); as fallo) {
+    <!--
+      `role="alert"` announces the failure as soon as it renders. The icon ✕
+      carries the state together with the colour, so the message survives a
+      screen read in grayscale.
+    -->
+    <div class="alert" role="alert">
+      <span class="alert-icon" aria-hidden="true">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+        </svg>
+      </span>
+
+      <div class="alert-copy">
+        <p class="alert-message">{{ fallo.mensaje }}</p>
+        @if (fallo.codigo) {
+          <!-- A contract code, not copy: it is shown as it arrives. -->
+          <p class="alert-code">{{ fallo.codigo }}</p>
+        }
+      </div>
+
+      @switch (fallo.accion) {
+        @case ('reintentar') {
+          <!-- A `429` locks this button until the wait it announced is over. -->
+          <app-button
+            variant="secondary"
+            [disabled]="loading() || espera() > 0"
+            (click)="solicitar()"
+          >
+            Reintentar
+          </app-button>
+        }
+        @case ('iniciar-sesion') {
+          <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+        }
+      }
+    </div>
+  }
+
+  <!--
+    The state and the name are the two columns with a shape of their own; the
+    projected renderer receives the row, the column and the value, so the table
+    stays generic. The name is a real `<button>`: the row click is a pointer
+    shortcut, and the keyboard needs an element that already is a control.
+  -->
+  <app-data-table
+    [columns]="columnas"
+    [rows]="filas()"
+    [loading]="loading()"
+    [emptyMessage]="mensajeVacio()"
+    caption="Padrón de empleados"
+    rowKey="id"
+    [clickableRows]="true"
+    (rowClick)="abrirFicha($event)"
+  >
+    <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+      @if (column.key === 'estado') {
+        <!--
+          A pill plus the word: `Activo` and `Baja` arrive already written, and
+          the word is what carries the state when the colour is gone.
+        -->
+        <span
+          class="badge"
+          [class.is-activo]="value === 'Activo'"
+          [class.is-baja]="value !== 'Activo'"
+        >
+          {{ value }}
+        </span>
+      } @else if (column.key === 'nombre') {
+        <button
+          type="button"
+          class="name-button"
+          [attr.aria-label]="'Ver la ficha de ' + value"
+          (click)="abrirFichaDesdeNombre($event, row)"
+        >
+          {{ value }}
+        </button>
+      } @else {
+        {{ value }}
+      }
+    </ng-template>
+  </app-data-table>
+
+  @if (padron()) {
+    <footer class="pager">
+      <div class="pager-meta">
+        <p class="pager-range" aria-live="polite">{{ rango() }}</p>
+
+        <div class="page-size">
+          <label class="page-size-label" for="porPagina">Filas por página</label>
+          <select
+            id="porPagina"
+            class="page-size-select"
+            [value]="porPagina()"
+            (change)="cambiarPorPagina($event)"
+          >
+            @for (tamano of tamanosPagina; track tamano) {
+              <option [value]="tamano">{{ tamano }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="pager-controls">
+        <app-button
+          variant="secondary"
+          [disabled]="anteriorDeshabilitado()"
+          (click)="irA(paginaActual() - 1)"
+        >
+          Anterior
+        </app-button>
+
+        <p class="pager-page">{{ etiquetaPagina() }}</p>
+
+        <app-button
+          variant="secondary"
+          [disabled]="siguienteDeshabilitado()"
+          (click)="irA(paginaActual() + 1)"
+        >
+          Siguiente
+        </app-button>
+      </div>
+    </footer>
+  }
+</section>
+
+<!--
+  One panel for the whole screen, mounted once and driven by the two signals
+  above: the row click and the name button both end here. A termination reported
+  by the panel sends the roster back to the server, because the endpoint filters
+  the inactive workers out and the row has to disappear.
+-->
+<app-ficha-drawer
+  [empleadoId]="fichaId()"
+  [(open)]="fichaAbierta"
+  (bajaRegistrada)="alRegistrarBaja()"
+/>

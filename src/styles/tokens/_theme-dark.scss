@@ -1,0 +1,57 @@
+// ---------------------------------------------------------------------------
+// Theme: dark
+// Deep guinda canvas, gold as the action color.
+// ---------------------------------------------------------------------------
+
+[data-theme='dark'] {
+  // Surfaces
+  --color-bg-canvas: var(--guinda-950);
+  --color-surface-glass: var(--white-a05);
+  --color-surface-overlay: var(--guinda-a80);
+  // "No fill" for buttons that must read as inline links.
+  --color-surface-ghost: var(--transparent);
+
+  // Lines
+  --color-border-default: var(--white-a12);
+
+  // Text
+  --color-text-primary: var(--rose-100);
+  --color-text-secondary: var(--rose-300);
+  --color-text-overline: var(--gold-400);
+
+  // Actions
+  --color-action-primary: var(--gold-400);
+  --color-action-on-primary: var(--guinda-900);
+  // Sheen over the gold fill: light veil, gold on gold would be invisible.
+  --color-action-sheen: var(--white-a20);
+
+  // Accent
+  --color-accent: var(--gold-400);
+  --color-accent-ink: var(--guinda-900);
+
+  // States
+  --color-state-error: var(--rose-50);
+  --color-state-error-ink: var(--guinda-900);
+  --color-state-success: var(--mint-400);
+  --color-state-info: var(--sky-400);
+  --color-state-warning: var(--amber-400);
+  // Light fills on a deep canvas: the glyph ink stays dark guinda.
+  --color-state-success-ink: var(--guinda-900);
+  --color-state-info-ink: var(--guinda-900);
+  --color-state-warning-ink: var(--guinda-900);
+
+  // Overlays and focus
+  --color-scrim: var(--scrim);
+  --color-focus-ring: rgba(232, 199, 102, 0.25);
+
+  // Canvas: near-black that deepens toward the bottom right, with the same warm
+  // light in the upper right. Measured from the dark canvas.
+  --canvas-glow: rgba(120, 70, 35, 0.42);
+  --canvas-wash: rgba(10, 1, 4, 0.15);
+  --canvas-gradient:
+    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
+    linear-gradient(125deg, var(--dark-canvas-hi) 0%, var(--guinda-900) 50%, var(--dark-canvas-lo) 100%);
+
+  color-scheme: dark;
+}

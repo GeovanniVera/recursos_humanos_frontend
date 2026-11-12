@@ -1,0 +1,77 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.logos {
+  display: flex;
+  align-items: center;
+  gap: var(--logo-gap-sm);
+}
+
+.logos.is-lg {
+  gap: var(--logo-gap-lg);
+}
+
+// Bare slot: the artwork sits directly on whatever surface hosts it.
+.slot {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: var(--logo-slot-height-sm);
+  color: var(--logo-slot-ink);
+  text-align: center;
+}
+
+// Opt-in white field. The official marks assume white, and the login is drawn
+// over a coloured backdrop, so there it stays on.
+.slot.is-plated {
+  padding: var(--space-1);
+  border-radius: var(--logo-slot-radius-sm);
+  background: var(--logo-slot-bg);
+}
+
+// Only the placeholder carries the dashed outline; a real logo sits clean.
+.slot.is-placeholder {
+  border: var(--logo-slot-border-width) dashed var(--logo-slot-border);
+}
+
+.logos.is-lg .slot {
+  height: var(--logo-slot-height-lg);
+  min-width: var(--logo-slot-min-width);
+}
+
+.logos.is-lg .slot.is-plated {
+  border-radius: var(--logo-slot-radius-lg);
+}
+
+// Never stretched, never cropped: the artwork keeps its own proportions.
+.logo {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+.label {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+}
+
+.separator {
+  align-self: stretch;
+  flex: none;
+  width: var(--border-width);
+  background: var(--color-border-default);
+}
+
+.caption {
+  margin-top: var(--space-2);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+  text-align: center;
+}

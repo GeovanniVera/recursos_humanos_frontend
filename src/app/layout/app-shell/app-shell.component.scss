@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+
+// The drawer floats: the shell keeps a gutter around both columns, so the rail
+// reads as a panel above the canvas instead of a slab welded to the viewport.
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  align-items: stretch;
+  gap: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-4);
+  transition: grid-template-columns var(--motion-fast) var(--motion-ease);
+}
+
+.shell.is-collapsed {
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr;
+}
+
+.sidebar {
+  min-height: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  // Children stretch: the shared top bar must span the whole column so it starts
+  // next to the drawer and reaches the opposite margin. Only the routed stage is
+  // capped and centred, because that is where reading width matters.
+  gap: var(--space-6);
+  min-width: 0;
+  padding: 0;
+}
+
+// The routed stage takes every pixel the column gives it. Nothing here caps the
+// width: a screen that wants a narrower column caps its own text, not the whole
+// view. Capping it here left dead space on the right of every wide monitor.
+.stage {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}

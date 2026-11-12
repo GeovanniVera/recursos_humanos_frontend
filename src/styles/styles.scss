@@ -1,0 +1,78 @@
+// ---------------------------------------------------------------------------
+// Global stylesheet.
+// Import order matters: primitives -> shared typography -> themes -> motion
+// -> base element styles. Nothing below may declare a raw color, radius,
+// shadow, blur, duration or easing: everything comes from a token.
+// ---------------------------------------------------------------------------
+
+@use './tokens/primitives';
+@use './tokens/typography';
+@use './tokens/theme-guinda';
+@use './tokens/theme-light';
+@use './tokens/theme-dark';
+@use './tokens/motion';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font: var(--text-body);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-canvas);
+  // The canvas is one surface: a diagonal gradient plus the warm light in the
+  // upper right and a wash rising from the bottom. It lives in the theme as a
+  // token because each theme places its own light. Dashboards get this static
+  // version only; the animated backdrop belongs to the login screen.
+  background-image: var(--canvas-gradient);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+// Utility: keeps content in the accessibility tree while removing it from the
+// visual layout. The table uses it for its caption and for the header of the
+// actions column, which have no visible label by design.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

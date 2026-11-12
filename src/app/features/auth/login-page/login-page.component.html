@@ -1,0 +1,141 @@
+<div class="page">
+  <app-animated-backdrop />
+
+  <section class="brand-column enter-rise">
+    @if (paso() === 'correo') {
+      <app-brand-logos variant="lg" />
+
+      <p class="overline">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</p>
+
+      <h1 class="headline">
+        <span>Sistema de</span>
+        <span class="headline-accent">Recursos Humanos</span>
+      </h1>
+
+      <p class="lede">
+        Acceso para el personal de la universidad con tu correo institucional, de forma
+        rápida y segura.
+      </p>
+    } @else {
+      <h1 class="headline">
+        <span>Verifica tu</span>
+        <span class="headline-accent">identidad</span>
+      </h1>
+
+      <p class="lede">
+        Escribe el código que enviamos a tu correo institucional para entrar al sistema.
+      </p>
+    }
+  </section>
+
+  <section class="form-column">
+    <div class="card enter-modal">
+      <div class="steps" aria-hidden="true">
+        <span class="dot" [class.is-active]="paso() === 'correo'"></span>
+        <span class="dot" [class.is-active]="paso() === 'codigo'"></span>
+      </div>
+
+      @if (hayError()) {
+        <div class="alert" role="alert">
+          <span class="alert-icon" aria-hidden="true">✕</span>
+          <p class="alert-text">{{ error() }}</p>
+        </div>
+      }
+
+      @if (paso() === 'correo') {
+        <h2 class="card-title">Bienvenido</h2>
+
+        <p class="card-body">
+          Ingresa tu correo institucional y te enviaremos un código de acceso. No necesitas
+          contraseña.
+        </p>
+
+        <form class="form" (ngSubmit)="enviarCorreo()">
+          <label class="field-label" for="correo">CORREO INSTITUCIONAL</label>
+          <!--
+            The email is bound as an attribute, not as a property: the value
+            attribute seeds the field when the step is re-created, and typing
+            afterwards never fights the caret.
+          -->
+          <input
+            id="correo"
+            class="field"
+            type="email"
+            name="correo"
+            autocomplete="email"
+            required
+            placeholder="nombre@correo-institucional"
+            [attr.value]="correo()"
+            [disabled]="enviando()"
+            (input)="alEscribirCorreo($event)"
+          />
+
+          <button
+            type="submit"
+            class="primary"
+            [disabled]="!puedeEnviarCorreo()"
+            [attr.aria-busy]="enviando() ? 'true' : null"
+          >
+            Enviar código de acceso ›
+          </button>
+        </form>
+
+        <p class="footnote">El código es de un solo uso y caduca en 10 minutos</p>
+      } @else {
+        <h2 class="card-title">Revisa tu correo</h2>
+
+        <p class="card-body">
+          Enviamos un código de 6 dígitos a
+          <strong class="card-emphasis">{{ correo() }}</strong>
+        </p>
+
+        <form class="form" (ngSubmit)="enviarCodigo()">
+          <app-otp-input
+            [isInvalid]="hayError()"
+            [disabled]="enviando()"
+            (valueChanges)="codigo.set($event)"
+          />
+
+          <div class="progress">
+            <span class="progress-bar" [style.width.%]="progreso()"></span>
+          </div>
+
+          <div class="resend">
+            @if (segundos() > 0) {
+              <p class="resend-wait">Reenviar código en {{ etiquetaReenvio() }}</p>
+            } @else {
+              <button
+                type="button"
+                class="link"
+                [disabled]="enviando()"
+                (click)="reenviarCodigo()"
+              >
+                Reenviar código
+              </button>
+            }
+
+            <button
+              type="button"
+              class="link link-underline"
+              [disabled]="enviando()"
+              (click)="cambiarCorreo()"
+            >
+              Cambiar correo
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            class="primary primary-shimmer"
+            [disabled]="!puedeVerificar()"
+            [attr.aria-busy]="enviando() ? 'true' : null"
+          >
+            Verificar y entrar
+          </button>
+        </form>
+      }
+    </div>
+  </section>
+
+  <p class="page-footer">Acceso exclusivo para personal autorizado</p>
+</div>

@@ -1,0 +1,98 @@
+// The card is the final surface: the table only paints its own rows, so the
+// radius, the hairline and the glass live here and clip in one place.
+.wrap {
+  overflow-x: auto;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  // Separate, not collapse: collapsed borders escape the rounded corners.
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.head-cell {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.cell {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+  font: var(--text-body);
+  color: var(--color-text-primary);
+  text-align: start;
+}
+
+// Numeric columns line up on the units, never on the left edge.
+.is-end {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+// The last row has no line under it: the card's own edge closes the table.
+.table tbody tr:last-child .cell {
+  border-bottom-width: 0;
+}
+
+.row {
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.row:hover {
+  background: var(--color-surface-glass);
+}
+
+// Only a row that a caller declared openable reads as a control. A table of
+// plain figures keeps the arrow it had.
+.row.is-clickable {
+  cursor: pointer;
+}
+
+// The selected row keeps the accent as a marker on its leading edge, painted
+// absolutely so appearing does not shift the row's content.
+.row.is-active .cell:first-child {
+  position: relative;
+}
+
+.row.is-active .cell:first-child::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--space-1);
+  background: var(--color-accent);
+}
+
+.actions {
+  width: 1%;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: var(--space-8) var(--space-4);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+// A static block, not a shimmer: a pulse would fight
+// `prefers-reduced-motion`, and motion is a signal, not decoration.
+.skeleton {
+  display: block;
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-border-default);
+}

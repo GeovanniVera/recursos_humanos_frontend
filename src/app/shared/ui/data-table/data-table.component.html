@@ -1,0 +1,76 @@
+<div class="wrap">
+  <table class="table" [attr.aria-busy]="loading() ? 'true' : null">
+    @if (caption()) {
+      <caption class="visually-hidden">
+        {{
+          caption()
+        }}
+      </caption>
+    }
+
+    <thead>
+      <tr class="head-row">
+        @for (column of columns(); track column.key) {
+          <th
+            scope="col"
+            class="head-cell"
+            [class.is-end]="column.align === 'end'"
+            [style.width]="column.width"
+          >
+            {{ column.header }}
+          </th>
+        }
+        @if (rowActions()) {
+          <th scope="col" class="head-cell actions">
+            <span class="visually-hidden">Acciones</span>
+          </th>
+        }
+      </tr>
+    </thead>
+
+    <tbody>
+      @if (loading()) {
+        @for (skeleton of skeletons; track skeleton) {
+          <tr class="skeleton-row" aria-hidden="true">
+            @for (column of columns(); track column.key) {
+              <td class="cell" [class.is-end]="column.align === 'end'">
+                <span class="skeleton"></span>
+              </td>
+            }
+            @if (rowActions()) {
+              <td class="cell actions"><span class="skeleton"></span></td>
+            }
+          </tr>
+        }
+      } @else if (rows().length === 0) {
+        <tr>
+          <td class="empty" [attr.colspan]="columnCount()">{{ emptyMessage() }}</td>
+        </tr>
+      } @else {
+        @for (row of rows(); track $index) {
+          <tr
+            class="row"
+            [class.is-active]="isActive(row)"
+            [class.is-clickable]="clickableRows()"
+            (click)="onRowClick(row)"
+          >
+            @for (column of columns(); track column.key) {
+              <td class="cell" [class.is-end]="column.align === 'end'">
+                @if (cellTemplate(); as renderCell) {
+                  <ng-container *ngTemplateOutlet="renderCell; context: cellContext(row, column)" />
+                } @else {
+                  {{ cell(row, column.key) }}
+                }
+              </td>
+            }
+            @if (rowActions(); as actionsTemplate) {
+              <td class="cell actions">
+                <ng-container *ngTemplateOutlet="actionsTemplate; context: { $implicit: row }" />
+              </td>
+            }
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>

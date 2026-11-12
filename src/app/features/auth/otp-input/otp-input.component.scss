@@ -1,0 +1,83 @@
+// ---------------------------------------------------------------------------
+// One-time code: six boxes. Size and gap come from tokens, the error look is
+// the error surface color plus a short shake built from motion tokens.
+// ---------------------------------------------------------------------------
+
+:host {
+  display: block;
+}
+
+// Visually hidden but available to screen readers. Same pattern as the sidebar
+// utility: the group needs a name, and a bare `aria-label` would hide it from
+// voice control users.
+.sr-only {
+  position: absolute;
+  width: var(--border-width);
+  height: var(--border-width);
+  padding: 0;
+  margin: calc(var(--border-width) * -1);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.boxes {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.box {
+  flex: 1 1 var(--otp-box-size);
+  min-width: 0;
+  max-width: var(--otp-box-size);
+  height: var(--otp-box-size);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+  font: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.box:hover {
+  border-color: var(--color-accent);
+}
+
+.box:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.box:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+// Error: border in the error color and a short shake. Each state is told apart
+// by shape and motion, not by color alone.
+.boxes.is-invalid .box {
+  border-color: var(--color-state-error);
+}
+
+.boxes.is-invalid {
+  animation: otp-shake var(--motion-fast) var(--motion-ease) 1;
+}
+
+@keyframes otp-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(calc(var(--space-1) * -1));
+  }
+  60% {
+    transform: translateX(var(--space-1));
+  }
+}

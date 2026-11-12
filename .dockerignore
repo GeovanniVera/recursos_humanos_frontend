@@ -1,0 +1,25 @@
+# Keep the build context small and free of local state.
+node_modules
+dist
+.angular
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml
+docs
+*.md
+.vscode
+.idea
+.editorconfig
+.prettierrc
+coverage
+__screenshots__
+npm-debug.log*
+yarn-error.log*
+*.local
+
+# Secrets and per-machine values never enter the image.
+.env
+.env.*
+!.env.example

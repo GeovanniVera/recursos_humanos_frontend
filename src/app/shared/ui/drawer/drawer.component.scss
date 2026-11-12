@@ -1,0 +1,135 @@
+// Full height, anchored to one edge, never wider than the viewport on a phone.
+// The width is a per-instance decision: a filter rail and a full record do not
+// need the same room, so the size comes from the caller.
+.dialog {
+  position: fixed;
+  inset-block: 0;
+  // Overrides the `margin: auto` the user agent centres a dialog with: the
+  // panel is not centred, it is pinned to its edge.
+  margin: 0;
+  width: min(var(--drawer-current-width), calc(100vw - var(--space-6)));
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-default);
+  // Denser glass than a card: the panel holds text over the page it covers.
+  background: var(--color-surface-overlay);  color: var(--color-text-primary);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-lg);
+}
+
+// Width per instance. `--drawer-current-width` is defined here and read by the
+// rule above, so one size class is enough to resize the whole panel.
+.dialog.is-sm {
+  --drawer-current-width: var(--drawer-width-sm);
+}
+
+.dialog.is-md {
+  --drawer-current-width: var(--drawer-width-md);
+}
+
+.dialog.is-lg {
+  --drawer-current-width: var(--drawer-width-lg);
+}
+
+// Only while open: declaring it on `.dialog` would outrank the `display: none`
+// of a closed dialog.
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+// Square corners on the edge the panel is anchored to; rounded on the edge that
+// faces the page.
+.dialog.is-right {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  border-radius: var(--radius-2xl) var(--radius-none) var(--radius-none) var(--radius-2xl);
+}
+
+.dialog.is-left {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  border-radius: var(--radius-none) var(--radius-2xl) var(--radius-2xl) var(--radius-none);
+  // The shared keyframe offsets the panel to the right. A left-edge drawer
+  // enters from its own edge, so the offset is re-pointed at the mirror token
+  // the sidebar already uses, instead of a second keyframe.
+  --enter-drawer-x: var(--enter-drawer-x-left);
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-4);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+}
+
+// Same treatment as the toast close button: a small translucent disc with an
+// invisible 48px pointer area behind it.
+.close {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.close:hover {
+  background: var(--color-border-default);
+}
+
+.close::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-2) * -1);
+}
+
+.close svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+// The body is the only scroll container, so the header and the actions stay
+// reachable however long the content is.
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--space-6) var(--space-5);
+  overflow-y: auto;
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// A hairline separates the actions from the content, as in the drawer mockup.
+.footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  border-top: var(--border-width) solid var(--color-border-default);
+}

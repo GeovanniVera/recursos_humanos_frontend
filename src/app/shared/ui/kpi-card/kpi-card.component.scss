@@ -1,0 +1,125 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// One surface for both shapes: the interactive card is the same box as the
+// static one, so a row of mixed cards keeps one height and one rhythm.
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  // The leading padding clears the flag; the flag itself is absolute, so it
+  // never competes with the content for space.
+  padding: var(--space-5) var(--space-5) var(--space-5) var(--space-6);
+  // The flag has square corners inside a rounded box: clipping the card is what
+  // keeps it inside the radius.
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+  text-align: start;
+}
+
+.card.is-interactive {
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.card.is-interactive:hover {
+  transform: translateY(var(--hover-lift));
+}
+
+// The flag is four hairlines wide: thick enough to read as a lane marker and
+// thin enough to stay an edge instead of a second card. Deriving it from
+// `--border-width` keeps it in step if the hairline ever changes.
+.flag {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: calc(var(--border-width) * 4);
+}
+
+// One class for every tone: the flag and the glyph share the role, so a card
+// cannot end up with a green flag and a gold icon.
+.flag.is-success,
+.icon.is-success {
+  background: var(--color-state-success);
+}
+
+.flag.is-danger,
+.icon.is-danger {
+  background: var(--color-state-error);
+}
+
+.flag.is-warning,
+.icon.is-warning {
+  background: var(--color-state-warning);
+}
+
+// The glyph is a stroke drawing, so it takes the tone as ink, not as a fill.
+.icon.is-success {
+  color: var(--color-state-success-ink);
+}
+
+.icon.is-danger {
+  color: var(--color-state-error-ink);
+}
+
+.icon.is-warning {
+  color: var(--color-state-warning-ink);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.label {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+// A solid disc behind the stroke: on the three themes a bare stroke icon over
+// the glass would read as a doodle. The ink of the glyph is the matching
+// `--color-state-*-ink`, the same pairing the toast uses.
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+}
+
+.icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.value {
+  font: var(--text-display);
+  // Digits keep their width, so a refresh never makes the figure jump.
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.hint {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}

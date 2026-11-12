@@ -1,0 +1,102 @@
+// The dialog element *is* the panel: the scrim is its `::backdrop`, so the box
+// below is both the painted surface and the click target of the backdrop.
+.dialog {
+  width: min(var(--modal-width-md), calc(100vw - var(--space-6) * 2));
+  // Never taller than the viewport: the body scrolls instead of the page.
+  max-height: calc(100vh - var(--space-7) * 2);
+  padding: 0;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-2xl);
+  // A denser glass than a card: the panel has to hold text contrast over the
+  // page it covers.
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-lg);
+}
+
+// Only while open. The layout cannot be declared on `.dialog` itself: it would
+// outrank the `display: none` the user agent gives a closed dialog.
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog.is-lg {
+  width: min(var(--modal-width-lg), calc(100vw - var(--space-6) * 2));
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-4);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+}
+
+// Same treatment as the toast close button: a small translucent disc with an
+// invisible 48px pointer area behind it.
+.close {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.close:hover {
+  background: var(--color-border-default);
+}
+
+.close::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-2) * -1);
+}
+
+.close svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--space-6) var(--space-6);
+  overflow-y: auto;
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// One primary action per layer, and it sits at the end of the row.
+.footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-6);
+}

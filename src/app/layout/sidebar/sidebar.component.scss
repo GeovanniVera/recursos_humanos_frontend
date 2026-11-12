@@ -1,0 +1,279 @@
+// Floating glass panel.
+//
+// The shell keeps a gutter around it, so the drawer reads as a card lifted above
+// the canvas: full radius, a hairline on every side and a shadow that means
+// "this is above the page". The document edge is no longer part of the panel.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  // Exactly one viewport minus the shell gutters, not `min-height: 100vh`: the
+  // drawer is a rail, so the navigation scrolls inside it instead of growing the
+  // column and pushing the footer off screen. Sticky keeps it in place while a
+  // long page scrolls past.
+  position: sticky;
+  top: var(--space-4);
+  height: calc(100vh - var(--space-4) * 2);
+  padding: var(--space-4);
+  // Clips the scrolling content to the rounded corners.
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  // Same treatment as the cards: a translucent glass layer over the canvas
+  // halos. The drawer is part of the same material language, not a solid slab.
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-md);
+  // The shared `.enter-drawer` keyframe offsets the panel to the right, which
+  // is right for a floating card. A left-edge drawer enters from its own edge,
+  // so the offset is re-pointed at its mirror token instead of a new keyframe.
+  --enter-drawer-x: var(--enter-drawer-x-left);
+}
+
+.header {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  // Stretch, not flex-end: the logo block needs the full width to hand down to
+  // its two slots. The toggle aligns itself instead.
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+:host(.is-collapsed) .header {
+  align-items: center;
+}
+
+// Reads as a link, not as a boxed button. The 44px minimum height keeps the
+// touch target compliant (AGENTS.md §8.6) while the visible size stays that of
+// a text link.
+.toggle {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--space-8);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: var(--transparent);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.toggle:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.toggle-label {
+  white-space: nowrap;
+}
+
+.chevron {
+  width: var(--space-5);
+  height: var(--space-5);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+// Collapsed: the drawer opens to the right, so the chevron points that way.
+:host(.is-collapsed) .chevron {
+  transform: rotate(180deg);
+}
+
+.nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding-block: var(--space-3);
+  overflow-y: auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  // 8px between entries instead of 4px: the rows are tall enough to read as
+  // separate targets, and the rhythm stops feeling cramped.
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A second group (the free-standing entry after a branch) gets extra air so the
+// sections read as sections instead of one long column.
+.nav .list > li + li {
+  margin-top: var(--space-3);
+}
+
+// Shared by every entry of the drawer, links and buttons alike. The transparent
+// fill is not decorative: a `<button>` would otherwise paint the user-agent
+// button face and break the glass of the panel.
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--space-8);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--transparent);
+  color: var(--color-text-primary);
+  font: var(--text-nav-item);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.item:hover {
+  background: var(--color-surface-glass);
+}
+
+// Branch labels are heavier than their children: that weight is the hierarchy.
+.item.is-branch {
+  font: var(--text-nav-branch);
+}
+
+// The active entry is a filled marker in both widths: a full-width pill when the
+// drawer is open, a 44px rounded square when it is only a rail.
+.item.is-active {
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+.icon {
+  flex: none;
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.item-label {
+  flex: 1 1 auto;
+}
+
+// Branch indicator of the `Empleados` toggle. It points down while the branch
+// is open and turns up when it closes, so the state reads without colour.
+.item-chevron {
+  flex: none;
+  width: var(--space-5);
+  height: var(--space-5);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.item-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+// Child list of a branch. A hairline guide runs down the group so the nesting is
+// legible at a glance, and the children keep a lighter weight than the parent.
+.sublist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 0 var(--space-5);
+  padding: 0 0 0 var(--space-3);
+  border-left: var(--border-width) solid var(--color-border-default);
+  list-style: none;
+}
+
+.item.is-child {
+  color: var(--color-text-secondary);
+}
+
+.item.is-child:hover {
+  color: var(--color-text-primary);
+}
+
+.item.is-child.is-active {
+  color: var(--color-action-on-primary);
+}
+
+// Rail width. `display: none` on the labels, never `opacity: 0`: a hidden label
+// must leave the accessibility tree, not just the visible surface.
+:host(.is-collapsed) {
+  padding: var(--space-4) 0;
+}
+
+:host(.is-collapsed) .item {
+  justify-content: center;
+  width: var(--space-8);
+  margin-inline: auto;
+  padding: 0;
+}
+
+:host(.is-collapsed) .item-label {
+  display: none;
+}
+
+// Account section, pinned to the bottom of the rail. It lives outside the
+// scroll container, so the entries and the session card stay in place while a
+// long menu scrolls above them.
+.footer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--color-border-default);
+}
+
+// The session card closes the footer: a second hairline separates the person
+// from the actions above, so the card does not read as another entry.
+.user {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--color-border-default);
+}
+
+:host(.is-collapsed) .user {
+  justify-content: center;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+:host(.is-collapsed) .user-meta {
+  display: none;
+}
+
+.user-name {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-primary);
+}
+
+.user-role {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}

@@ -1,0 +1,11 @@
+<div class="shell" [class.is-collapsed]="collapsed()">
+  <app-sidebar class="sidebar" />
+
+  <div class="content">
+    <app-topbar />
+
+    <main class="stage">
+      <router-outlet />
+    </main>
+  </div>
+</div>

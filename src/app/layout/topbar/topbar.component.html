@@ -1,0 +1,16 @@
+<nav class="breadcrumb" aria-label="Ruta de navegación">
+  <ol class="trail">
+    @for (crumb of crumbs(); track crumb.url; let last = $last) {
+      <li class="trail-item">
+        @if (last) {
+          <span class="crumb is-current" aria-current="page">{{ crumb.label }}</span>
+        } @else {
+          <a class="crumb is-link" [routerLink]="crumb.url">{{ crumb.label }}</a>
+          <span class="separator" aria-hidden="true">›</span>
+        }
+      </li>
+    }
+  </ol>
+</nav>
+
+<time class="clock" [attr.datetime]="iso()">{{ clock() }}</time>

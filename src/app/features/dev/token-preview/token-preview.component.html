@@ -1,0 +1,48 @@
+<main class="stage">
+  <header class="bar">
+    <div class="identity">
+      <p class="overline">Sistema de Recursos Humanos · UTN</p>
+      <h1 class="display">Base de diseño</h1>
+      <p class="sub">Tokens intercambiables · tres temas, los mismos nombres</p>
+    </div>
+
+    <div class="themes" role="group" aria-label="Seleccionar tema">
+      @for (option of themes; track option) {
+        <button
+          type="button"
+          class="theme-btn"
+          [class.is-active]="option === theme()"
+          [attr.aria-pressed]="option === theme()"
+          (click)="select(option)"
+        >
+          {{ option }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card enter-rise">
+      <h2 class="heading">Tokens semánticos de color</h2>
+      <ul class="swatches">
+        @for (token of swatches; track token) {
+          <li class="swatch">
+            <span class="chip" [style.background]="'var(' + token + ')'"></span>
+            <code class="mono">{{ token }}</code>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="card enter-rise">
+      <h2 class="heading">Escala tipográfica</h2>
+      <p class="display">Display 40/700</p>
+      <p class="title">Título 28/600</p>
+      <p class="heading-lg">Encabezado 20/700</p>
+      <p class="body">Cuerpo 13/400 — la densidad del sistema es compacta a propósito.</p>
+      <p class="label">Etiqueta 11/600 + 6%</p>
+      <p class="overline">Overline 10/600 + 12%</p>
+      <p class="mono">JetBrains Mono · 000 000</p>
+    </section>
+  </div>
+</main>
