@@ -1,0 +1,150 @@
+<section class="page">
+  <header class="head">
+    <div class="identity">
+      <p class="overline">Expedientes · Recursos Humanos</p>
+      <h1>Semáforo de Completitud</h1>
+      <p class="sub">
+        Identifica la información pendiente de cada expediente. Consulta los campos faltantes para
+        conocer qué hace falta completar.
+      </p>
+    </div>
+    <a class="back" routerLink="/"
+      >Volver al panel
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        aria-hidden="true"
+      >
+        <path d="M15 10H5m5-5-5 5 5 5" />
+      </svg>
+    </a>
+  </header>
+  <div class="legend" aria-label="Estados de completitud">
+    <span>Completo: sin pendientes</span><span>Casi completo: 1–3 campos</span
+    ><span>Incompleto: 4 o más campos</span>
+  </div>
+  <div class="filters" role="group" aria-label="Filtrar por estado del expediente">
+    @for (filtro of filtros; track filtro.label) {
+      <button
+        type="button"
+        class="filter is-{{ filtro.estado ?? 'todos' }}"
+        [class.selected]="estado() === filtro.estado"
+        [attr.aria-pressed]="estado() === filtro.estado"
+        (click)="filtrar(filtro.estado)"
+      >
+        <span>{{ filtro.label }}</span><strong>{{
+          loading() ? '—' : (respuesta()?.contadores?.[filtro.contador] ?? '—')
+        }}</strong>
+      </button>
+    }
+  </div>
+  <div class="toolbar">
+    <div class="search">
+      <label for="semaforo-buscar">Buscar trabajador</label
+      ><input
+        id="semaforo-buscar"
+        type="search"
+        autocomplete="off"
+        placeholder="Número de empleado o nombre"
+        [value]="buscar()"
+        (input)="alBuscar($event)"
+      />
+    </div>
+    <div class="size">
+      <label for="semaforo-tamano">Registros por página</label
+      ><select id="semaforo-tamano" [value]="porPagina()" (change)="tamano($event)">
+        @for (n of tamanos; track n) {
+          <option [value]="n" [selected]="n === porPagina()">{{ n }}</option>
+        }
+      </select>
+    </div>
+    <app-button variant="secondary" [disabled]="loading()" (click)="solicitar(false, true)"
+      >Actualizar</app-button
+    >
+  </div>
+  @if (error(); as mensaje) {
+    <div class="notice" role="alert">
+      <div>
+        <strong>No se pudo consultar el semáforo</strong>
+        <p>{{ mensaje }}</p>
+      </div>
+      @if (status() === 401) {
+        <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+      } @else if (status() !== 403) {
+        <app-button variant="secondary" (click)="solicitar(false, true)">Reintentar</app-button>
+      }
+    </div>
+  }
+  <app-data-table
+    [columns]="columnas"
+    [leadingDecoration]="true"
+    [rows]="filas()"
+    [loading]="loading()"
+    [sort]="sort()"
+    (sortChange)="ordenar($event)"
+    actionsLabel="Acciones"
+    caption="Semáforo de completitud de expedientes"
+    [activeKey]="drawerOpen() ? empleadoId() : null"
+    [emptyMessage]="
+      error()
+        ? 'No hay datos disponibles para mostrar.'
+        : 'No hay expedientes que coincidan con los filtros.'
+    "
+  >
+    <ng-template #cell let-row let-column="column" let-value="value">
+      @if (column.key === 'num_empleado') {
+        <span class="state-stripe is-{{ row.estado }}" aria-hidden="true"></span>
+        {{ value }}
+        <span class="visually-hidden"
+          >Estado del expediente: {{ etiquetasEstado[row.estado] }}</span
+        >
+      } @else if (column.key === 'campos_faltantes') {
+        <span class="missing-count">{{ value }}</span>
+      } @else {
+        {{ value }}
+      }
+    </ng-template>
+    <ng-template #rowActions let-row
+      ><button
+        type="button"
+        class="detail-button"
+        [attr.aria-label]="'Consultar campos faltantes de ' + row.nombre"
+        (click)="abrir(row)"
+      >
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <path d="M4 2.5h8l4 4v11H4zM12 3v4h4M7 10h6M7 13h6" /></svg
+        ><span>Ver faltantes</span>
+      </button></ng-template
+    >
+  </app-data-table>
+  <footer class="pager">
+    <p aria-live="polite" role="status">{{ rango() }}</p>
+    <div class="pager-controls">
+      <app-button
+        variant="secondary"
+        [disabled]="loading() || pagina() <= 1 || !respuesta()"
+        (click)="irA(pagina() - 1)"
+        >Anterior</app-button
+      ><span
+        >Página {{ respuesta()?.meta?.pagina ?? 1 }} de
+        {{ respuesta()?.meta?.total_paginas ?? 1 }}</span
+      ><app-button
+        variant="secondary"
+        [disabled]="
+          loading() || !respuesta() || pagina() >= (respuesta()?.meta?.total_paginas ?? 1)
+        "
+        (click)="irA(pagina() + 1)"
+        >Siguiente</app-button
+      >
+    </div>
+  </footer>
+</section>
+<app-faltantes-drawer [empleadoId]="empleadoId()" [(open)]="drawerOpen" />

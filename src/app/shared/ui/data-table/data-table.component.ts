@@ -14,6 +14,8 @@ export interface TableColumn {
   align?: 'start' | 'end';
   /** Any CSS length. Omitted, the column takes its share of the width. */
   width?: string;
+  /** Opt-in server sorting; the component never sorts a partial page locally. */
+  sortable?: boolean;
 }
 
 /** Rows are plain records: the table never assumes a domain model. */
@@ -41,6 +43,11 @@ export class DataTable {
   readonly columns = input<readonly TableColumn[]>([]);
   readonly rows = input<readonly TableRow[]>([]);
   readonly loading = input(false);
+  /** Opt-in anchor for a caller-projected leading cell decoration. */
+  readonly leadingDecoration = input(false);
+  readonly sort = input<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  readonly sortChange = output<string>();
+  readonly actionsLabel = input('');
   readonly emptyMessage = input('No hay registros para mostrar.');
   /** Read by assistive tech only: it labels the table instead of the screen. */
   readonly caption = input('');
@@ -74,7 +81,9 @@ export class DataTable {
   readonly rowClick = output<TableRow>();
 
   /** Trailing actions column, present only when something is projected. */
-  protected readonly rowActions = contentChild('rowActions', { read: TemplateRef });
+  protected readonly rowActions = contentChild('rowActions', {
+    read: TemplateRef,
+  });
 
   /**
    * Optional renderer for every body cell.

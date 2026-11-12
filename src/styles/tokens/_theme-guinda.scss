@@ -4,6 +4,14 @@
 // ---------------------------------------------------------------------------
 
 [data-theme='guinda'] {
+  // US-11 filter fills only; existing global state tokens remain unchanged.
+  --color-semaforo-filter-incompleto: var(--guinda-400);
+  --color-semaforo-filter-incompleto-ink: var(--white);
+  --color-semaforo-filter-casi-completo: var(--amber-400);
+  --color-semaforo-filter-casi-completo-ink: var(--guinda-900);
+  --color-semaforo-filter-completo: var(--mint-700);
+  --color-semaforo-filter-completo-ink: var(--white);
+
   // Surfaces
   --color-bg-canvas: var(--guinda-700);
   --color-surface-glass: var(--white-a08);

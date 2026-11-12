@@ -1,0 +1,75 @@
+.detail,
+.identity,
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.identity {
+  align-items: flex-start;
+}
+h3 {
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+.overline {
+  font: var(--text-label);
+  color: var(--color-text-secondary);
+}
+.summary {
+  padding: var(--space-5);
+  background: var(--color-surface-glass);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+.percentage {
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+.percentage span {
+  margin-inline-start: var(--space-2);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+dl {
+  margin-block: var(--space-4) 0;
+  display: grid;
+  gap: var(--space-3);
+}
+dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+dd {
+  margin: 0;
+  font: var(--text-heading);
+  color: var(--color-text-primary);
+}
+ul {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+li {
+  padding-block: var(--space-2);
+  color: var(--color-text-primary);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+}
+.complete {
+  color: var(--color-text-primary);
+}
+.notice {
+  padding: var(--space-4);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+  border-radius: var(--radius-md);
+}
+.notice p {
+  margin-block-start: var(--space-2);
+}
+.skeleton {
+  height: var(--space-5);
+  background: var(--color-border-default);
+  border-radius: var(--radius-sm);
+}

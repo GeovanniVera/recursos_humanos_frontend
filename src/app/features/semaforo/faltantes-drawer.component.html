@@ -1,0 +1,64 @@
+<app-drawer title="Campos faltantes" size="md" [(open)]="open">
+  <div class="detail" [attr.aria-busy]="loading()">
+    @if (loading()) {
+      <p role="status">Consultando el expediente…</p>
+      <div class="skeleton" aria-hidden="true"></div>
+      <div class="skeleton" aria-hidden="true"></div>
+      <div class="skeleton" aria-hidden="true"></div>
+    } @else if (error(); as mensaje) {
+      <div class="notice" role="alert">
+        <strong>No se pudo consultar el expediente</strong>
+        <p>{{ mensaje }}</p>
+      </div>
+      @if (status() === 401) {
+        <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+      } @else if (status() !== 403 && status() !== 404) {
+        <app-button variant="secondary" (click)="reintentar()">Reintentar</app-button>
+      }
+    } @else if (datos(); as detalle) {
+      <header class="identity">
+        <p class="overline">Empleado · {{ detalle.empleado.num_empleado }}</p>
+        <h3>{{ detalle.empleado.nombre }}</h3>
+        <app-estado-expediente [estado]="detalle.semaforo.estado" />
+      </header>
+      <section class="summary" aria-label="Resumen del expediente">
+        <p class="percentage">{{ detalle.semaforo.porcentaje }}<span>% completo</span></p>
+        <dl>
+          <div>
+            <dt>Campos completos</dt>
+            <dd>{{ detalle.semaforo.campos_completos }}</dd>
+          </div>
+          <div>
+            <dt>Campos faltantes</dt>
+            <dd>{{ detalle.semaforo.campos_faltantes }}</dd>
+          </div>
+          <div>
+            <dt>Total obligatorio</dt>
+            <dd>{{ detalle.semaforo.total_campos }}</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="missing">
+        <h3>Información pendiente</h3>
+        @if (detalle.semaforo.detalle_faltantes.length === 0) {
+          <p class="complete" role="status">
+            Expediente completo. No hay campos obligatorios pendientes.
+          </p>
+        } @else {
+          <p>
+            Faltan {{ detalle.semaforo.campos_faltantes }} de
+            {{ detalle.semaforo.total_campos }} campos obligatorios.
+          </p>
+          <ul>
+            @for (campo of detalle.semaforo.detalle_faltantes; track campo.campo) {
+              <li>{{ campo.etiqueta }}</li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </div>
+  <ng-template #actions
+    ><app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button></ng-template
+  >
+</app-drawer>
