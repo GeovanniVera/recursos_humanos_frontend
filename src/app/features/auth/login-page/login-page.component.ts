@@ -13,7 +13,7 @@ import { OtpInput } from '../otp-input/otp-input.component';
  * Mensaje por defecto cuando no hay respuesta o falla la conexión con el servidor.
  */
 const MENSAJE_SIN_CONEXION =
-  'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.';
+  'No pudimos conectar con el servidor. Revisa tu conexión e intentá de nuevo.';
 
 /** Segundos que el enlace de reenvío permanece deshabilitado tras solicitar código. */
 const SEGUNDOS_REENVIO = 30;

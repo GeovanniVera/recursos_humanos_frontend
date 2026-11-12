@@ -3,7 +3,7 @@
     <p class="overline">Recursos Humanos</p>
     <h1 class="title">Alta de empleado</h1>
     <p class="sub">
-      Cargá la ficha del nuevo trabajador en cuatro pasos. Los datos marcados como obligatorios son
+      Carga la ficha del nuevo trabajador en cuatro pasos. Los datos marcados como obligatorios son
       los que el sistema valida al registrar; el resto se puede completar después.
     </p>
   </header>
@@ -213,7 +213,7 @@
                   [attr.aria-invalid]="errorDe('sexo') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('sexo')"
                 >
-                  <option value="" [selected]="modelo().sexo === ''">Elegí una opción</option>
+                  <option value="" [selected]="modelo().sexo === ''">Elige una opción</option>
                   @for (opcion of sexos(); track opcion) {
                     <option [value]="opcion" [selected]="modelo().sexo === opcion">{{ opcion }}</option>
                   }
@@ -239,7 +239,7 @@
                   [attr.aria-describedby]="idDeError('estado_civil_id')"
                 >
                   <option value="" [selected]="modelo().estado_civil_id === null">
-                    Elegí una opción
+                    Elige una opción
                   </option>
                   @for (estado of estadosCiviles(); track estado.id) {
                     <option [value]="estado.id" [selected]="modelo().estado_civil_id === estado.id">
@@ -268,7 +268,7 @@
                   [attr.aria-invalid]="errorDe('municipio') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('municipio')"
                 >
-                  <option value="" [selected]="modelo().municipio === ''">Elegí un municipio</option>
+                  <option value="" [selected]="modelo().municipio === ''">Elige un municipio</option>
                   @for (municipio of municipios(); track municipio.id) {
                     <option
                       [value]="municipio.nombre"
@@ -335,7 +335,7 @@
                   [attr.aria-invalid]="errorDe('area_id') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('area_id')"
                 >
-                  <option value="" [selected]="modelo().area_id === null">Elegí un área</option>
+                  <option value="" [selected]="modelo().area_id === null">Elige un área</option>
                   @for (area of areas(); track area.id) {
                     <option
                       [value]="area.id"
@@ -363,7 +363,7 @@
                   [attr.aria-invalid]="errorDe('puesto_id') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('puesto_id')"
                 >
-                  <option value="" [selected]="modelo().puesto_id === null">Elegí un puesto</option>
+                  <option value="" [selected]="modelo().puesto_id === null">Elige un puesto</option>
                   @for (puesto of puestos(); track puesto.id) {
                     <option [value]="puesto.id" [selected]="modelo().puesto_id === puesto.id">
                       {{ puesto.nombre }}
@@ -392,7 +392,7 @@
                   [attr.aria-describedby]="idDeError('categoria_cct_id')"
                 >
                   <option value="" [selected]="modelo().categoria_cct_id === null">
-                    {{ puestoElegido() === null ? 'Elegí primero un puesto' : 'Elegí una categoría' }}
+                    {{ puestoElegido() === null ? 'Elige primero un puesto' : 'Elige una categoría' }}
                   </option>
                   @for (categoria of categorias(); track categoria.id) {
                     <option
@@ -480,7 +480,7 @@
                     [attr.aria-describedby]="idDeError('tipo_personal')"
                   >
                     <option value="" [selected]="modelo().tipo_personal === ''">
-                      Elegí una opción
+                      Elige una opción
                     </option>
                     @for (tipo of tiposPersonal(); track tipo) {
                       <option [value]="tipo" [selected]="modelo().tipo_personal === tipo">
@@ -506,7 +506,7 @@
                     [attr.aria-describedby]="idDeError('tipo_jornada')"
                   >
                     <option value="" [selected]="modelo().tipo_jornada === ''">
-                      Elegí una opción
+                      Elige una opción
                     </option>
                     @for (jornada of tiposJornada(); track jornada) {
                       <option [value]="jornada" [selected]="modelo().tipo_jornada === jornada">
@@ -544,7 +544,7 @@
                   [attr.aria-describedby]="idDeError('nivel_estudios_id')"
                 >
                   <option value="" [selected]="modelo().nivel_estudios_id === null">
-                    Elegí una opción
+                    Elige una opción
                   </option>
                   @for (nivel of niveles(); track nivel.id) {
                     <option

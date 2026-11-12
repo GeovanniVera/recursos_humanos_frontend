@@ -45,11 +45,11 @@ import { ToastService } from '../../../shared/ui/toast/toast.service';
  * messages come from the backend, already in Spanish and specific, and they are
  * displayed verbatim.
  */
-const MENSAJE_SESION = 'Tu sesión venció. Volvé a iniciar sesión.';
+const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MENSAJE_PERMISO = 'No tenés permisos para dar de alta empleados.';
 const MENSAJE_CATALOGOS = 'No pudimos cargar los catálogos del formulario.';
-const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintentá en unos segundos.';
-const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
+const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
 /**
  * Placeholder for a value the user has not filled in yet. Never an empty cell
@@ -82,7 +82,7 @@ const OTRO_LUGAR_NO = 'No';
 const MENSAJE_REQUERIDO_TEXTO = 'Completá este dato.';
 
 /** Sentence of a required `<select>` still sitting on its placeholder. */
-const MENSAJE_REQUERIDO_OPCION = 'Elegí una opción.';
+const MENSAJE_REQUERIDO_OPCION = 'Elige una opción.';
 
 /** Sentence of the plaza when the category does not fit the chosen post. */
 const MENSAJE_CATEGORIA = 'La categoría elegida no corresponde al tipo del puesto.';

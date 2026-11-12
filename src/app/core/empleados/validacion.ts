@@ -24,7 +24,7 @@ export type MotivoCurp = 'longitud' | 'formato' | 'entidad' | 'fecha' | 'digito'
  * note: the user reads one sentence, not a list of rules.
  */
 export const MENSAJE_CURP_INVALIDA =
-  'La CURP no es válida. Revisá el formato, la entidad y el dígito verificador.';
+  'La CURP no es válida. Revisa el formato, la entidad y el dígito verificador.';
 
 /**
  * Technical explanation of each motivo.
@@ -303,7 +303,7 @@ export function validarCorreo(valor: string): string | null {
     return 'El correo institucional no puede superar los 150 caracteres.';
   }
   if (!CORREO.test(limpio)) {
-    return 'Escribí un correo con formato válido.';
+    return 'Escribe un correo con formato válido.';
   }
 
   const dominio = limpio.slice(limpio.lastIndexOf('@') + 1).toLowerCase();

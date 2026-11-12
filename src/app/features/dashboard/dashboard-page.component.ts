@@ -15,10 +15,10 @@ import { Modal } from '../../shared/ui/modal/modal.component';
  * user, so each one gets its own sentence and its own action; a single
  * "something went wrong" would throw away that distinction.
  */
-const MENSAJE_SESION = 'Tu sesión venció. Volvé a iniciar sesión.';
+const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MENSAJE_PERMISO = 'No tenés permisos para ver el panel.';
-const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintentá en unos segundos.';
-const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
+const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
 /**
  * What the alert offers the user.

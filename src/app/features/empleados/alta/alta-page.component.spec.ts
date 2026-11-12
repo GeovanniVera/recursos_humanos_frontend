@@ -351,10 +351,10 @@ describe('AltaPage', () => {
     await irAPlaza(fixture);
 
     // No post yet: there is no type to match, so there is nothing to choose.
-    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elegí primero un puesto']);
+    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elige primero un puesto']);
 
     await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
-    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elegí una categoría', 'CCT-01 · Analista']);
+    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elige una categoría', 'CCT-01 · Analista']);
 
     await elegir(fixture, 'categoria_cct_id', CATEGORIA_ADMIN);
     expect(elemento<HTMLSelectElement>(fixture, '#categoria_cct_id')?.value).toBe(
@@ -363,7 +363,7 @@ describe('AltaPage', () => {
 
     await elegir(fixture, 'puesto_id', PUESTO_MANDO);
     expect(opciones(fixture, 'categoria_cct_id')).toEqual([
-      'Elegí una categoría',
+      'Elige una categoría',
       'CCT-02 · Dirección',
     ]);
     // The category of the previous post is gone from the model as well.
@@ -538,7 +538,7 @@ describe('AltaPage', () => {
 
     // One sentence, the one the backend collapses all of its rules into.
     expect(aviso?.textContent).toContain(
-      'La CURP no es válida. Revisá el formato, la entidad y el dígito verificador.',
+      'La CURP no es válida. Revisa el formato, la entidad y el dígito verificador.',
     );
     // The specific motivo travels in the `title`, never as a second sentence.
     expect(aviso?.getAttribute('title')).toBe(
@@ -669,7 +669,7 @@ describe('AltaPage', () => {
     expect(elemento(fixture, '#area_id')).toBeNull();
     expect(
       elemento<HTMLElement>(fixture, '#error-correo_institucional')?.textContent,
-    ).toContain('Escribí un correo con formato válido.');
+    ).toContain('Escribe un correo con formato válido.');
   });
 
   it('refuses to render the form when the catalogs cannot be read, and retries', async () => {
