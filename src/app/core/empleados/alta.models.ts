@@ -9,6 +9,13 @@
  * absent here, so a component cannot send them by accident.
  */
 
+import { EntidadCatalogo } from './entidades-federativas';
+
+// Re-exported so consumers keep a single import surface for the payload shapes.
+// The type is declared beside the RENAPO table, but a component reads the
+// request models from here and from nowhere else.
+export type { EntidadCatalogo };
+
 /**
  * One area of the organization chart.
  *
@@ -69,16 +76,6 @@ export interface EstadoCivilCatalogo {
 }
 
 /**
- * One municipality. The registration sends its **name**, not its id: the
- * request validates `exists:catalogo_municipios,nombre`.
- */
-export interface MunicipioCatalogo {
-  id: number;
-  nombre: string;
-  entidad: string;
-}
-
-/**
  * Whole body of `GET /api/empleados/formulario`.
  *
  * This endpoint is not wrapped in `data`: the catalogs arrive at the root of
@@ -92,7 +89,15 @@ export interface FormularioCatalogos {
   estados_civiles: EstadoCivilCatalogo[];
   tipos_personal: string[];
   sexos: string[];
-  municipios: MunicipioCatalogo[];
+  /**
+   * Federative entities of birth.
+   *
+   * Absent from the backends that have not shipped the catalog yet: the screen
+   * falls back to its own frozen RENAPO table in that case, so the field stays
+   * optional here instead of forcing every fixture to invent a payload the
+   * service never sends — which is how the blank field went unnoticed before.
+   */
+  entidades?: EntidadCatalogo[];
   tipos_jornada: string[];
   trabaja_otro_lugar: string[];
 }
@@ -149,8 +154,11 @@ export interface AltaEmpleadoRequest {
   escuela_procedencia?: string;
   /** `AAAA-AAAA`, the end never before the start. */
   generacion?: string;
-  /** **Name** of the municipality, not its id. */
-  municipio?: string;
+  /**
+   * Two-character **key** of the federative entity of birth (`DF`, `MC`, `NE`),
+   * the one the CURP carries at characters 12 and 13.
+   */
+  entidad_nacimiento?: string;
   /** `Masculino` or `Femenino`. */
   sexo?: string;
   estado_civil_id?: number;

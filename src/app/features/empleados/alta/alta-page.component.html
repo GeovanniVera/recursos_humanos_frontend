@@ -124,6 +124,11 @@
 
               <div class="field">
                 <label class="label" for="nombre">Nombre completo</label>
+                <!--
+                  The blanks collapse when the field loses focus, never on every
+                  keystroke: rewriting the value while the user types would fight
+                  the caret. The capitalisation is kept exactly as typed.
+                -->
                 <input
                   id="nombre"
                   name="nombre"
@@ -133,7 +138,7 @@
                   autocomplete="name"
                   [ngModel]="modelo().nombre"
                   (ngModelChange)="guardar('nombre', $event)"
-                  (blur)="tocar('nombre')"
+                  (blur)="salirDeNombre()"
                   [class.is-invalid]="errorDe('nombre') !== null"
                   [attr.aria-invalid]="errorDe('nombre') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('nombre')"
@@ -181,10 +186,10 @@
               <div class="field">
                 <label class="label" for="fecha_nacimiento">Fecha de nacimiento</label>
                 <!--
-                  A complete CURP already carries the birth date, and the backend
-                  resolves it from there: the control shows what will travel
-                  instead of asking for it a second time. `disabled` is the only
-                  attribute a date picker really respects.
+                  Locked from the first render, with or without a CURP: the user
+                  only types the document, and the backend resolves the date from
+                  it. `disabled` and not `readonly`: a native date picker ignores
+                  `readonly`.
                 -->
                 <input
                   id="fecha_nacimiento"
@@ -193,19 +198,15 @@
                   type="date"
                   inputmode="numeric"
                   [attr.max]="hoy"
-                  [attr.disabled]="fechaDerivada() ? '' : null"
+                  disabled
                   [ngModel]="modelo().fecha_nacimiento"
-                  (ngModelChange)="guardar('fecha_nacimiento', $event)"
-                  (blur)="tocar('fecha_nacimiento')"
                   [class.is-invalid]="errorDe('fecha_nacimiento') !== null"
                   [attr.aria-invalid]="errorDe('fecha_nacimiento') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('fecha_nacimiento')"
                 />
-                @if (fechaDerivada()) {
-                  <p class="field-hint" [id]="'derivado-fecha_nacimiento'">
-                    Calculado desde la CURP
-                  </p>
-                }
+                <p class="field-hint" id="derivado-fecha_nacimiento">
+                  Se toma de los seis dígitos de la CURP.
+                </p>
                 @if (errorDe('fecha_nacimiento'); as error) {
                   <p class="field-error" [id]="'error-fecha_nacimiento'" role="alert">{{ error }}</p>
                 }
@@ -221,13 +222,16 @@
                   holds the answer.
                 -->
                 <label class="label" for="sexo">Sexo</label>
+                <!--
+                  Locked from the first render, for the same reason as the birth
+                  date. `disabled` is the only way: a `<select>` has no `readonly`
+                  attribute at all.
+                -->
                 <select
                   id="sexo"
                   name="sexo"
                   class="control"
-                  [attr.disabled]="sexoDerivado() ? '' : null"
-                  (change)="elegirTexto('sexo', $event)"
-                  (blur)="tocar('sexo')"
+                  disabled
                   [class.is-invalid]="errorDe('sexo') !== null"
                   [attr.aria-invalid]="errorDe('sexo') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('sexo')"
@@ -237,9 +241,7 @@
                     <option [value]="opcion" [selected]="modelo().sexo === opcion">{{ opcion }}</option>
                   }
                 </select>
-                @if (sexoDerivado()) {
-                  <p class="field-hint" [id]="'derivado-sexo'">Calculado desde la CURP</p>
-                }
+                <p class="field-hint" id="derivado-sexo">Se toma del carácter 11 de la CURP.</p>
                 @if (errorDe('sexo'); as error) {
                   <p class="field-error" [id]="'error-sexo'" role="alert">{{ error }}</p>
                 }
@@ -272,62 +274,77 @@
               </div>
 
               <div class="field">
-                <label class="label" for="municipio">Municipio</label>
+                <label class="label" for="entidad_nacimiento">Entidad de nacimiento</label>
                 <!--
-                  The name travels, not the id: the request validates
-                  `exists:catalogo_municipios,nombre`.
+                  Read from the CURP and only shown: the backend rejects an entity
+                  that does not match characters 12 and 13 of the CURP it received,
+                  so there is nothing to choose here, with or without a document
+                  already typed. `readonly` and not `disabled`: a disabled control
+                  leaves the tab order and is skipped by screen readers, and this
+                  field exists to inform.
                 -->
-                <select
-                  id="municipio"
-                  name="municipio"
-                  class="control"
-                  (change)="elegirTexto('municipio', $event)"
-                  (blur)="tocar('municipio')"
-                  [class.is-invalid]="errorDe('municipio') !== null"
-                  [attr.aria-invalid]="errorDe('municipio') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('municipio')"
-                >
-                  <option value="" [selected]="modelo().municipio === ''">Elige un municipio</option>
-                  <!--
-                    141 rows in one list are unusable: they arrive grouped by
-                    entity, and `entidad` is a database literal (`edomex`,
-                    `cdmx`) that has to be translated for display.
-                  -->
-                  @for (grupo of municipiosPorEntidad(); track grupo.entidad) {
-                    <optgroup [label]="grupo.entidad">
-                      @for (municipio of grupo.municipios; track municipio.id) {
-                        <option
-                          [value]="municipio.nombre"
-                          [selected]="modelo().municipio === municipio.nombre"
-                        >
-                          {{ municipio.nombre }}
-                        </option>
-                      }
-                    </optgroup>
-                  }
-                </select>
-                @if (errorDe('municipio'); as error) {
-                  <p class="field-error" [id]="'error-municipio'" role="alert">{{ error }}</p>
+                <input
+                  id="entidad_nacimiento"
+                  name="entidad_nacimiento"
+                  class="control control-static"
+                  type="text"
+                  readonly
+                  autocomplete="off"
+                  [value]="entidadNacimientoNombre()"
+                  [class.is-invalid]="errorDe('entidad_nacimiento') !== null"
+                  [attr.aria-invalid]="errorDe('entidad_nacimiento') === null ? null : 'true'"
+                  [attr.aria-describedby]="
+                    errorDe('entidad_nacimiento') === null
+                      ? 'derivado-entidad_nacimiento'
+                      : 'derivado-entidad_nacimiento error-entidad_nacimiento'
+                  "
+                />
+                <p class="field-hint" id="derivado-entidad_nacimiento">
+                  Se toma de los caracteres 12 y 13 de la CURP.
+                </p>
+                <!--
+                  Only a `422` can land here: the key always travels derived from
+                  the CURP that travels with it. Without this node the wizard moves
+                  to the card and the user sees a blade with no reason on it.
+                -->
+                @if (errorDe('entidad_nacimiento'); as error) {
+                  <p class="field-error" [id]="'error-entidad_nacimiento'" role="alert">{{ error }}</p>
                 }
               </div>
 
               <div class="field">
                 <label class="label" for="correo_institucional">Correo institucional</label>
-                <input
-                  id="correo_institucional"
-                  name="correo_institucional"
-                  class="control"
-                  type="email"
-                  maxlength="150"
-                  autocomplete="email"
-                  placeholder="nombre@correo-institucional"
-                  [ngModel]="modelo().correo_institucional"
-                  (ngModelChange)="guardarCorreo($event)"
-                  (blur)="tocar('correo_institucional')"
+                <!--
+                  Only the local part is asked for: the form appends the
+                  institutional domain when it builds the request, and shows it as a
+                  suffix so the user reads the address that will be stored. The
+                  suffix is a text node and not a decoration — no `aria-hidden` — so
+                  a screen reader announces the whole address.
+                -->
+                <div
+                  class="control-group"
                   [class.is-invalid]="errorDe('correo_institucional') !== null"
-                  [attr.aria-invalid]="errorDe('correo_institucional') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('correo_institucional')"
-                />
+                >
+                  <input
+                    id="correo_institucional"
+                    name="correo_institucional"
+                    class="control"
+                    type="text"
+                    inputmode="email"
+                    spellcheck="false"
+                    autocapitalize="none"
+                    autocomplete="username"
+                    [attr.maxlength]="largoLocalCorreo"
+                    placeholder="nombre.apellido"
+                    [ngModel]="correoLocal()"
+                    (ngModelChange)="guardarCorreo($event)"
+                    (blur)="tocar('correo_institucional')"
+                    [class.is-invalid]="errorDe('correo_institucional') !== null"
+                    [attr.aria-invalid]="errorDe('correo_institucional') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('correo_institucional')"
+                  />
+                  <span class="control-suffix">{{ sufijoCorreo }}</span>
+                </div>
                 @if (errorDe('correo_institucional'); as error) {
                   <p class="field-error" [id]="'error-correo_institucional'" role="alert">
                     {{ error }}

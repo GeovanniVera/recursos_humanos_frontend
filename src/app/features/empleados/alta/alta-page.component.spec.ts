@@ -8,6 +8,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { EmpleadoRegistrado, FormularioCatalogos } from '../../../core/empleados/alta.models';
+import { calcularDigitoVerificador, LARGO_MAXIMO_LOCAL } from '../../../core/empleados/validacion';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { AltaPage } from './alta-page.component';
 
@@ -40,6 +41,17 @@ const CURP_DIGITO_MALO = 'HEGG560427MVZRRL05';
 
 /** The same CURP with the last character missing. */
 const CURP_INCOMPLETA = 'HEGG560427MVZRRL0';
+
+/**
+ * A well formed CURP of Jalisco (`JC` at characters 12 and 13), an entity the
+ * fixture catalogue does not carry and the frozen RENAPO table does. The check
+ * digit is computed instead of written, so the value stays valid if the base
+ * ever changes.
+ */
+const CURP_ENTIDAD_FUERA = (() => {
+  const base = 'HEGG560427MJCRRL0';
+  return `${base}${calcularDigitoVerificador(base)}`;
+})();
 
 /** `200` body of the catalog endpoint, straight from the contract. */
 const CATALOGOS: FormularioCatalogos = {
@@ -125,13 +137,33 @@ const CATALOGOS: FormularioCatalogos = {
   estados_civiles: [{ id: 1, clave: 'SOL', descripcion: 'Soltero' }],
   tipos_personal: ['No Aplica', 'Sindicalizado', 'No sindicalizado'],
   sexos: ['Masculino', 'Femenino'],
-  municipios: [
-    { id: 5, nombre: 'Nezahualcóyotl', entidad: 'edomex' },
-    { id: 6, nombre: 'Texcoco', entidad: 'edomex' },
-    { id: 7, nombre: 'Iztapalapa', entidad: 'cdmx' },
+  // Veracruz, the entity the RENAPO example CURP of this fixture carries.
+  entidades: [
+    { clave: 'VZ', nombre: 'Veracruz' },
+    { clave: 'DF', nombre: 'Ciudad de México' },
+    { clave: 'MC', nombre: 'Estado de México' },
   ],
   tipos_jornada: ['Matutina', 'Vespertina', 'Mixta'],
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
+};
+
+/**
+ * The same catalogue as the live service sends it today: without `entidades`.
+ *
+ * The field of the entity of birth used to work only against a fixture that
+ * invented this list, so the real screen stayed blank. The payload here is
+ * spelled out instead of spread so the missing key is visible in the file.
+ */
+const CATALOGOS_SIN_ENTIDADES: FormularioCatalogos = {
+  areas: CATALOGOS.areas,
+  puestos: CATALOGOS.puestos,
+  categorias_cct: CATALOGOS.categorias_cct,
+  niveles_estudios: CATALOGOS.niveles_estudios,
+  estados_civiles: CATALOGOS.estados_civiles,
+  tipos_personal: CATALOGOS.tipos_personal,
+  sexos: CATALOGOS.sexos,
+  tipos_jornada: CATALOGOS.tipos_jornada,
+  trabaja_otro_lugar: CATALOGOS.trabaja_otro_lugar,
 };
 
 /** Plaza of a regular post: it needs the personal type and the shift. */
@@ -445,19 +477,76 @@ describe('AltaPage', () => {
     ).toBe('Técnico · sin área asignada');
   });
 
-  it('groups the municipalities by entity and translates the database literal', async () => {
+  it('fills the entity of birth from the CURP and labels it with the catalogue name', async () => {
     const fixture = await abrirFormulario();
 
-    const grupos = Array.from(
-      host(fixture).querySelectorAll<HTMLOptGroupElement>('#municipio optgroup'),
-    );
+    const campo = elemento<HTMLInputElement>(fixture, '#entidad_nacimiento');
+    expect(campo?.value).toBe('');
+    // Read only, not disabled: the field informs, so it stays reachable by
+    // keyboard and by a screen reader.
+    expect(campo?.readOnly).toBe(true);
+    expect(campo?.disabled).toBe(false);
+    expect(campo?.getAttribute('aria-describedby')).toBe('derivado-entidad_nacimiento');
+    expect(texto(fixture)).toContain('Se toma de los caracteres 12 y 13 de la CURP.');
 
-    // `edomex` and `cdmx` are database literals, not copy.
-    expect(grupos.map((grupo) => grupo.getAttribute('label'))).toEqual([
-      'Ciudad de México',
-      'Estado de México',
-    ]);
-    expect(grupos[1].querySelectorAll('option').length).toBe(2);
+    await escribir(fixture, 'curp', CURP_VALIDA);
+
+    // Characters 12 and 13 of the RENAPO example are `VZ`, and the name is the
+    // one the catalogue sends, which overrides the local one of that key.
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('Veracruz');
+  });
+
+  it('names the entity from the local RENAPO table when the payload has no entidades', async () => {
+    // The regression that reached production: the live endpoint does not send
+    // `entidades` yet, so every lookup missed and the field stayed blank.
+    const fixture = await abrirFormulario(CATALOGOS_SIN_ENTIDADES);
+
+    await escribir(fixture, 'curp', CURP_VALIDA);
+
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('Veracruz');
+  });
+
+  it('clears the entity when the CURP is deleted', async () => {
+    const fixture = await abrirFormulario();
+
+    await escribir(fixture, 'curp', CURP_VALIDA);
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('Veracruz');
+
+    // A value that outlives the CURP it came from would travel as if it were true.
+    await escribir(fixture, 'curp', '');
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('');
+  });
+
+  it('names a key the payload omits and blanks one RENAPO does not issue', async () => {
+    const fixture = await abrirFormulario();
+
+    // A well formed CURP of Jalisco: the fixture catalogue does not offer `JC`,
+    // and a partial or late payload must not blank a key of the national standard.
+    await escribir(fixture, 'curp', CURP_ENTIDAD_FUERA);
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('Jalisco');
+
+    // `XX` is not a key RENAPO issues, so there is no name to show and nothing
+    // to send: the field goes back to empty.
+    const sinEntidad = `${CURP_ENTIDAD_FUERA.slice(0, 11)}XX${CURP_ENTIDAD_FUERA.slice(13)}`;
+    await escribir(fixture, 'curp', sinEntidad);
+    expect(elemento<HTMLInputElement>(fixture, '#entidad_nacimiento')?.value).toBe('');
+  });
+
+  it('sends the two characters of the CURP as the entity of birth', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = await abrirFormulario();
+    await escribir(fixture, 'curp', CURP_VALIDA);
+    await irAConfirmacion(fixture);
+
+    // The summary reads the name; the body carries the key.
+    expect(texto(fixture)).toContain('Veracruz');
+
+    const peticion = await enviar(fixture);
+    expect(peticion.request.body.entidad_nacimiento).toBe('VZ');
+    peticion.flush(CREADO, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
   });
 
   it('lists only the posts of the chosen area, never the ones assigned elsewhere', async () => {
@@ -657,8 +746,10 @@ describe('AltaPage', () => {
 
     const campo = elemento<HTMLInputElement>(fixture, '#correo_institucional');
     expect(campo?.getAttribute('aria-describedby')).toBe('error-correo_institucional');
-    // Nothing typed is lost: the draft survives the failure.
-    expect(campo?.value).toBe('ana@utn.edu.mx');
+    // Nothing typed is lost: the draft survives the failure and still holds the
+    // complete address, while the control shows the local part it asks for.
+    expect(campo?.value).toBe('ana');
+    expect(fixture.componentInstance.modelo().correo_institucional).toBe('ana@utn.edu.mx');
     expect(texto(fixture)).toContain('Los datos no son válidos.');
   });
 
@@ -790,15 +881,51 @@ describe('AltaPage', () => {
     expect(sexo?.disabled).toBe(true);
 
     // The note under each control is what says where the value came from.
-    expect(texto(fixture)).toContain('Calculado desde la CURP');
+    expect(texto(fixture)).toContain('Se toma de los seis dígitos de la CURP.');
     expect(nacimiento?.getAttribute('aria-describedby')).toBe('derivado-fecha_nacimiento');
 
-    // Clearing the CURP hands both controls back, with what was already there.
+    // Clearing the CURP takes the values with it. They are locked, so a survivor
+    // could never be corrected by hand, and it would still travel in the request
+    // claiming to be a fact of a document that is no longer there.
     await escribir(fixture, 'curp', '');
-    expect(elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.disabled).toBe(false);
-    expect(elemento<HTMLSelectElement>(fixture, '#sexo')?.disabled).toBe(false);
-    expect(elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.value).toBe('1956-04-27');
-    expect(texto(fixture)).not.toContain('Calculado desde la CURP');
+    expect(elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.disabled).toBe(true);
+    expect(elemento<HTMLSelectElement>(fixture, '#sexo')?.disabled).toBe(true);
+    expect(elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.value).toBe('');
+    expect(elemento<HTMLSelectElement>(fixture, '#sexo')?.value).toBe('');
+  });
+
+  it('locks the three derived controls with an empty CURP, before anything is typed', async () => {
+    const fixture = await abrirFormulario();
+
+    // The user only types the CURP: everything it fills is locked from the first
+    // render, not once a document exists.
+    const nacimiento = elemento<HTMLInputElement>(fixture, '#fecha_nacimiento');
+    const sexo = elemento<HTMLSelectElement>(fixture, '#sexo');
+    const entidad = elemento<HTMLInputElement>(fixture, '#entidad_nacimiento');
+
+    // `disabled` for the two controls a native widget would let the user edit
+    // anyway, `readonly` for the one that only informs.
+    expect(nacimiento?.disabled).toBe(true);
+    expect(sexo?.disabled).toBe(true);
+    expect(entidad?.readOnly).toBe(true);
+    expect(entidad?.disabled).toBe(false);
+
+    // Every note describes the lock on an empty field, and every control points
+    // at a node that exists: a dangling `aria-describedby` names nothing.
+    expect(texto(fixture)).toContain('Se toma de los seis dígitos de la CURP.');
+    expect(texto(fixture)).toContain('Se toma del carácter 11 de la CURP.');
+    expect(texto(fixture)).toContain('Se toma de los caracteres 12 y 13 de la CURP.');
+    expect(nacimiento?.getAttribute('aria-describedby')).toBe('derivado-fecha_nacimiento');
+    expect(sexo?.getAttribute('aria-describedby')).toBe('derivado-sexo');
+    expect(entidad?.getAttribute('aria-describedby')).toBe('derivado-entidad_nacimiento');
+
+    // An incomplete CURP does not change the lock: it never depended on the value.
+    await escribir(fixture, 'curp', CURP_INCOMPLETA);
+    expect(elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.disabled).toBe(true);
+    expect(elemento<HTMLSelectElement>(fixture, '#sexo')?.disabled).toBe(true);
+    expect(
+      elemento<HTMLInputElement>(fixture, '#fecha_nacimiento')?.getAttribute('aria-describedby'),
+    ).toBe('derivado-fecha_nacimiento');
   });
 
   it('does not let step 1 move on while the CURP is wrong', async () => {
@@ -827,6 +954,85 @@ describe('AltaPage', () => {
 
     // The control shows the value that will travel, not what was pressed.
     expect(elemento<HTMLInputElement>(fixture, '#num_empleado')?.value).toBe('AB-12');
+  });
+
+  it('asks only for the local part of the institutional address and sends the whole one', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = await abrirFormulario();
+
+    const campo = elemento<HTMLInputElement>(fixture, '#correo_institucional');
+    // A text field with the keyboard of an address, not `type="email"`: what it
+    // holds is a local part, and the browser would refuse to submit that as one.
+    expect(campo?.type).toBe('text');
+    expect(campo?.getAttribute('inputmode')).toBe('email');
+    expect(campo?.getAttribute('autocomplete')).toBe('username');
+    expect(campo?.getAttribute('placeholder')).toBe('nombre.apellido');
+    // The domain is on screen and announced, never typed: it is not decoration.
+    expect(texto(fixture)).toContain('@utn.edu.mx');
+    expect(
+      elemento<HTMLElement>(fixture, '.control-suffix')?.getAttribute('aria-hidden'),
+    ).toBeNull();
+    // The 150 characters of the address, minus the `@` and `utn.edu.mx`.
+    expect(campo?.getAttribute('maxlength')).toBe(String(LARGO_MAXIMO_LOCAL));
+
+    await escribir(fixture, 'correo_institucional', 'Ana.Martinez');
+
+    // The control shows what the user was asked for; the draft already holds the
+    // address the body will carry.
+    expect(elemento<HTMLInputElement>(fixture, '#correo_institucional')?.value).toBe('ana.martinez');
+    expect(fixture.componentInstance.modelo().correo_institucional).toBe('ana.martinez@utn.edu.mx');
+
+    // An address pasted whole keeps working, and the domain is not doubled.
+    await escribir(fixture, 'correo_institucional', 'ana.martinez@utn.edu.mx');
+    expect(fixture.componentInstance.modelo().correo_institucional).toBe('ana.martinez@utn.edu.mx');
+
+    await escribir(fixture, 'num_empleado', '12345');
+    await escribir(fixture, 'nombre', 'Ana Martínez');
+    await pulsar(fixture, 'Continuar');
+    await llenarPlaza(fixture, PLAZA_ADMIN);
+    await pulsar(fixture, 'Continuar');
+    await pulsar(fixture, 'Continuar');
+
+    const peticion = await enviar(fixture);
+    expect(peticion.request.body.correo_institucional).toBe('ana.martinez@utn.edu.mx');
+    peticion.flush(CREADO, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+  });
+
+  it('collapses the blanks of the name when the field is left', async () => {
+    const fixture = await abrirFormulario();
+
+    // The blanks go when the field loses focus, never on every keystroke: the
+    // caret would fight the value being rewritten under it.
+    await escribir(fixture, 'nombre', '  Ana   Martínez  ');
+    expect(elemento<HTMLInputElement>(fixture, '#nombre')?.value).toBe('  Ana   Martínez  ');
+
+    await desenfocar(fixture, 'nombre');
+    expect(elemento<HTMLInputElement>(fixture, '#nombre')?.value).toBe('Ana Martínez');
+  });
+
+  it('sends the name with the blanks collapsed even if the field was never left', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = await abrirFormulario();
+
+    await escribir(fixture, 'num_empleado', '12345');
+    await escribir(fixture, 'nombre', '  Ana   Martínez  ');
+    await escribir(fixture, 'correo_institucional', 'ana@utn.edu.mx');
+    await pulsar(fixture, 'Continuar');
+    await llenarPlaza(fixture, PLAZA_ADMIN);
+    await pulsar(fixture, 'Continuar');
+    await pulsar(fixture, 'Continuar');
+
+    const peticion = await enviar(fixture);
+    // The body is cleaned on its own: the summary is not the place where a name
+    // is normalised, and a submit can be reached without leaving the field.
+    expect(peticion.request.body.nombre).toBe('Ana Martínez');
+    peticion.flush(CREADO, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
   });
 
   it('lets the server sentence win over the local one and drops it on the next edit', async () => {

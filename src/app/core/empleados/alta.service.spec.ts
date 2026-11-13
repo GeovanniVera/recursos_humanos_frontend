@@ -37,7 +37,7 @@ const CATALOGOS: FormularioCatalogos = {
   estados_civiles: [{ id: 1, clave: 'SOL', descripcion: 'Soltero' }],
   tipos_personal: ['No Aplica', 'Sindicalizado', 'No sindicalizado'],
   sexos: ['Masculino', 'Femenino'],
-  municipios: [{ id: 5, nombre: 'Nezahualcóyotl', entidad: 'México' }],
+  entidades: [{ clave: 'VZ', nombre: 'Veracruz' }],
   tipos_jornada: ['Matutina', 'Vespertina', 'Mixta'],
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };

@@ -21,7 +21,11 @@ export interface FichaIdentificacion {
   estado_civil_id: number | null;
   /** Spanish label sent by the backend, ready to display. */
   estado_civil: string | null;
-  municipio: string | null;
+  /**
+   * Readable name of the birth entity, ready to display. The record stores the
+   * two-character key of the CURP; the endpoint resolves it here.
+   */
+  entidad_nacimiento: string | null;
 }
 
 /**

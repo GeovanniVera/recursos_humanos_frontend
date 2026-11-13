@@ -10,6 +10,8 @@
  * is not inventing a second opinion, it is giving the first one sooner.
  */
 
+import { ENTIDADES_FEDERATIVAS } from './entidades-federativas';
+
 /** Field of the CURP that failed. It is never shown as a different sentence. */
 export type MotivoCurp = 'longitud' | 'formato' | 'entidad' | 'fecha' | 'digito';
 
@@ -51,13 +53,17 @@ const TABLA = [
   'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 ];
 
-/** Codes of the federative entities, plus `NE` for a birth abroad. */
-const ENTIDADES = [
-  'AS', 'BC', 'BS', 'CC', 'CL', 'CM', 'CS', 'CH', 'DF', 'DG',
-  'GT', 'GR', 'HG', 'JC', 'MC', 'MN', 'MS', 'NT', 'NL', 'OC',
-  'PL', 'QT', 'QR', 'SP', 'SL', 'SR', 'TC', 'TS', 'TL', 'VZ',
-  'YN', 'ZS', 'NE',
-];
+/**
+ * Codes of the federative entities, plus `NE` for a birth abroad.
+ *
+ * Derived from the frozen table the screen uses to label the entity of birth,
+ * never written twice: a key the CURP check accepts is a key the field can name,
+ * and the other way round. A `Set` because every keystroke of the CURP asks once,
+ * and the table is built here at module scope instead of on each call.
+ */
+const ENTIDADES: ReadonlySet<string> = new Set(
+  ENTIDADES_FEDERATIVAS.map((entidad) => entidad.clave),
+);
 
 /**
  * Shape of a CURP: four letters, six digits, the sex, two letters of the
@@ -81,14 +87,29 @@ const GENERACION = /^\d{4}-\d{4}$/;
 const CORREO = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
 
 /**
- * Domains the institutional address may use.
+ * Domain every institutional address belongs to.
  *
  * This mirrors `modulos.dominios_permitidos` in the backend configuration, which
- * the `formulario` endpoint does not expose yet. When it does, read the list from
+ * the `formulario` endpoint does not expose yet. When it does, read the value from
  * there and delete this constant — a second hardcoded copy of a server rule is
- * exactly the kind of drift this port is trying to avoid.
+ * exactly the kind of drift this port is trying to avoid. It is one value and not
+ * a list because the form appends it to what the user types: with several domains
+ * there would be no way to know which one to append.
  */
-const DOMINIOS_INSTITUCIONALES = ['utn.edu.mx'];
+export const DOMINIO_INSTITUCIONAL = 'utn.edu.mx';
+
+/** Longest institutional address the backend stores, domain included. */
+export const LARGO_MAXIMO_CORREO = 150;
+
+/**
+ * Longest local part the form accepts.
+ *
+ * The domain travels with every address even though the user only types what
+ * comes before the `@`, so the room it takes is discounted here, once, instead of
+ * being worked out in the template or copied into a second number that could
+ * drift from this one.
+ */
+export const LARGO_MAXIMO_LOCAL = LARGO_MAXIMO_CORREO - DOMINIO_INSTITUCIONAL.length - 1;
 
 /** Days of each month, January first. February is fixed by the leap check. */
 const DIAS_DEL_MES = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -224,6 +245,22 @@ export function curpSexo(valor: string): 'Masculino' | 'Femenino' | null {
 }
 
 /**
+ * Federative entity of birth a CURP carries, as the two characters RENAPO
+ * writes at positions 12 and 13 (indexes 11 and 12).
+ *
+ * The shape alone is enough to read them, so this does not wait for the check
+ * digit: the screen shows the entity while the CURP is still being typed, and
+ * clearing the field when the value is shorter than thirteen characters is what
+ * keeps a stale entity from outliving the CURP it came from. Whether the key
+ * exists in the catalogue is the caller's business — `validarCurp` already
+ * rejects one that RENAPO does not know.
+ */
+export function curpClaveEntidad(valor: string): string | null {
+  const curp = normalizarCurp(valor);
+  return curp.length < 13 ? null : curp.slice(11, 13);
+}
+
+/**
  * Validates a CURP, in the order the backend checks it.
  *
  * An empty value is not an error: the field is optional. The checks stop at the
@@ -243,7 +280,7 @@ export function validarCurp(valor: string): { valida: boolean; motivos: readonly
   if (!PATRON.test(curp)) {
     return { valida: false, motivos: ['formato'] };
   }
-  if (!ENTIDADES.includes(curp.slice(11, 13))) {
+  if (!ENTIDADES.has(curp.slice(11, 13))) {
     return { valida: false, motivos: ['entidad'] };
   }
 
@@ -297,7 +334,7 @@ export function validarCorreo(valor: string): string | null {
   if (limpio === '') {
     return 'El correo institucional es obligatorio.';
   }
-  if (limpio.length > 150) {
+  if (limpio.length > LARGO_MAXIMO_CORREO) {
     return 'El correo institucional no puede superar los 150 caracteres.';
   }
   if (!CORREO.test(limpio)) {
@@ -305,7 +342,7 @@ export function validarCorreo(valor: string): string | null {
   }
 
   const dominio = limpio.slice(limpio.lastIndexOf('@') + 1).toLowerCase();
-  if (!DOMINIOS_INSTITUCIONALES.includes(dominio)) {
+  if (dominio !== DOMINIO_INSTITUCIONAL) {
     // The backend's own sentence for this rule, verbatim.
     return 'El correo debe pertenecer al dominio institucional.';
   }
@@ -316,6 +353,46 @@ export function validarCorreo(valor: string): string | null {
 /** Lower-cases the address the way the backend normalises it. */
 export function normalizarCorreo(valor: string): string {
   return valor.trim().toLowerCase();
+}
+
+/**
+ * Everything before the first `@` of an address, trimmed and lower-cased.
+ *
+ * The field asks for the local part only, because the form appends the domain
+ * itself, but a whole address pasted from another system still has to work:
+ * cutting at the first `@` turns `Ana@utn.edu.mx` and `ana` into the same input
+ * instead of producing a doubled domain. A value without `@` is the local part
+ * and comes back whole.
+ */
+export function parteLocalCorreo(valor: string): string {
+  const limpio = valor.trim().toLowerCase();
+  const arroba = limpio.indexOf('@');
+  return arroba === -1 ? limpio : limpio.slice(0, arroba);
+}
+
+/**
+ * Full institutional address built from the local part the user types.
+ *
+ * An empty local part answers `''` and not a bare `@`: the field is required, and
+ * a domain with nothing in front of it would be a value the form invented only to
+ * fail its own validation one step later.
+ */
+export function correoConDominio(valor: string): string {
+  const local = parteLocalCorreo(valor);
+  return local === '' ? '' : `${local}@${DOMINIO_INSTITUCIONAL}`;
+}
+
+/**
+ * Name as it is stored: no leading or trailing blanks, and no runs of them.
+ *
+ * Tabs and non-breaking spaces collapse into the same single space a double blank
+ * does, because both are invisible in a form and neither survives the trip. The
+ * capitalisation is left exactly as the user wrote it: upper-casing belongs to
+ * `normalizarMayusculas`, and a full name is a display decision, not a rule of
+ * the field. Trimming and collapsing are the only sloppiness removed here.
+ */
+export function normalizarNombre(valor: string): string {
+  return valor.replace(/\s+/g, ' ').trim();
 }
 
 /**
