@@ -7,36 +7,28 @@ import { finalize } from 'rxjs';
 import { ApiErrorResponse } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AnimatedBackdrop } from '../../../shared/ui/animated-backdrop/animated-backdrop.component';
-import { BrandLogos } from '../../../shared/ui/brand-logos/brand-logos.component';
 import { OtpInput } from '../otp-input/otp-input.component';
 
 /**
- * Copy invented on the client, and only for failures that carry no message from
- * the backend. Every other message is displayed verbatim.
+ * Mensaje por defecto cuando no hay respuesta o falla la conexión con el servidor.
  */
 const MENSAJE_SIN_CONEXION =
   'No pudimos conectar con el servidor. Revisa tu conexión e intentá de nuevo.';
 
-/** Seconds the resend link stays disabled after requesting a code. */
+/** Segundos que el enlace de reenvío permanece deshabilitado tras solicitar código. */
 const SEGUNDOS_REENVIO = 30;
 
-/** Digits of the one-time code. */
+/** Longitud del código numérico de verificación. */
 const LARGO_CODIGO = 6;
 
 /**
- * Passwordless access: institutional email first, then the six digit code.
- *
- * Both steps live in one component because they share the email, the error
- * message and the countdown. `AuthService` owns every HTTP call and persists
- * the token; this page only renders state and routes on success.
- *
- * The page pins itself to the `light` theme through its host attribute. Themes
- * belong to the application, not to the door: the access screen keeps the
- * approved light identity no matter what the user chose inside.
+ * Pantalla de inicio de sesión institucional con autenticación sin contraseña (OTP).
+ * Paso 1: Correo institucional.
+ * Paso 2: Código de verificación de 6 dígitos.
  */
 @Component({
   selector: 'app-login-page',
-  imports: [FormsModule, AnimatedBackdrop, BrandLogos, OtpInput],
+  imports: [FormsModule, AnimatedBackdrop, OtpInput],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
   host: { 'data-theme': 'light' },
@@ -46,40 +38,43 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Active step. */
+  /** Paso activo del flujo: correo o código OTP */
   readonly paso = signal<'correo' | 'codigo'>('correo');
 
-  /** Email as typed, kept so the second step can show it again. */
+  /** Correo tal como fue escrito por el usuario */
   readonly correo = signal('');
 
-  /** Code typed by the user. */
+  /** Código numérico escrito por el usuario */
   readonly codigo = signal('');
 
-  /** Message to show in the alert, or `null` when there is none. */
+  /** Mensaje de error, o null cuando no hay ninguno */
   readonly error = signal<string | null>(null);
 
-  /** `true` while a request is in flight. */
+  /** true mientras hay una petición en curso */
   readonly enviando = signal(false);
 
-  /** Seconds left before the code can be requested again. */
+  /** true al verificar con éxito para desplegar la animación de checkmark previa a navegación */
+  readonly verificado = signal(false);
+
+  /** Segundos restantes para reenviar código */
   readonly segundos = signal(0);
 
   private readonly segundosTotales = signal(SEGUNDOS_REENVIO);
 
-  /** Whether the alert is on screen; also drives the error look of the boxes. */
+  /** Indica si hay un error activo en pantalla */
   readonly hayError = computed(() => this.error() !== null);
 
-  /** Submit is armed as soon as there is something that looks like an email. */
+  /** Habilitado en cuanto se ingresa texto en el correo */
   readonly puedeEnviarCorreo = computed(
     () => !this.enviando() && this.segundos() === 0 && this.correo().trim().length > 0,
   );
 
-  /** Verification needs the full code. */
+  /** Habilitado cuando se han completado los 6 dígitos */
   readonly puedeVerificar = computed(
     () => !this.enviando() && this.codigo().length === LARGO_CODIGO,
   );
 
-  /** Fill of the progress bar, in percent. Drains with the countdown. */
+  /** Progreso de la barra de temporizador de reenvío (0 a 100%) */
   readonly progreso = computed(() => {
     const total = this.segundosTotales();
     if (total <= 0) {
@@ -88,7 +83,7 @@ export class LoginPage {
     return Math.round((this.segundos() / total) * 100);
   });
 
-  /** `mm:ss` label of the resend countdown. */
+  /** Etiqueta formateada mm:ss para el reenvío */
   readonly etiquetaReenvio = computed(() => {
     const restantes = this.segundos();
     const minutos = Math.floor(restantes / 60)
@@ -104,12 +99,10 @@ export class LoginPage {
     this.destroyRef.onDestroy(() => this.detenerCuenta());
   }
 
-  /** Keeps the email signal in sync with the field. */
   alEscribirCorreo(event: Event): void {
     this.correo.set((event.target as HTMLInputElement).value);
   }
 
-  /** Step 1 — asks the backend for a code. */
   enviarCorreo(): void {
     if (!this.puedeEnviarCorreo()) {
       return;
@@ -136,7 +129,6 @@ export class LoginPage {
       });
   }
 
-  /** Step 2 — exchanges the code for a token and enters the app. */
   enviarCodigo(): void {
     if (!this.puedeVerificar()) {
       return;
@@ -153,14 +145,16 @@ export class LoginPage {
       )
       .subscribe({
         next: () => {
-          const destino = this.auth.redirect() ?? '/';
-          void this.router.navigateByUrl(destino === '' ? '/' : destino);
+          this.verificado.set(true);
+          setTimeout(() => {
+            const destino = this.auth.redirect() ?? '/';
+            void this.router.navigateByUrl(destino === '' ? '/' : destino);
+          }, 700);
         },
         error: (error: unknown) => this.manejarError(error),
       });
   }
 
-  /** Sends a new code without leaving step 2. */
   reenviarCodigo(): void {
     if (this.enviando() || this.segundos() > 0) {
       return;
@@ -184,16 +178,15 @@ export class LoginPage {
       });
   }
 
-  /** Goes back to step 1. The email survives, the code and the timer do not. */
   cambiarCorreo(): void {
     this.detenerCuenta();
     this.segundos.set(0);
     this.codigo.set('');
     this.error.set(null);
+    this.verificado.set(false);
     this.paso.set('correo');
   }
 
-  /** Maps an HTTP failure to the message the user reads. */
   private manejarError(error: unknown): void {
     if (error instanceof HttpErrorResponse) {
       const cuerpo = error.error as ApiErrorResponse | null;
@@ -205,8 +198,6 @@ export class LoginPage {
       }
 
       if (error.status === 429) {
-        // The backend says how long to wait; adopt its number, even above the
-        // 30 s the UI starts with.
         this.error.set(mensaje ?? MENSAJE_SIN_CONEXION);
         const espera = cuerpo?.reintentar_en_segundos;
         this.iniciarCuenta(typeof espera === 'number' && espera > 0 ? espera : SEGUNDOS_REENVIO);
@@ -222,7 +213,6 @@ export class LoginPage {
     this.error.set(MENSAJE_SIN_CONEXION);
   }
 
-  /** Appends the remaining attempts to a backend message, when it sends them. */
   private conIntentos(mensaje: string, intentosRestantes?: number): string {
     if (typeof intentosRestantes !== 'number') {
       return mensaje;
@@ -230,7 +220,6 @@ export class LoginPage {
     return `${mensaje} Intentos restantes: ${intentosRestantes}.`;
   }
 
-  /** Starts (or restarts) the resend countdown. */
   private iniciarCuenta(segundos: number): void {
     this.detenerCuenta();
     const total = segundos > 0 ? segundos : SEGUNDOS_REENVIO;
