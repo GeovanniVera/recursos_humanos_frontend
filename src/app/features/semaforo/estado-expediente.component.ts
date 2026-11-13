@@ -1,5 +1,6 @@
 import { Component, input } from '@angular/core';
 import { EstadoExpediente } from '../../core/semaforo/semaforo.models';
+import { StatusPill } from '../../shared/ui/status-pill/status-pill.component';
 
 export const ESTADOS_EXPEDIENTE: Record<EstadoExpediente, string> = {
   completo: 'Completo',
@@ -7,9 +8,17 @@ export const ESTADOS_EXPEDIENTE: Record<EstadoExpediente, string> = {
   incompleto: 'Incompleto',
 };
 
+/**
+ * State of the file with the marker that says it: a check, a dash or a bang.
+ *
+ * The word and the shape come from the shared `app-status-pill`; this component
+ * only owns the drawing, which is the part a badge needs and a plain pill does
+ * not. The icon is projected, so the pill sizes it and decides its ink.
+ */
 @Component({
   selector: 'app-estado-expediente',
-  template: `<span class="badge is-{{ estado() }}">
+  imports: [StatusPill],
+  template: `<app-status-pill [estado]="estado()">
     <svg
       viewBox="0 0 20 20"
       fill="none"
@@ -25,9 +34,8 @@ export const ESTADOS_EXPEDIENTE: Record<EstadoExpediente, string> = {
       } @else {
         <path d="M10 5v6m0 2v2" />
       }</svg
-    >{{ etiquetas[estado()] }}</span
+    >{{ etiquetas[estado()] }}</app-status-pill
   >`,
-  styleUrl: './estado-expediente.component.scss',
 })
 export class EstadoExpedienteBadge {
   readonly estado = input.required<EstadoExpediente>();

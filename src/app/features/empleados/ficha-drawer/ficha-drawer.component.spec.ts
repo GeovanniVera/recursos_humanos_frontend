@@ -196,10 +196,14 @@ describe('FichaDrawer', () => {
     expect(head?.querySelector('.document-number')?.textContent?.trim()).toBe('N.º UTN-001');
     expect(head?.querySelector('.document-area')?.textContent?.trim()).toBe('Área A');
 
-    // Both states are stated once, at the top: who the worker is and whether the
-    // file can be used.
-    expect(head?.querySelector('.status')?.textContent?.trim()).toBe('Activo');
-    expect(head?.querySelector('.pill')?.textContent?.trim()).toBe('Casi completo');
+    // Both states are stated once, at the top, by the shared pill: who the
+    // worker is and whether the file can be used.
+    const pills = head?.querySelectorAll<HTMLElement>('app-status-pill');
+    expect(pills).toHaveLength(2);
+    expect(pills?.[0].textContent?.trim()).toBe('Activo');
+    expect(pills?.[0].querySelector('.pill')?.classList.contains('is-activo')).toBe(true);
+    expect(pills?.[1].textContent?.trim()).toBe('Casi completo');
+    expect(pills?.[1].querySelector('.pill')?.classList.contains('is-casi-completo')).toBe(true);
   });
 
   it('wraps every field in a row and marks the two emphasis rows', async () => {
@@ -278,6 +282,12 @@ describe('FichaDrawer', () => {
     expect(valueOf(fixture, 'Fecha de baja')).toBe('29 de febrero de 2024');
     expect(valueOf(fixture, 'Motivo de baja')).toBe('Renuncia');
     expect(valueOf(fixture, 'Nota de baja')).toBe('Entregó el expediente');
+
+    // The masthead states the same fact with the pill of the system, on the
+    // tone of a termination.
+    const pill = host(fixture).querySelector<HTMLElement>('.document-states app-status-pill .pill');
+    expect(pill?.textContent?.trim()).toBe('Baja');
+    expect(pill?.classList.contains('is-baja')).toBe(true);
   });
 
   it('explains a 404 with its own sentence', async () => {
@@ -300,7 +310,8 @@ describe('FichaDrawer', () => {
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
     await fixture.whenStable();
 
-    const pill = host(fixture).querySelector<HTMLElement>('.pill');
+    const pills = host(fixture).querySelectorAll<HTMLElement>('.document-states app-status-pill .pill');
+    const pill = pills[1];
     expect(pill?.textContent?.trim()).toBe('Casi completo');
     expect(pill?.classList.contains('is-casi-completo')).toBe(true);
 

@@ -187,10 +187,19 @@ function escribir(fixture: ComponentFixture<EmpleadosPage>, termino: string): vo
   campo.dispatchEvent(new Event('input'));
 }
 
-/** Body rows, each as the text of its four cells. */
+/**
+ * Body rows, each as the visible text of its cells.
+ *
+ * The sentence of the leading flag lives in a `.visually-hidden` span inside the
+ * first cell, so it is dropped here: this helper reads what the eye sees.
+ */
 function filas(fixture: ComponentFixture<EmpleadosPage>): string[][] {
   return Array.from(host(fixture).querySelectorAll('tbody tr')).map((fila) =>
-    Array.from(fila.querySelectorAll('td')).map((celda) => celda.textContent?.trim() ?? ''),
+    Array.from(fila.querySelectorAll('td')).map((celda) => {
+      const visible = celda.cloneNode(true) as HTMLElement;
+      visible.querySelectorAll('.visually-hidden').forEach((nodo) => nodo.remove());
+      return visible.textContent?.trim() ?? '';
+    }),
   );
 }
 
@@ -272,16 +281,16 @@ describe('EmpleadosPage', () => {
     return host(fixture).querySelector('.pager-range')?.textContent?.trim() ?? '';
   }
 
-  it('renders one row per employee with the four columns of the roster', async () => {
+  it('renders one row per employee with the three columns of the roster', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
-    expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área', 'Estado']);
+    expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área']);
 
     const cuerpo = filas(fixture);
     expect(cuerpo.length).toBe(2);
-    expect(cuerpo[0]).toEqual(['12345', 'Ana Martínez', 'Área A', 'Activo']);
-    expect(cuerpo[1]).toEqual(['12346', 'Luis Ramírez', '—', 'Baja']);
+    expect(cuerpo[0]).toEqual(['12345', 'Ana Martínez', 'Área A']);
+    expect(cuerpo[1]).toEqual(['12346', 'Luis Ramírez', '—']);
   });
 
   it('leads to the registration of a new employee from the header', async () => {
@@ -296,7 +305,7 @@ describe('EmpleadosPage', () => {
     expect(alta?.textContent?.trim()).toBe('Nuevo empleado');
   });
 
-  it('shows the placeholder for a missing area and the state as a badge', async () => {
+  it('shows the placeholder for a missing area and the state as a leading flag', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
@@ -304,13 +313,24 @@ describe('EmpleadosPage', () => {
     const area = cuerpo[1].querySelectorAll('td')[2];
     expect(area.textContent?.trim()).toBe('—');
 
-    const activo = cuerpo[0].querySelector('.badge');
-    expect(activo?.textContent?.trim()).toBe('Activo');
-    expect(activo?.classList.contains('is-activo')).toBe(true);
+    // The flag is the first thing in the number cell, and the table is asked for
+    // the positioned cell that lets it anchor there instead of the viewport.
+    expect(host(fixture).querySelector('.table')?.classList.contains('has-leading-decoration')).toBe(
+      true,
+    );
+    expect(cuerpo[0].querySelector('td')?.firstElementChild?.tagName.toLowerCase()).toBe(
+      'app-row-flag',
+    );
 
-    const baja = cuerpo[1].querySelector('.badge');
-    expect(baja?.textContent?.trim()).toBe('Baja');
-    expect(baja?.classList.contains('is-baja')).toBe(true);
+    const activo = cuerpo[0].querySelector('app-row-flag');
+    expect(activo?.querySelector('.row-flag')?.classList.contains('is-activo')).toBe(true);
+    expect(activo?.querySelector('.visually-hidden')?.textContent?.trim()).toBe('Estado: Activo');
+
+    // The terminated row stays distinguishable without a text pill: its tone and
+    // its announcement carry the state.
+    const baja = cuerpo[1].querySelector('app-row-flag');
+    expect(baja?.querySelector('.row-flag')?.classList.contains('is-baja')).toBe(true);
+    expect(baja?.querySelector('.visually-hidden')?.textContent?.trim()).toBe('Estado: Baja');
   });
 
   it('asks for 100 records and serves five logical pages out of that block', async () => {
@@ -814,7 +834,7 @@ describe('EmpleadosPage', () => {
     await responder(fixture, respuesta([ANA, LUIS]));
 
     const nombre = host(fixture).querySelector<HTMLButtonElement>(
-      'tbody tr:nth-child(2) .name-button',
+      'tbody tr:nth-child(2) app-row-link button',
     );
     expect(nombre?.getAttribute('aria-label')).toBe('Ver la ficha de Luis Ramírez');
 

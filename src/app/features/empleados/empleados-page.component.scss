@@ -214,60 +214,6 @@
   color: var(--color-text-secondary);
 }
 
-// --- State badge ------------------------------------------------------------
-
-// The same pairing the toasts use: a state fill with its own ink. The pill is
-// the shape, the word inside is the meaning — a grayscale screen or a color
-// blindness still reads `Activo` and `Baja`.
-.badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  font: var(--text-label);
-  white-space: nowrap;
-}
-
-.badge.is-activo {
-  background: var(--color-state-success);
-  color: var(--color-state-success-ink);
-}
-
-.badge.is-baja {
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-}
-
-// --- Name button ------------------------------------------------------------
-
-// The name is the keyboard path into the record, so it is a real button painted
-// as text: no fill, no visible border and no padding of its own, only an
-// underline that appears on hover and focus so the affordance is discoverable
-// without a pointer.
-.name-button {
-  padding: 0;
-  border: var(--border-width) solid var(--transparent);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-ghost);
-  color: var(--color-text-primary);
-  font: inherit;
-  text-align: start;
-  text-underline-offset: var(--space-1);
-  cursor: pointer;
-  transition: color var(--motion-fast) var(--motion-ease);
-}
-
-.name-button:hover,
-.name-button:focus-visible {
-  color: var(--color-accent);
-  text-decoration: underline;
-}
-
-.name-button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-ring-offset);
-}
-
-
 // --- Block loading ----------------------------------------------------------
 
 // A block miss keeps the current rows on screen, so the only signal of the wait
@@ -347,7 +293,9 @@
 }
 
 .page-size-select {
-  min-height: var(--control-height-sm);
+  // 44px is the minimum touch target the design rules require of any control,
+  // so the size selector is not allowed to shrink to the compact height.
+  min-height: var(--space-8);
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }

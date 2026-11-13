@@ -67,6 +67,11 @@ describe('FaltantesDrawer', () => {
     expect(el.textContent).toContain('No hay campos obligatorios pendientes');
     expect(el.querySelectorAll('li')).toHaveLength(0);
     expect(el.querySelectorAll('input')).toHaveLength(0);
+
+    // The state of the file reaches the drawer through the shared pill.
+    const pill = el.querySelector<HTMLElement>('app-status-pill .pill');
+    expect(pill?.classList.contains('is-completo')).toBe(true);
+    expect(pill?.textContent?.trim()).toBe('Completo');
   });
   it.each([401, 403, 404, 500])(
     'handles HTTP %s, clears stale detail and supports allowed retry',

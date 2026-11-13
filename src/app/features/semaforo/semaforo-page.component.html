@@ -52,14 +52,6 @@
         (input)="alBuscar($event)"
       />
     </div>
-    <div class="size">
-      <label for="semaforo-tamano">Registros por página</label
-      ><select id="semaforo-tamano" [value]="porPagina()" (change)="tamano($event)">
-        @for (n of tamanos; track n) {
-          <option [value]="n" [selected]="n === porPagina()">{{ n }}</option>
-        }
-      </select>
-    </div>
     <app-button variant="secondary" [disabled]="loading()" (click)="solicitar(false, true)"
       >Actualizar</app-button
     >
@@ -96,20 +88,18 @@
   >
     <ng-template #cell let-row let-column="column" let-value="value">
       @if (column.key === 'num_empleado') {
-        <span class="state-stripe is-{{ row.estado }}" aria-hidden="true"></span>
+        <app-row-flag
+          [tone]="row.estado"
+          [label]="'Estado del expediente: ' + etiquetasEstado[row.estado]"
+        />
         {{ value }}
-        <span class="visually-hidden"
-          >Estado del expediente: {{ etiquetasEstado[row.estado] }}</span
-        >
       } @else if (column.key === 'nombre') {
-        <button
-          type="button"
-          class="worker-button"
-          [attr.aria-label]="'Ver campos faltantes de ' + row.nombre"
+        <app-row-link
+          [ariaLabel]="'Ver campos faltantes de ' + row.nombre"
           (click)="$event.stopPropagation(); abrir(row)"
         >
           {{ value }}
-        </button>
+        </app-row-link>
       } @else if (column.key === 'campos_faltantes') {
         <span class="missing-count">{{ value }}</span>
       } @else {
@@ -117,26 +107,97 @@
       }
     </ng-template>
   </app-data-table>
-  <footer class="pager">
-    <p aria-live="polite" role="status">{{ rango() }}</p>
-    <div class="pager-controls">
-      <app-button
-        variant="secondary"
-        [disabled]="loading() || pagina() <= 1 || !respuesta()"
-        (click)="irA(pagina() - 1)"
-        >Anterior</app-button
-      ><span
-        >Página {{ respuesta()?.meta?.pagina ?? 1 }} de
-        {{ respuesta()?.meta?.total_paginas ?? 1 }}</span
-      ><app-button
-        variant="secondary"
-        [disabled]="
-          loading() || !respuesta() || pagina() >= (respuesta()?.meta?.total_paginas ?? 1)
-        "
-        (click)="irA(pagina() + 1)"
-        >Siguiente</app-button
-      >
-    </div>
-  </footer>
+  @if (hayDatos()) {
+    <footer class="pager">
+      <div class="pager-meta">
+        <p class="pager-range" aria-live="polite">{{ rango() }}</p>
+
+        <div class="page-size">
+          <label class="page-size-label" for="porPagina">Filas por página</label>
+          <select
+            id="porPagina"
+            class="page-size-select"
+            [value]="porPagina()"
+            [disabled]="controlesDeshabilitados()"
+            (change)="cambiarPorPagina($event)"
+          >
+            @for (tamano of tamanos; track tamano) {
+              <option [value]="tamano" [selected]="tamano === porPagina()">{{ tamano }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="pager-controls">
+        <app-button
+          variant="secondary"
+          [disabled]="primeraDeshabilitado()"
+          (click)="irAPrimera()"
+        >
+          <!-- The chevron is decoration: the accessible name stays "Primera". -->
+          <span aria-hidden="true">«</span>
+          Primera
+        </app-button>
+
+        <app-button variant="secondary" [disabled]="anteriorDeshabilitado()" (click)="irA(pagina() - 1)">
+          Anterior
+        </app-button>
+
+        <p class="pager-page">{{ etiquetaPagina() }}</p>
+
+        <app-button variant="secondary" [disabled]="siguienteDeshabilitado()" (click)="irA(pagina() + 1)">
+          Siguiente
+        </app-button>
+
+        <app-button variant="secondary" [disabled]="ultimaDeshabilitado()" (click)="irAUltima()">
+          Última
+          <!-- Same rule as the opening chevron, on the other end. -->
+          <span aria-hidden="true">»</span>
+        </app-button>
+      </div>
+
+      <!--
+        Direct jump. The range is checked here as well as by `min`/`max`: a
+        number input still lets a typed value through, and a page out of range
+        would spend a request on an answer the backend cannot give.
+      -->
+      <form class="pager-jump" (submit)="irAPaginaDesdeCampo($event, campoPagina.value)">
+        <label class="jump-label" for="pagina">Ir a página</label>
+        <input
+          #campoPagina
+          id="pagina"
+          class="jump-field"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          [attr.max]="totalPaginasMax()"
+          [value]="pagina()"
+          [disabled]="controlesDeshabilitados()"
+          [attr.aria-invalid]="errorPagina() !== null ? 'true' : null"
+          [attr.aria-describedby]="errorPagina() !== null ? 'pagina-error' : null"
+        />
+        <app-button variant="secondary" type="submit" [disabled]="controlesDeshabilitados()">
+          Ir
+        </app-button>
+      </form>
+
+      @if (errorPagina(); as mensajePagina) {
+        <p class="field-error jump-error" id="pagina-error" role="alert">
+          <span class="field-error-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <path d="M8 4v5M8 12h.01" />
+            </svg>
+          </span>
+          {{ mensajePagina }}
+        </p>
+      }
+    </footer>
+  }
 </section>
 <app-faltantes-drawer [empleadoId]="empleadoId()" [(open)]="drawerOpen" />

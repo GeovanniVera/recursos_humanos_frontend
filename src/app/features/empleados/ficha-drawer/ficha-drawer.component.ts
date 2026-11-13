@@ -21,6 +21,7 @@ import {
 import { FichaService } from '../../../core/empleados/ficha.service';
 import { Button } from '../../../shared/ui/button/button.component';
 import { Drawer } from '../../../shared/ui/drawer/drawer.component';
+import { StatusPill } from '../../../shared/ui/status-pill/status-pill.component';
 import { BajaModal } from '../baja/baja-modal.component';
 
 /**
@@ -89,7 +90,7 @@ const SKELETON_LINES = 9;
  */
 @Component({
   selector: 'app-ficha-drawer',
-  imports: [BajaModal, Button, Drawer],
+  imports: [BajaModal, Button, Drawer, StatusPill],
   templateUrl: './ficha-drawer.component.html',
   styleUrl: './ficha-drawer.component.scss',
 })

@@ -9,6 +9,8 @@ import { PadronError } from '../../core/padron/padron.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
+import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
 
 /**
@@ -77,7 +79,7 @@ interface FallaPadron {
  */
 @Component({
   selector: 'app-empleados-page',
-  imports: [Button, DataTable, FichaDrawer, RouterLink],
+  imports: [Button, DataTable, FichaDrawer, RouterLink, RowFlag, RowLink],
   templateUrl: './empleados-page.component.html',
   styleUrl: './empleados-page.component.scss',
   // One buffer per visit: filter, page and cached blocks are not shared with a
@@ -167,15 +169,15 @@ export class EmpleadosPage {
     { key: 'num_empleado', header: 'Núm. empleado', align: 'end' },
     { key: 'nombre', header: 'Nombre' },
     { key: 'area', header: 'Área' },
-    { key: 'estado', header: 'Estado' },
   ];
 
   /**
-   * Rows of the table, flattened to the four printable fields.
+   * Rows of the table, flattened to the printable fields plus the state.
    *
    * The table takes plain records on purpose, so the domain shape stops here:
    * an employee with no area arrives as `null` and leaves as the placeholder the
-   * column shows.
+   * column shows. `estado` stays in the payload although it is not a column: the
+   * leading flag of the row is painted from it.
    */
   readonly filas = computed<readonly TableRow[]>(() =>
     this.store.filas().map((empleado) => ({

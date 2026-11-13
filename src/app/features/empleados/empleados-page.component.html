@@ -138,13 +138,16 @@
   }
 
   <!--
-    The state and the name are the two columns with a shape of their own; the
+    The number and the name are the two cells with a shape of their own; the
     projected renderer receives the row, the column and the value, so the table
-    stays generic. The name is a real `<button>`: the row click is a pointer
-    shortcut, and the keyboard needs an element that already is a control.
+    stays generic. The state is not a column: it is the flag on the leading edge
+    of the number cell, which is why the table is asked for a leading decoration.
+    The name is a shared `app-row-link`: the row click is a pointer shortcut, and
+    the keyboard needs an element that already is a control.
   -->
   <app-data-table
     [columns]="columnas"
+    [leadingDecoration]="true"
     [rows]="filas()"
     [loading]="cargandoInicial()"
     [emptyMessage]="mensajeVacio()"
@@ -154,27 +157,24 @@
     (rowClick)="abrirFicha($event)"
   >
     <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
-      @if (column.key === 'estado') {
+      @if (column.key === 'num_empleado') {
         <!--
-          A pill plus the word: `Activo` and `Baja` arrive already written, and
-          the word is what carries the state when the colour is gone.
+          The roster only holds active employees, so the state column was
+          redundant: the flag says `Activo` or `Baja` and the component carries
+          the sentence for the screen reader.
         -->
-        <span
-          class="badge"
-          [class.is-activo]="value === 'Activo'"
-          [class.is-baja]="value !== 'Activo'"
-        >
-          {{ value }}
-        </span>
+        <app-row-flag
+          [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
+          [label]="'Estado: ' + row.estado"
+        />
+        {{ value }}
       } @else if (column.key === 'nombre') {
-        <button
-          type="button"
-          class="name-button"
-          [attr.aria-label]="'Ver la ficha de ' + value"
+        <app-row-link
+          [ariaLabel]="'Ver la ficha de ' + value"
           (click)="abrirFichaDesdeNombre($event, row)"
         >
           {{ value }}
-        </button>
+        </app-row-link>
       } @else {
         {{ value }}
       }

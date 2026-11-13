@@ -63,33 +63,20 @@
         <div class="document-states">
           <!--
             Employment state, not the file's: it is the fact that decides whether
-            the rest of the record is history. Same pill shape as the file state
-            beside it, its own two tones.
+            the rest of the record is history. Same pill as the file state beside
+            it, its own two tones.
           -->
-          <span
-            class="status"
-            [class.is-activo]="record.gestion_interna.activo"
-            [class.is-baja]="!record.gestion_interna.activo"
-          >
+          <app-status-pill [estado]="record.gestion_interna.activo ? 'activo' : 'baja'">
             {{ record.gestion_interna.activo ? 'Activo' : 'Baja' }}
-          </span>
+          </app-status-pill>
 
           <!--
-            The traffic light of the contract: a fill per state *plus* the word,
+            The traffic light of the contract: one tone per state *plus* the word,
             so the state survives a grayscale screen and a colour-blind reader.
           -->
-          <span
-            class="pill"
-            [class.is-completo]="record.gestion_interna.estado_expediente.estado === 'completo'"
-            [class.is-casi-completo]="
-              record.gestion_interna.estado_expediente.estado === 'casi_completo'
-            "
-            [class.is-incompleto]="
-              record.gestion_interna.estado_expediente.estado === 'incompleto'
-            "
-          >
+          <app-status-pill [estado]="record.gestion_interna.estado_expediente.estado">
             {{ etiquetaExpediente(record.gestion_interna.estado_expediente.estado) }}
-          </span>
+          </app-status-pill>
         </div>
       </div>
 

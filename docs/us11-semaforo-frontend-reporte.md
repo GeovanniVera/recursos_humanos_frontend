@@ -11,7 +11,7 @@ El backend ya disponía de `GET /api/semaforo` y `GET /api/semaforo/{id}/faltant
 
 ## B. Implementación visual
 
-La pantalla respeta el diseño actual del proyecto y conserva exactamente estas siete columnas: Estado, No., Nombre, Adscripción, Plaza, Campos faltantes y Acciones. Adscripción usa `area.nombre`; Plaza usa `puesto.nombre`. Los valores ausentes tienen texto explícito. La única acción implementada es **Ver faltantes**.
+La pantalla respeta el diseño actual del proyecto y conserva exactamente estas cinco columnas: No., Nombre, Adscripción, Plaza y Campos faltantes. El estado del expediente no ocupa una columna: se dibuja como una franja en el borde inicial de la fila, con una oración equivalente para lectores de pantalla. Adscripción usa `area.nombre`; Plaza usa `puesto.nombre`. Los valores ausentes tienen texto explícito. La única acción implementada es **Ver faltantes**.
 
 Los estados se distinguen por texto e iconos además del color. Se utilizaron tokens semánticos, sin modificar la paleta global. El amarillo usa texto principal con borde e icono de advertencia: el texto blanco sobre el amarillo del tema claro no alcanzaba contraste suficiente para texto pequeño. Los controles de orden tienen `aria-sort`, los filtros `aria-pressed`, los campos tienen etiquetas y la tabla conserva su desplazamiento horizontal en anchuras reducidas.
 
@@ -77,7 +77,7 @@ git diff --check
 
 Resultado final: **36 archivos, 274 pruebas aprobadas**, salida 0. Son 31 pruebas nuevas y 243 anteriores. La última ejecución completa terminó a las 19:57 UTC. Stylelint y compilación de producción aprobaron, sin errores de presupuesto. El build ejecuta `prebuild` y por ello también valida SCSS.
 
-Las pruebas nuevas comprueban contrato y parámetros HTTP, siete columnas, estados, contadores del servidor, búsqueda por nombre/número con debounce, filtros combinados, orden, paginación, selector inicial, carga, vacío, errores, reintento, ausencia de valores sensibles y acciones fuera del alcance, respuesta completa sin faltantes y cancelación de solicitudes. Se corrigieron durante la verificación la selección inicial del tamaño y el caso de última página cuando desaparecen todos los resultados; ambos tienen regresión automatizada.
+Las pruebas nuevas comprueban contrato y parámetros HTTP, cinco columnas, estados, contadores del servidor, búsqueda por nombre/número con debounce, filtros combinados, orden, paginación, selector inicial, carga, vacío, errores, reintento, ausencia de valores sensibles y acciones fuera del alcance, respuesta completa sin faltantes y cancelación de solicitudes. Se corrigieron durante la verificación la selección inicial del tamaño y el caso de última página cuando desaparecen todos los resultados; ambos tienen regresión automatizada.
 
 Estas pruebas usan HttpTestingController/datos controlados en memoria. No ejecutan suites Laravel ni modifican la base de desarrollo. Son distintas de las pruebas backend anteriores en la base aislada.
 
@@ -89,7 +89,7 @@ Se contrastaron los contadores con una consulta de lectura a Eloquent en el cont
 
 | Caso real | Resultado observado | Estado |
 | --- | --- | --- |
-| Acceso autenticado y listado | 425 activos; siete columnas y detalle disponible | Aprobado |
+| Acceso autenticado y listado | 425 activos; cinco columnas y detalle disponible | Aprobado |
 | Contadores | 0 completos + 231 casi completos + 194 incompletos = 425; coinciden con la lectura de BD | Aprobado |
 | Filtro casi completo | Filas del estado seleccionado; total filtrado 231, contadores generales conservados | Aprobado |
 | Búsqueda por número combinada con estado | Un resultado; contadores del universo buscado iguales a uno | Aprobado |

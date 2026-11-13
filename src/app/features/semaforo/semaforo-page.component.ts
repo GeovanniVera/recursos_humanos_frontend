@@ -12,12 +12,17 @@ import {
 import { SemaforoService } from '../../core/semaforo/semaforo.service';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
+import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { ESTADOS_EXPEDIENTE } from './estado-expediente.component';
 import { FaltantesDrawer } from './faltantes-drawer.component';
 
+/** Placeholder for a footer value with nothing to report. */
+const SIN_DATO = '—';
+
 @Component({
   selector: 'app-semaforo-page',
-  imports: [RouterLink, Button, DataTable, FaltantesDrawer],
+  imports: [RouterLink, Button, DataTable, FaltantesDrawer, RowFlag, RowLink],
   templateUrl: './semaforo-page.component.html',
   styleUrl: './semaforo-page.component.scss',
 })
@@ -43,7 +48,9 @@ export class SemaforoPage {
   readonly status = signal(0);
   readonly drawerOpen = signal(false);
   readonly empleadoId = signal<number | null>(null);
+  readonly errorPagina = signal<string | null>(null);
   readonly tamanos = [10, 25, 50, 100];
+  private readonly formato = new Intl.NumberFormat('es-MX');
   readonly filtros: {
     estado: EstadoExpediente | undefined;
     label: string;
@@ -81,13 +88,56 @@ export class SemaforoPage {
       campos_faltantes: `${e.semaforo.campos_faltantes} de ${e.semaforo.total_campos}`,
     })),
   );
+  /**
+   * The footer only exists once a response has arrived: before the first answer
+   * there is no page count to honour, and after a failure there are no rows.
+   */
+  readonly hayDatos = computed(() => this.respuesta() !== null);
+
+  /** The server owns the page count; it is never recomputed from the row count. */
+  readonly totalPaginas = computed(() => this.respuesta()?.meta.total_paginas ?? 1);
+
+  /** Upper bound of the "Ir a página" field. An empty listing still has one page. */
+  readonly totalPaginasMax = computed(() => Math.max(this.totalPaginas(), 1));
+
+  /** `Mostrando 1 a 25 de 127 expedientes`. */
   readonly rango = computed(() => {
     const meta = this.respuesta()?.meta;
     if (this.loading()) return 'Consultando expedientes…';
-    if (!meta || meta.total === 0) return 'Sin resultados';
+    if (!meta) return SIN_DATO;
+    if (meta.total === 0) return 'Sin resultados';
     const inicio = (meta.pagina - 1) * meta.por_pagina + 1;
-    return `Mostrando ${inicio} a ${Math.min(inicio + meta.por_pagina - 1, meta.total)} de ${meta.total} expedientes`;
+    const fin = Math.min(inicio + meta.por_pagina - 1, meta.total);
+    return `Mostrando ${this.formato.format(inicio)} a ${this.formato.format(fin)} de ${this.formato.format(meta.total)} expedientes`;
   });
+
+  /**
+   * `Página 3 de 6`. Reads `pagina()` and not `meta.pagina`: while a request is
+   * in flight the two disagree, and the label must match the guards the user sees.
+   */
+  readonly etiquetaPagina = computed(
+    () =>
+      `Página ${this.formato.format(this.pagina())} de ${this.formato.format(this.totalPaginasMax())}`,
+  );
+
+  /** A load in flight freezes every control that would ask for another page. */
+  readonly controlesDeshabilitados = computed(() => this.loading());
+
+  readonly primeraDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.pagina() <= 1,
+  );
+
+  readonly anteriorDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.pagina() <= 1,
+  );
+
+  readonly siguienteDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.pagina() >= this.totalPaginas(),
+  );
+
+  readonly ultimaDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.pagina() >= this.totalPaginas(),
+  );
 
   constructor() {
     this.requests
@@ -163,17 +213,53 @@ export class SemaforoPage {
     this.pagina.set(1);
     this.solicitar();
   }
-  tamano(event: Event): void {
+  /**
+   * Changes how many rows a page holds. A different size is a different window
+   * over the server-side listing, so it restarts at page 1 and re-queries.
+   */
+  cambiarPorPagina(event: Event): void {
     const n = Number((event.target as HTMLSelectElement).value);
-    if (!this.tamanos.includes(n)) return;
+    if (!Number.isFinite(n) || !this.tamanos.includes(n) || n === this.porPagina()) return;
+    this.errorPagina.set(null);
     this.porPagina.set(n);
     this.pagina.set(1);
     this.solicitar();
   }
   irA(n: number): void {
-    if (this.loading() || n < 1 || n > (this.respuesta()?.meta.total_paginas ?? 1)) return;
+    if (this.loading() || n < 1 || n > this.totalPaginasMax()) return;
+    this.errorPagina.set(null);
     this.pagina.set(n);
     this.solicitar();
+  }
+  irAPrimera(): void {
+    this.irA(1);
+  }
+  irAUltima(): void {
+    this.irA(this.totalPaginas());
+  }
+  /**
+   * Jump from the "Ir a página" field.
+   *
+   * The field is a real number input with the range as its `max`, but a number
+   * input still lets a typed value through, and a page out of range would spend
+   * a request on an answer the backend cannot give.
+   */
+  irAPaginaDesdeCampo(event: Event, valor: string): void {
+    event.preventDefault();
+
+    if (this.loading()) {
+      return;
+    }
+
+    const destino = Number(valor);
+    const maximo = this.totalPaginasMax();
+
+    if (!Number.isInteger(destino) || destino < 1 || destino > maximo) {
+      this.errorPagina.set(`Ingresa un número entre 1 y ${this.formato.format(maximo)}.`);
+      return;
+    }
+
+    this.irA(destino);
   }
   abrir(row: TableRow): void {
     this.empleadoId.set(Number(row['id']));
