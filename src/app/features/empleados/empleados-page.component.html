@@ -5,8 +5,8 @@
       <h1 class="title">Empleados activos</h1>
       <p class="sub">
         La plantilla vigente: empleados con la cuenta activa y sin fecha de baja. La consulta filtra
-        por estado en el servidor, así que las cifras de abajo son las de esta lista y no las de todo
-        el padrón.
+        por estado en el servidor, así que las cifras de abajo son las de esta lista y no las de
+        todo el padrón.
       </p>
     </div>
 
@@ -22,11 +22,7 @@
     <div class="head-actions">
       <a class="new-employee" routerLink="/empleados/alta">Nuevo empleado</a>
 
-      <app-button
-        variant="secondary"
-        [disabled]="controlesDeshabilitados()"
-        (click)="solicitar()"
-      >
+      <app-button variant="secondary" [disabled]="controlesDeshabilitados()" (click)="solicitar()">
         Actualizar
       </app-button>
     </div>
@@ -193,6 +189,8 @@
   the inactive workers out and the row has to disappear.
 -->
 <app-ficha-drawer
+  [puedeEditar]="puedeEditar()"
+  (editarSolicitado)="editarEmpleado($event)"
   [empleadoId]="fichaId()"
   [(open)]="fichaAbierta"
   (bajaRegistrada)="alRegistrarBaja()"

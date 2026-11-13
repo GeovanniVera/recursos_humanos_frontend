@@ -1,11 +1,18 @@
 <section class="page">
   <header class="head">
     <p class="overline">Recursos Humanos</p>
-    <h1 class="title">Alta de empleado</h1>
-    <p class="sub">
-      Carga la ficha del nuevo trabajador en cuatro pasos. Los datos marcados como obligatorios son
-      los que el sistema valida al registrar; el resto se puede completar después.
-    </p>
+    <h1 class="title">{{ editando ? 'Editar empleado' : 'Alta de empleado' }}</h1>
+    @if (editando) {
+      <p class="sub">
+        Solo puedes modificar Estado civil y Estudios y experiencia. Los demás datos son de solo
+        lectura.
+      </p>
+    } @else {
+      <p class="sub">
+        Carga la ficha del nuevo trabajador en cuatro pasos. Los datos marcados como obligatorios
+        son los que el sistema valida al registrar; el resto se puede completar después.
+      </p>
+    }
   </header>
 
   @if (errorCatalogos(); as aviso) {
@@ -15,7 +22,12 @@
       real one. The icon carries the state together with the colour.
     -->
     <app-alert-banner variant="error" [message]="aviso">
-      <app-button alert-actions variant="secondary" [disabled]="cargando()" (click)="cargarCatalogos()">
+      <app-button
+        alert-actions
+        variant="secondary"
+        [disabled]="cargando()"
+        (click)="cargarCatalogos()"
+      >
         Reintentar
       </app-button>
     </app-alert-banner>
@@ -78,11 +90,7 @@
           The general sentence of the failure, plus the messages that belong to
           no card. Per-field messages are printed next to their own control.
         -->
-        <app-alert-banner
-          variant="error"
-          [message]="mensaje()"
-          [messages]="erroresSueltos()"
-        />
+        <app-alert-banner variant="error" [message]="mensaje()" [messages]="erroresSueltos()" />
       }
 
       @switch (paso()) {
@@ -90,7 +98,11 @@
           <fieldset class="group enter-stage">
             <legend class="group-title" tabindex="-1" #stepHeading>Identificación</legend>
             <p class="group-hint">
-              El número de empleado, el nombre y el correo institucional son obligatorios.
+              {{
+                editando
+                  ? 'En Identificación solo puedes modificar Estado civil.'
+                  : 'El número de empleado, el nombre y el correo institucional son obligatorios.'
+              }}
             </p>
 
             <div class="grid">
@@ -104,6 +116,7 @@
                 -->
                 <input
                   id="num_empleado"
+                  [readOnly]="editando"
                   name="num_empleado"
                   class="control"
                   type="text"
@@ -126,6 +139,7 @@
                 <label class="label" for="nombre">Nombre completo</label>
                 <input
                   id="nombre"
+                  [readOnly]="editando"
                   name="nombre"
                   class="control"
                   type="text"
@@ -147,6 +161,7 @@
                 <label class="label" for="curp">CURP</label>
                 <input
                   id="curp"
+                  [readOnly]="editando"
                   name="curp"
                   class="control"
                   type="text"
@@ -188,6 +203,7 @@
                 -->
                 <input
                   id="fecha_nacimiento"
+                  [readOnly]="editando"
                   name="fecha_nacimiento"
                   class="control"
                   type="date"
@@ -207,7 +223,9 @@
                   </p>
                 }
                 @if (errorDe('fecha_nacimiento'); as error) {
-                  <p class="field-error" [id]="'error-fecha_nacimiento'" role="alert">{{ error }}</p>
+                  <p class="field-error" [id]="'error-fecha_nacimiento'" role="alert">
+                    {{ error }}
+                  </p>
                 }
               </div>
 
@@ -221,22 +239,28 @@
                   holds the answer.
                 -->
                 <label class="label" for="sexo">Sexo</label>
-                <select
-                  id="sexo"
-                  name="sexo"
-                  class="control"
-                  [attr.disabled]="sexoDerivado() ? '' : null"
-                  (change)="elegirTexto('sexo', $event)"
-                  (blur)="tocar('sexo')"
-                  [class.is-invalid]="errorDe('sexo') !== null"
-                  [attr.aria-invalid]="errorDe('sexo') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('sexo')"
-                >
-                  <option value="" [selected]="modelo().sexo === ''">Elige una opción</option>
-                  @for (opcion of sexos(); track opcion) {
-                    <option [value]="opcion" [selected]="modelo().sexo === opcion">{{ opcion }}</option>
-                  }
-                </select>
+                @if (editando) {
+                  <input id="sexo" class="control" [value]="etiquetaProtegida('sexo')" readonly />
+                } @else {
+                  <select
+                    id="sexo"
+                    name="sexo"
+                    class="control"
+                    [attr.disabled]="sexoDerivado() ? '' : null"
+                    (change)="elegirTexto('sexo', $event)"
+                    (blur)="tocar('sexo')"
+                    [class.is-invalid]="errorDe('sexo') !== null"
+                    [attr.aria-invalid]="errorDe('sexo') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('sexo')"
+                  >
+                    <option value="" [selected]="modelo().sexo === ''">Elige una opción</option>
+                    @for (opcion of sexos(); track opcion) {
+                      <option [value]="opcion" [selected]="modelo().sexo === opcion">
+                        {{ opcion }}
+                      </option>
+                    }
+                  </select>
+                }
                 @if (sexoDerivado()) {
                   <p class="field-hint" [id]="'derivado-sexo'">Calculado desde la CURP</p>
                 }
@@ -269,6 +293,14 @@
                 @if (errorDe('estado_civil_id'); as error) {
                   <p class="field-error" [id]="'error-estado_civil_id'" role="alert">{{ error }}</p>
                 }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="estado_civil_id"
+                    etiqueta="Estado civil"
+                    [revision]="historialRevision()"
+                  />
+                }
               </div>
 
               <div class="field">
@@ -277,35 +309,46 @@
                   The name travels, not the id: the request validates
                   `exists:catalogo_municipios,nombre`.
                 -->
-                <select
-                  id="municipio"
-                  name="municipio"
-                  class="control"
-                  (change)="elegirTexto('municipio', $event)"
-                  (blur)="tocar('municipio')"
-                  [class.is-invalid]="errorDe('municipio') !== null"
-                  [attr.aria-invalid]="errorDe('municipio') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('municipio')"
-                >
-                  <option value="" [selected]="modelo().municipio === ''">Elige un municipio</option>
-                  <!--
+                @if (editando) {
+                  <input
+                    id="municipio"
+                    class="control"
+                    [value]="etiquetaProtegida('municipio')"
+                    readonly
+                  />
+                } @else {
+                  <select
+                    id="municipio"
+                    name="municipio"
+                    class="control"
+                    (change)="elegirTexto('municipio', $event)"
+                    (blur)="tocar('municipio')"
+                    [class.is-invalid]="errorDe('municipio') !== null"
+                    [attr.aria-invalid]="errorDe('municipio') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('municipio')"
+                  >
+                    <option value="" [selected]="modelo().municipio === ''">
+                      Elige un municipio
+                    </option>
+                    <!--
                     141 rows in one list are unusable: they arrive grouped by
                     entity, and `entidad` is a database literal (`edomex`,
                     `cdmx`) that has to be translated for display.
                   -->
-                  @for (grupo of municipiosPorEntidad(); track grupo.entidad) {
-                    <optgroup [label]="grupo.entidad">
-                      @for (municipio of grupo.municipios; track municipio.id) {
-                        <option
-                          [value]="municipio.nombre"
-                          [selected]="modelo().municipio === municipio.nombre"
-                        >
-                          {{ municipio.nombre }}
-                        </option>
-                      }
-                    </optgroup>
-                  }
-                </select>
+                    @for (grupo of municipiosPorEntidad(); track grupo.entidad) {
+                      <optgroup [label]="grupo.entidad">
+                        @for (municipio of grupo.municipios; track municipio.id) {
+                          <option
+                            [value]="municipio.nombre"
+                            [selected]="modelo().municipio === municipio.nombre"
+                          >
+                            {{ municipio.nombre }}
+                          </option>
+                        }
+                      </optgroup>
+                    }
+                  </select>
+                }
                 @if (errorDe('municipio'); as error) {
                   <p class="field-error" [id]="'error-municipio'" role="alert">{{ error }}</p>
                 }
@@ -315,6 +358,7 @@
                 <label class="label" for="correo_institucional">Correo institucional</label>
                 <input
                   id="correo_institucional"
+                  [readOnly]="editando"
                   name="correo_institucional"
                   class="control"
                   type="email"
@@ -342,7 +386,11 @@
           <fieldset class="group enter-stage">
             <legend class="group-title" tabindex="-1" #stepHeading>Plaza</legend>
             <p class="group-hint">
-              El área, el puesto y la fecha de inicio en el puesto son obligatorios.
+              {{
+                editando
+                  ? 'Los datos de Plaza son de solo lectura.'
+                  : 'El área, el puesto y la fecha de inicio en el puesto son obligatorios.'
+              }}
             </p>
 
             <div class="grid">
@@ -353,27 +401,36 @@
                   and their depth is expressed with indentation. A node that is
                   not assignable cannot hold staff, so it cannot be chosen.
                 -->
-                <select
-                  id="area_id"
-                  name="area_id"
-                  class="control"
-                  (change)="cambiarArea($event)"
-                  (blur)="tocar('area_id')"
-                  [class.is-invalid]="errorDe('area_id') !== null"
-                  [attr.aria-invalid]="errorDe('area_id') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('area_id')"
-                >
-                  <option value="" [selected]="modelo().area_id === null">Elige un área</option>
-                  @for (area of areas(); track area.id) {
-                    <option
-                      [value]="area.id"
-                      [selected]="modelo().area_id === area.id"
-                      [disabled]="!area.asignable"
-                    >
-                      {{ area.sangria }}{{ area.nombre }}
-                    </option>
-                  }
-                </select>
+                @if (editando) {
+                  <input
+                    id="area_id"
+                    class="control"
+                    [value]="etiquetaProtegida('area_id')"
+                    readonly
+                  />
+                } @else {
+                  <select
+                    id="area_id"
+                    name="area_id"
+                    class="control"
+                    (change)="cambiarArea($event)"
+                    (blur)="tocar('area_id')"
+                    [class.is-invalid]="errorDe('area_id') !== null"
+                    [attr.aria-invalid]="errorDe('area_id') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('area_id')"
+                  >
+                    <option value="" [selected]="modelo().area_id === null">Elige un área</option>
+                    @for (area of areas(); track area.id) {
+                      <option
+                        [value]="area.id"
+                        [selected]="modelo().area_id === area.id"
+                        [disabled]="!area.asignable"
+                      >
+                        {{ area.sangria }}{{ area.nombre }}
+                      </option>
+                    }
+                  </select>
+                }
                 @if (errorDe('area_id'); as error) {
                   <p class="field-error" [id]="'error-area_id'" role="alert">{{ error }}</p>
                 }
@@ -386,24 +443,35 @@
                   `area_puesto` pivot: a post the area does not offer is not on
                   the list, because the server rejects that pair with a `422`.
                 -->
-                <select
-                  id="puesto_id"
-                  name="puesto_id"
-                  class="control"
-                  (change)="elegirNumero('puesto_id', $event)"
-                  (blur)="tocar('puesto_id')"
-                  [class.is-invalid]="errorDe('puesto_id') !== null"
-                  [attr.aria-invalid]="errorDe('puesto_id') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('puesto_id')"
-                >
-                  <option value="" [selected]="modelo().puesto_id === null">Elige un puesto</option>
-                  @for (puesto of puestos(); track puesto.id) {
-                    <option [value]="puesto.id" [selected]="modelo().puesto_id === puesto.id">
-                      {{ etiquetaPuesto(puesto) }}
+                @if (editando) {
+                  <input
+                    id="puesto_id"
+                    class="control"
+                    [value]="etiquetaProtegida('puesto_id')"
+                    readonly
+                  />
+                } @else {
+                  <select
+                    id="puesto_id"
+                    name="puesto_id"
+                    class="control"
+                    (change)="elegirNumero('puesto_id', $event)"
+                    (blur)="tocar('puesto_id')"
+                    [class.is-invalid]="errorDe('puesto_id') !== null"
+                    [attr.aria-invalid]="errorDe('puesto_id') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('puesto_id')"
+                  >
+                    <option value="" [selected]="modelo().puesto_id === null">
+                      Elige un puesto
                     </option>
-                  }
-                </select>
-                @if (modelo().area_id !== null && puestos().length === 0) {
+                    @for (puesto of puestos(); track puesto.id) {
+                      <option [value]="puesto.id" [selected]="modelo().puesto_id === puesto.id">
+                        {{ etiquetaPuesto(puesto) }}
+                      </option>
+                    }
+                  </select>
+                }
+                @if (!editando && modelo().area_id !== null && puestos().length === 0) {
                   <!--
                     An area without posts is a catalogue gap, not a mistake of
                     the operator: the state is announced instead of leaving a
@@ -435,12 +503,15 @@
                 <label class="label" for="fecha_inicio_puesto">Fecha de inicio en el puesto</label>
                 <input
                   id="fecha_inicio_puesto"
+                  [readOnly]="editando"
                   name="fecha_inicio_puesto"
                   class="control"
                   type="date"
                   inputmode="numeric"
                   [attr.max]="hoy"
-                  [attr.min]="modelo().fecha_ingreso_gobierno === '' ? null : modelo().fecha_ingreso_gobierno"
+                  [attr.min]="
+                    modelo().fecha_ingreso_gobierno === '' ? null : modelo().fecha_ingreso_gobierno
+                  "
                   [ngModel]="modelo().fecha_inicio_puesto"
                   (ngModelChange)="guardar('fecha_inicio_puesto', $event)"
                   (blur)="tocar('fecha_inicio_puesto')"
@@ -456,9 +527,12 @@
               </div>
 
               <div class="field">
-                <label class="label" for="fecha_ingreso_gobierno">Fecha de ingreso al gobierno</label>
+                <label class="label" for="fecha_ingreso_gobierno"
+                  >Fecha de ingreso al gobierno</label
+                >
                 <input
                   id="fecha_ingreso_gobierno"
+                  [readOnly]="editando"
                   name="fecha_ingreso_gobierno"
                   class="control"
                   type="date"
@@ -478,7 +552,7 @@
                 }
               </div>
 
-              @if (esMandoMedio()) {
+              @if (esMandoMedio() && !editando) {
                 <!--
                   A mando medio post fixes both values on the server, so there is
                   nothing to choose: the card says what will travel instead of
@@ -491,25 +565,34 @@
               } @else {
                 <div class="field">
                   <label class="label" for="tipo_personal">Tipo de personal</label>
-                  <select
-                    id="tipo_personal"
-                    name="tipo_personal"
-                    class="control"
-                    (change)="elegirTexto('tipo_personal', $event)"
-                    (blur)="tocar('tipo_personal')"
-                    [class.is-invalid]="errorDe('tipo_personal') !== null"
-                    [attr.aria-invalid]="errorDe('tipo_personal') === null ? null : 'true'"
-                    [attr.aria-describedby]="idDeError('tipo_personal')"
-                  >
-                    <option value="" [selected]="modelo().tipo_personal === ''">
-                      Elige una opción
-                    </option>
-                    @for (tipo of tiposPersonal(); track tipo) {
-                      <option [value]="tipo" [selected]="modelo().tipo_personal === tipo">
-                        {{ tipo }}
+                  @if (editando) {
+                    <input
+                      id="tipo_personal"
+                      class="control"
+                      [value]="etiquetaProtegida('tipo_personal')"
+                      readonly
+                    />
+                  } @else {
+                    <select
+                      id="tipo_personal"
+                      name="tipo_personal"
+                      class="control"
+                      (change)="elegirTexto('tipo_personal', $event)"
+                      (blur)="tocar('tipo_personal')"
+                      [class.is-invalid]="errorDe('tipo_personal') !== null"
+                      [attr.aria-invalid]="errorDe('tipo_personal') === null ? null : 'true'"
+                      [attr.aria-describedby]="idDeError('tipo_personal')"
+                    >
+                      <option value="" [selected]="modelo().tipo_personal === ''">
+                        Elige una opción
                       </option>
-                    }
-                  </select>
+                      @for (tipo of tiposPersonal(); track tipo) {
+                        <option [value]="tipo" [selected]="modelo().tipo_personal === tipo">
+                          {{ tipo }}
+                        </option>
+                      }
+                    </select>
+                  }
                   @if (errorDe('tipo_personal'); as error) {
                     <p class="field-error" [id]="'error-tipo_personal'" role="alert">{{ error }}</p>
                   }
@@ -517,25 +600,34 @@
 
                 <div class="field">
                   <label class="label" for="tipo_jornada">Tipo de jornada</label>
-                  <select
-                    id="tipo_jornada"
-                    name="tipo_jornada"
-                    class="control"
-                    (change)="elegirTexto('tipo_jornada', $event)"
-                    (blur)="tocar('tipo_jornada')"
-                    [class.is-invalid]="errorDe('tipo_jornada') !== null"
-                    [attr.aria-invalid]="errorDe('tipo_jornada') === null ? null : 'true'"
-                    [attr.aria-describedby]="idDeError('tipo_jornada')"
-                  >
-                    <option value="" [selected]="modelo().tipo_jornada === ''">
-                      Elige una opción
-                    </option>
-                    @for (jornada of tiposJornada(); track jornada) {
-                      <option [value]="jornada" [selected]="modelo().tipo_jornada === jornada">
-                        {{ jornada }}
+                  @if (editando) {
+                    <input
+                      id="tipo_jornada"
+                      class="control"
+                      [value]="etiquetaProtegida('tipo_jornada')"
+                      readonly
+                    />
+                  } @else {
+                    <select
+                      id="tipo_jornada"
+                      name="tipo_jornada"
+                      class="control"
+                      (change)="elegirTexto('tipo_jornada', $event)"
+                      (blur)="tocar('tipo_jornada')"
+                      [class.is-invalid]="errorDe('tipo_jornada') !== null"
+                      [attr.aria-invalid]="errorDe('tipo_jornada') === null ? null : 'true'"
+                      [attr.aria-describedby]="idDeError('tipo_jornada')"
+                    >
+                      <option value="" [selected]="modelo().tipo_jornada === ''">
+                        Elige una opción
                       </option>
-                    }
-                  </select>
+                      @for (jornada of tiposJornada(); track jornada) {
+                        <option [value]="jornada" [selected]="modelo().tipo_jornada === jornada">
+                          {{ jornada }}
+                        </option>
+                      }
+                    </select>
+                  }
                   @if (errorDe('tipo_jornada'); as error) {
                     <p class="field-error" [id]="'error-tipo_jornada'" role="alert">{{ error }}</p>
                   }
@@ -549,7 +641,11 @@
           <fieldset class="group enter-stage">
             <legend class="group-title" tabindex="-1" #stepHeading>Estudios y experiencia</legend>
             <p class="group-hint">
-              Todo este bloque es opcional; se puede completar después del alta.
+              {{
+                editando
+                  ? 'Puedes actualizar estos campos. Los valores anteriores se conservarán en el historial.'
+                  : 'Todo este bloque es opcional; se puede completar después del alta.'
+              }}
             </p>
 
             <div class="grid">
@@ -569,16 +665,23 @@
                     Elige una opción
                   </option>
                   @for (nivel of niveles(); track nivel.id) {
-                    <option
-                      [value]="nivel.id"
-                      [selected]="modelo().nivel_estudios_id === nivel.id"
-                    >
+                    <option [value]="nivel.id" [selected]="modelo().nivel_estudios_id === nivel.id">
                       {{ nivel.descripcion }}
                     </option>
                   }
                 </select>
                 @if (errorDe('nivel_estudios_id'); as error) {
-                  <p class="field-error" [id]="'error-nivel_estudios_id'" role="alert">{{ error }}</p>
+                  <p class="field-error" [id]="'error-nivel_estudios_id'" role="alert">
+                    {{ error }}
+                  </p>
+                }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="nivel_estudios_id"
+                    etiqueta="Nivel de estudios"
+                    [revision]="historialRevision()"
+                  />
                 }
               </div>
 
@@ -602,6 +705,14 @@
                     {{ error }}
                   </p>
                 }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="escuela_procedencia"
+                    etiqueta="Escuela de procedencia"
+                    [revision]="historialRevision()"
+                  />
+                }
               </div>
 
               <div class="field">
@@ -624,6 +735,14 @@
                 @if (errorDe('generacion'); as error) {
                   <p class="field-error" [id]="'error-generacion'" role="alert">{{ error }}</p>
                 }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="generacion"
+                    etiqueta="Generación"
+                    [revision]="historialRevision()"
+                  />
+                }
               </div>
 
               <div class="field">
@@ -645,7 +764,17 @@
                   [attr.aria-describedby]="idDeError('exp_publico_anios')"
                 />
                 @if (errorDe('exp_publico_anios'); as error) {
-                  <p class="field-error" [id]="'error-exp_publico_anios'" role="alert">{{ error }}</p>
+                  <p class="field-error" [id]="'error-exp_publico_anios'" role="alert">
+                    {{ error }}
+                  </p>
+                }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="exp_publico_anios"
+                    etiqueta="Experiencia pública (años)"
+                    [revision]="historialRevision()"
+                  />
                 }
               </div>
 
@@ -668,7 +797,17 @@
                   [attr.aria-describedby]="idDeError('exp_privado_anios')"
                 />
                 @if (errorDe('exp_privado_anios'); as error) {
-                  <p class="field-error" [id]="'error-exp_privado_anios'" role="alert">{{ error }}</p>
+                  <p class="field-error" [id]="'error-exp_privado_anios'" role="alert">
+                    {{ error }}
+                  </p>
+                }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="exp_privado_anios"
+                    etiqueta="Experiencia privada (años)"
+                    [revision]="historialRevision()"
+                  />
                 }
               </div>
 
@@ -685,20 +824,27 @@
                   [attr.aria-describedby]="idDeError('trabaja_otro_lugar')"
                 >
                   @for (opcion of opcionesOtroLugar(); track opcion) {
-                    <option
-                      [value]="opcion"
-                      [selected]="modelo().trabaja_otro_lugar === opcion"
-                    >
+                    <option [value]="opcion" [selected]="modelo().trabaja_otro_lugar === opcion">
                       {{ opcion }}
                     </option>
                   }
                 </select>
                 @if (errorDe('trabaja_otro_lugar'); as error) {
-                  <p class="field-error" [id]="'error-trabaja_otro_lugar'" role="alert">{{ error }}</p>
+                  <p class="field-error" [id]="'error-trabaja_otro_lugar'" role="alert">
+                    {{ error }}
+                  </p>
+                }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="trabaja_otro_lugar"
+                    etiqueta="¿Trabaja en otro lugar?"
+                    [revision]="historialRevision()"
+                  />
                 }
               </div>
 
-              @if (pideOtroLugar()) {
+              @if (pideOtroLugar() || editando) {
                 <!--
                   The backend prohibits this field when the answer is `No`, so it
                   is only on screen when it has a value to carry.
@@ -707,6 +853,7 @@
                   <label class="label" for="trabaja_otro_donde">¿Dónde trabaja?</label>
                   <input
                     id="trabaja_otro_donde"
+                    [readOnly]="!pideOtroLugar()"
                     name="trabaja_otro_donde"
                     class="control"
                     type="text"
@@ -722,6 +869,14 @@
                     <p class="field-error" [id]="'error-trabaja_otro_donde'" role="alert">
                       {{ error }}
                     </p>
+                  }
+                  @if (editando && empleadoId !== null) {
+                    <app-historial-campo
+                      [empleadoId]="empleadoId"
+                      campo="trabaja_otro_donde"
+                      etiqueta="¿Dónde trabaja?"
+                      [revision]="historialRevision()"
+                    />
                   }
                 </div>
               }
@@ -743,6 +898,14 @@
                 ></textarea>
                 @if (errorDe('observaciones'); as error) {
                   <p class="field-error" [id]="'error-observaciones'" role="alert">{{ error }}</p>
+                }
+                @if (editando && empleadoId !== null) {
+                  <app-historial-campo
+                    [empleadoId]="empleadoId"
+                    campo="observaciones"
+                    etiqueta="Observaciones"
+                    [revision]="historialRevision()"
+                  />
                 }
               </div>
             </div>
@@ -774,7 +937,11 @@
             </div>
 
             <p class="group-hint">
-              Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.
+              {{
+                editando
+                  ? 'Se guardarán únicamente los campos permitidos. Los cambios académicos y de experiencia quedarán en el historial.'
+                  : 'Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.'
+              }}
             </p>
           </div>
         }
@@ -792,18 +959,17 @@
             [disabled]="bloqueado()"
             [loading]="enviando()"
           >
-            Registrar empleado
+            {{ editando ? 'Guardar Empleado' : 'Registrar empleado' }}
           </app-button>
         } @else {
-          <app-button
-            variant="primary"
-            type="submit"
-            [disabled]="bloqueado() || !puedeContinuar()"
-          >
+          <app-button variant="primary" type="submit" [disabled]="bloqueado() || !puedeContinuar()">
             Continuar
           </app-button>
         }
       </div>
     </form>
+    @if (editando && empleadoId !== null && paso() === 2) {
+      <app-informacion-historial [empleadoId]="empleadoId" [revision]="historialRevision()" />
+    }
   }
 </section>

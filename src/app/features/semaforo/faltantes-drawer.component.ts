@@ -2,6 +2,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, input, model, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
+import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { EMPTY, Subject, catchError, finalize, switchMap, tap } from 'rxjs';
 import { etiquetaCampoExpediente } from '../../core/empleados/expediente-campos';
 import { FaltantesResponse } from '../../core/semaforo/semaforo.models';
@@ -19,6 +21,15 @@ import { EstadoExpedienteBadge } from './estado-expediente.component';
 })
 export class FaltantesDrawer {
   private readonly api = inject(SemaforoService);
+  private readonly auth = inject(AuthService);
+  readonly puedeEditar = () => puedeEditarEmpleado(this.auth.rol());
+  editar(): void {
+    const id = this.datos()?.empleado.id;
+    if (id !== undefined && this.puedeEditar()) {
+      this.open.set(false);
+      void this.router.navigate(['/empleados', id, 'editar']);
+    }
+  }
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly requests = new Subject<number | null>();

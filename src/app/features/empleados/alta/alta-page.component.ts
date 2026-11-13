@@ -10,8 +10,16 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize, forkJoin, map, tap } from 'rxjs';
+import {
+  EditarEmpleadoService,
+  CAMPOS_EDITABLES,
+  EdicionEmpleado,
+} from '../../../core/empleados/editar.service';
+import { FichaEmpleado } from '../../../core/empleados/ficha.models';
+import { InformacionHistorial } from './informacion-historial.component';
+import { HistorialCampo } from './historial-campo.component';
 import { flattenAreaTree } from '../../../core/catalogos/area-tree';
 import {
   AltaEmpleadoRequest,
@@ -200,13 +208,15 @@ type CampoTexto =
   | 'observaciones';
 
 /** Optional numeric fields of the request. */
-type CampoNumero = 'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_id' | 'estado_civil_id';
+type CampoNumero =
+  'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_id' | 'estado_civil_id';
 
 /** Fields chosen with a `<select>` that carries a foreign key. */
 type CampoSelectNumero = 'area_id' | 'puesto_id' | 'estado_civil_id' | 'nivel_estudios_id';
 
 /** Fields chosen with a `<select>` that carries the literal value. */
-type CampoSelectTexto = 'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar' | 'municipio';
+type CampoSelectTexto =
+  'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar' | 'municipio';
 
 /** One option of the area `<select>`, already flattened and indented. */
 interface AreaOpcion {
@@ -305,12 +315,34 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  */
 @Component({
   selector: 'app-alta-page',
-  imports: [AlertBanner, Button, FormsModule],
+  imports: [AlertBanner, Button, FormsModule, InformacionHistorial, HistorialCampo],
   templateUrl: './alta-page.component.html',
   styleUrl: './alta-page.component.scss',
 })
 export class AltaPage {
   private readonly altaService = inject(AltaService);
+  private readonly editarService = inject(EditarEmpleadoService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  readonly empleadoId = Number(this.route?.snapshot.paramMap.get('id')) || null;
+  readonly editando = this.empleadoId !== null;
+  readonly registroActual = signal<FichaEmpleado | null>(null);
+  readonly historialRevision = signal(0);
+  soloLectura(campo: string): boolean {
+    return this.editando && !(CAMPOS_EDITABLES as readonly string[]).includes(campo);
+  }
+  etiquetaProtegida(campo: string): string {
+    const f = this.registroActual();
+    if (!f) return 'Sin dato';
+    const etiquetas: Record<string, string | null> = {
+      area_id: f.plaza.area,
+      puesto_id: f.plaza.puesto,
+      sexo: f.identificacion.sexo,
+      municipio: f.identificacion.municipio,
+      tipo_personal: f.plaza.tipo_personal,
+      tipo_jornada: f.plaza.tipo_jornada,
+    };
+    return etiquetas[campo] ?? 'Sin dato';
+  }
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
@@ -497,9 +529,7 @@ export class AltaPage {
       return [];
     }
 
-    return (this.catalogos()?.puestos ?? []).filter((puesto) =>
-      puesto.area_ids.includes(areaId),
-    );
+    return (this.catalogos()?.puestos ?? []).filter((puesto) => puesto.area_ids.includes(areaId));
   });
 
   /** Post chosen on screen, or `null`. */
@@ -523,6 +553,13 @@ export class AltaPage {
 
   /** Read-only text of that category: what the server will store for the post. */
   readonly categoriaVisible = computed<string>(() => {
+    if (this.editando) {
+      const plaza = this.registroActual()?.plaza;
+      const categoria = this.catalogos()?.categorias_cct.find(
+        (c) => c.id === plaza?.categoria_cct_id,
+      );
+      return categoria ? textoDeCategoria(categoria) : (plaza?.categoria_cct_clave ?? SIN_DATO);
+    }
     if (this.puestoElegido() === null) {
       return CATEGORIA_SIN_PUESTO;
     }
@@ -537,9 +574,7 @@ export class AltaPage {
    * It decides three things: the two fixed values that travel in the body, the
    * two controls that are hidden, and whether the step 2 gate asks for them.
    */
-  readonly esMandoMedio = computed(
-    () => this.categoriaElegida()?.tipo === MANDO_MEDIO_SUPERIOR,
-  );
+  readonly esMandoMedio = computed(() => this.categoriaElegida()?.tipo === MANDO_MEDIO_SUPERIOR);
 
   /** Schooling levels. */
   readonly niveles = computed(() => this.catalogos()?.niveles_estudios ?? []);
@@ -582,12 +617,12 @@ export class AltaPage {
    * the user chose.
    */
   readonly tipoPersonal = computed(() =>
-    this.esMandoMedio() ? PERSONAL_MANDO_MEDIO : this.modelo().tipo_personal,
+    !this.editando && this.esMandoMedio() ? PERSONAL_MANDO_MEDIO : this.modelo().tipo_personal,
   );
 
   /** `tipo_jornada` that will travel in the body, for the same reason. */
   readonly tipoJornada = computed(() =>
-    this.esMandoMedio() ? JORNADA_MANDO_MEDIO : this.modelo().tipo_jornada,
+    !this.editando && this.esMandoMedio() ? JORNADA_MANDO_MEDIO : this.modelo().tipo_jornada,
   );
 
   /**
@@ -630,11 +665,19 @@ export class AltaPage {
         titulo: PASOS[1],
         filas: [
           { etiqueta: 'Área', valor: this.nombreDeArea(datos.area_id) },
-          { etiqueta: 'Puesto', valor: this.puestoElegido()?.nombre ?? SIN_DATO },
+          {
+            etiqueta: 'Puesto',
+            valor: this.editando
+              ? (this.registroActual()?.plaza.puesto ?? SIN_DATO)
+              : (this.puestoElegido()?.nombre ?? SIN_DATO),
+          },
           { etiqueta: 'Categoría CCT', valor: this.categoriaDelResumen() },
           { etiqueta: 'Tipo de personal', valor: this.texto(this.tipoPersonal()) },
           { etiqueta: 'Tipo de jornada', valor: this.texto(this.tipoJornada()) },
-          { etiqueta: 'Fecha de inicio en el puesto', valor: this.fecha(datos.fecha_inicio_puesto) },
+          {
+            etiqueta: 'Fecha de inicio en el puesto',
+            valor: this.fecha(datos.fecha_inicio_puesto),
+          },
           {
             etiqueta: 'Fecha de ingreso al gobierno',
             valor: this.fecha(datos.fecha_ingreso_gobierno),
@@ -683,13 +726,60 @@ export class AltaPage {
     this.cargarCatalogos();
   }
 
+  private precargar(f: FichaEmpleado): void {
+    this.registroActual.set(f);
+    this.modelo.set({
+      ...BORRADOR,
+      ...f.identificacion,
+      correo_institucional: f.contacto.correo_institucional ?? '',
+      area_id: f.plaza.area_id,
+      puesto_id: f.plaza.puesto_id,
+      tipo_personal: f.plaza.tipo_personal ?? '',
+      tipo_jornada: f.plaza.tipo_jornada ?? '',
+      fecha_inicio_puesto: f.plaza.fecha_inicio_puesto ?? '',
+      fecha_ingreso_gobierno: f.plaza.fecha_ingreso_gobierno ?? '',
+      curp: f.identificacion.curp ?? '',
+      fecha_nacimiento: f.identificacion.fecha_nacimiento ?? '',
+      sexo: f.identificacion.sexo ?? '',
+      municipio: f.identificacion.municipio ?? '',
+      nivel_estudios_id: f.estudios.nivel_estudios_id,
+      escuela_procedencia: f.estudios.escuela_procedencia ?? '',
+      generacion: f.estudios.generacion ?? '',
+      exp_publico_anios: f.experiencia.exp_publico_anios,
+      exp_privado_anios: f.experiencia.exp_privado_anios,
+      trabaja_otro_lugar: f.experiencia.trabaja_otro_lugar ?? '',
+      trabaja_otro_donde: f.experiencia.trabaja_otro_donde ?? '',
+      observaciones: f.gestion_interna.observaciones ?? '',
+    });
+  }
+
+  private cuerpoEdicion(): EdicionEmpleado {
+    const datos = this.modelo();
+    return Object.fromEntries(
+      CAMPOS_EDITABLES.map((k) => {
+        const v = datos[k];
+        return [k, typeof v === 'string' ? v.trim() || null : v];
+      }),
+    ) as EdicionEmpleado;
+  }
+
   /** Reads (or re-reads) the catalogs. Also the retry of the failure block. */
   cargarCatalogos(): void {
     this.cargando.set(true);
     this.errorCatalogos.set(null);
 
-    this.altaService
-      .cargarCatalogos()
+    const carga = this.editando
+      ? forkJoin({
+          catalogos: this.altaService.cargarCatalogos(),
+          ficha: this.editarService.consultar(this.empleadoId!),
+        }).pipe(
+          map(({ catalogos, ficha }) => {
+            this.precargar(ficha.data);
+            return catalogos;
+          }),
+        )
+      : this.altaService.cargarCatalogos();
+    carga
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.cargando.set(false)),
@@ -709,6 +799,7 @@ export class AltaPage {
    * already saw turns green as soon as it is right.
    */
   guardar(campo: keyof BorradorAlta, valor: string | number | null): void {
+    if (this.soloLectura(campo)) return;
     const siguiente = { ...this.modelo(), [campo]: valor } as BorradorAlta;
 
     // A complete CURP carries the birth date and the sex: the backend resolves
@@ -797,7 +888,7 @@ export class AltaPage {
    * which is what the `422` would have done with a wasted round trip.
    */
   registrar(): void {
-    if (this.enviando()) {
+    if (this.enviando() || this.cargando() || this.errorCatalogos()) {
       return;
     }
 
@@ -816,8 +907,20 @@ export class AltaPage {
     this.mensaje.set(null);
     this.erroresServidor.set({});
 
-    this.altaService
-      .registrar(this.construirCuerpo())
+    const peticion = this.editando
+      ? this.editarService.actualizar(this.empleadoId!, this.cuerpoEdicion()).pipe(
+          tap((r) => {
+            this.precargar(r.data);
+            this.historialRevision.update((n) => n + 1);
+          }),
+          map((r) => ({
+            id: r.data.id,
+            num_empleado: r.data.identificacion.num_empleado,
+            nombre: r.data.identificacion.nombre,
+          })),
+        )
+      : this.altaService.registrar(this.construirCuerpo());
+    peticion
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.enviando.set(false)),
@@ -956,7 +1059,7 @@ export class AltaPage {
   private evaluar(datos: BorradorAlta): Record<string, string> {
     const errores: Record<string, string> = {};
     const poner = (campo: string, mensaje: string | null): void => {
-      if (mensaje !== null) {
+      if (mensaje !== null && !this.soloLectura(campo)) {
         errores[campo] = mensaje;
       }
     };
@@ -1223,7 +1326,11 @@ export class AltaPage {
   }
 
   /** Adds an optional number. `0` is a real answer, so only `null` is skipped. */
-  private agregarNumero(cuerpo: AltaEmpleadoRequest, campo: CampoNumero, valor: number | null): void {
+  private agregarNumero(
+    cuerpo: AltaEmpleadoRequest,
+    campo: CampoNumero,
+    valor: number | null,
+  ): void {
     if (valor !== null) {
       cuerpo[campo] = valor;
     }
@@ -1233,7 +1340,7 @@ export class AltaPage {
   private registrado(empleado: EmpleadoRegistrado): void {
     this.toast.show({
       type: 'success',
-      title: 'Empleado registrado.',
+      title: this.editando ? 'Empleado actualizado correctamente.' : 'Empleado registrado.',
       message: `Número de empleado ${empleado.num_empleado}.`,
     });
 
@@ -1243,7 +1350,8 @@ export class AltaPage {
   /** Maps a failure of the registration to the messages the user reads. */
   private manejarError(error: unknown): void {
     const status = error instanceof HttpErrorResponse ? error.status : 0;
-    const cuerpo = error instanceof HttpErrorResponse ? (error.error as ErrorValidacion | null) : null;
+    const cuerpo =
+      error instanceof HttpErrorResponse ? (error.error as ErrorValidacion | null) : null;
     const mensaje = typeof cuerpo?.message === 'string' ? cuerpo.message : null;
 
     if (status === 422) {
@@ -1318,7 +1426,8 @@ export class AltaPage {
       }
 
       const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-      const scrollTarget = selector !== null ? target : (target.closest<HTMLElement>('.card') ?? target);
+      const scrollTarget =
+        selector !== null ? target : (target.closest<HTMLElement>('.card') ?? target);
       if (typeof scrollTarget.scrollIntoView === 'function') {
         scrollTarget.scrollIntoView({
           block: selector !== null ? 'nearest' : 'start',
@@ -1385,6 +1494,7 @@ export class AltaPage {
 
   /** Name of an area, or the placeholder. */
   private nombreDeArea(id: number | null): string {
+    if (this.editando) return this.registroActual()?.plaza.area ?? SIN_DATO;
     if (id === null) {
       return SIN_DATO;
     }
@@ -1393,6 +1503,7 @@ export class AltaPage {
 
   /** Category of the summary, derived from the chosen post, or the placeholder. */
   private categoriaDelResumen(): string {
+    if (this.editando) return this.registroActual()?.plaza.categoria_cct_clave ?? SIN_DATO;
     const categoria = this.categoriaElegida();
     return categoria === null ? SIN_DATO : textoDeCategoria(categoria);
   }

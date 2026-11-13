@@ -16,7 +16,9 @@
             Iniciar sesión
           </app-button>
         } @else if (status() !== 403 && status() !== 404) {
-          <app-button alert-actions variant="secondary" (click)="reintentar()">Reintentar</app-button>
+          <app-button alert-actions variant="secondary" (click)="reintentar()"
+            >Reintentar</app-button
+          >
         }
       </app-alert-banner>
     } @else if (datos(); as detalle) {
@@ -62,7 +64,10 @@
       </section>
     }
   </div>
-  <ng-template #actions
-    ><app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button></ng-template
+  <ng-template #actions>
+    @if (puedeEditar() && datos()) {
+      <app-button variant="secondary" (click)="editar()">Editar empleado</app-button>
+    }
+    <app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button></ng-template
   >
 </app-drawer>
