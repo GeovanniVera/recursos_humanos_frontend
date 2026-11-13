@@ -289,14 +289,6 @@
                 @if (errorDe('estado_civil_id'); as error) {
                   <p class="field-error" [id]="'error-estado_civil_id'" role="alert">{{ error }}</p>
                 }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="estado_civil_id"
-                    etiqueta="Estado civil"
-                    [revision]="historialRevision()"
-                  />
-                }
               </div>
 
               <div class="field">
@@ -643,7 +635,7 @@
             <p class="group-hint">
               {{
                 editando
-                  ? 'Puedes actualizar estos campos. Los valores anteriores se conservarán en el historial.'
+                  ? 'Puedes actualizar estos campos.'
                   : 'Todo este bloque es opcional; se puede completar después del alta.'
               }}
             </p>
@@ -705,14 +697,6 @@
                     {{ error }}
                   </p>
                 }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="escuela_procedencia"
-                    etiqueta="Escuela de procedencia"
-                    [revision]="historialRevision()"
-                  />
-                }
               </div>
 
               <div class="field">
@@ -734,14 +718,6 @@
                 />
                 @if (errorDe('generacion'); as error) {
                   <p class="field-error" [id]="'error-generacion'" role="alert">{{ error }}</p>
-                }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="generacion"
-                    etiqueta="Generación"
-                    [revision]="historialRevision()"
-                  />
                 }
               </div>
 
@@ -768,14 +744,6 @@
                     {{ error }}
                   </p>
                 }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="exp_publico_anios"
-                    etiqueta="Experiencia pública (años)"
-                    [revision]="historialRevision()"
-                  />
-                }
               </div>
 
               <div class="field">
@@ -801,14 +769,6 @@
                     {{ error }}
                   </p>
                 }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="exp_privado_anios"
-                    etiqueta="Experiencia privada (años)"
-                    [revision]="historialRevision()"
-                  />
-                }
               </div>
 
               <div class="field">
@@ -833,14 +793,6 @@
                   <p class="field-error" [id]="'error-trabaja_otro_lugar'" role="alert">
                     {{ error }}
                   </p>
-                }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="trabaja_otro_lugar"
-                    etiqueta="¿Trabaja en otro lugar?"
-                    [revision]="historialRevision()"
-                  />
                 }
               </div>
 
@@ -870,14 +822,6 @@
                       {{ error }}
                     </p>
                   }
-                  @if (editando && empleadoId !== null) {
-                    <app-historial-campo
-                      [empleadoId]="empleadoId"
-                      campo="trabaja_otro_donde"
-                      etiqueta="¿Dónde trabaja?"
-                      [revision]="historialRevision()"
-                    />
-                  }
                 </div>
               }
 
@@ -898,14 +842,6 @@
                 ></textarea>
                 @if (errorDe('observaciones'); as error) {
                   <p class="field-error" [id]="'error-observaciones'" role="alert">{{ error }}</p>
-                }
-                @if (editando && empleadoId !== null) {
-                  <app-historial-campo
-                    [empleadoId]="empleadoId"
-                    campo="observaciones"
-                    etiqueta="Observaciones"
-                    [revision]="historialRevision()"
-                  />
                 }
               </div>
             </div>
@@ -939,7 +875,7 @@
             <p class="group-hint">
               {{
                 editando
-                  ? 'Se guardarán únicamente los campos permitidos. Los cambios académicos y de experiencia quedarán en el historial.'
+                  ? 'Se guardarán únicamente los campos permitidos.'
                   : 'Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.'
               }}
             </p>
@@ -968,8 +904,5 @@
         }
       </div>
     </form>
-    @if (editando && empleadoId !== null && paso() === 2) {
-      <app-informacion-historial [empleadoId]="empleadoId" [revision]="historialRevision()" />
-    }
   }
 </section>

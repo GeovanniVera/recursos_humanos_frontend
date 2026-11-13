@@ -1,8 +1,17 @@
-import { Component, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Subject, catchError, of, switchMap } from 'rxjs';
 import {
-  CampoEditable,
+  CampoConHistorial,
   EditarEmpleadoService,
   HistoriaCampo,
 } from '../../../core/empleados/editar.service';
@@ -10,13 +19,27 @@ import { Button } from '../../../shared/ui/button/button.component';
 import { Pagination } from '../../../shared/ui/pagination/pagination.component';
 import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 
+/**
+ * Read-only list of the values a field has already had.
+ *
+ * It exists so the person editing sees which study levels are already on record
+ * before picking one: it consumes the history and nothing else — no control, no
+ * link, no way to bring a past value back. `campo` is typed as
+ * `CampoConHistorial` because the endpoint only filters by those three values and
+ * answers `422` to any other, so mounting this panel on `observaciones` is a
+ * compile error instead of a request that can never succeed.
+ *
+ * The read is deferred: nothing is requested until the disclosure is opened, and
+ * closing it cancels the request in flight. A `revision` bump reloads an open
+ * panel, which is how a save shows its own result.
+ */
 @Component({
   selector: 'app-historial-campo',
   imports: [Button, Pagination, AlertBanner],
   template: `
     <details [open]="abierto()" (toggle)="alternar($event)">
-      <summary [attr.aria-label]="'Historial de cambios de ' + etiqueta()">
-        Historial de cambios
+      <summary [attr.aria-label]="nombreAccesible()">
+        Niveles de estudios ya registrados
         @if (datos(); as r) {
           ({{ r.meta.total }})
         }
@@ -77,7 +100,7 @@ import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.compon
 export class HistorialCampo {
   private readonly api = inject(EditarEmpleadoService);
   readonly empleadoId = input.required<number>();
-  readonly campo = input.required<CampoEditable>();
+  readonly campo = input.required<CampoConHistorial>();
   readonly etiqueta = input.required<string>();
   readonly revision = input(0);
   readonly abierto = signal(false);
@@ -85,6 +108,20 @@ export class HistorialCampo {
   readonly pagina = signal(1);
   readonly cargando = signal(false);
   readonly error = signal(false);
+
+  /**
+   * Accessible name of the disclosure.
+   *
+   * It names the field the history belongs to and repeats the total, because a
+   * `<summary>` announces its label, not the count painted next to it.
+   */
+  readonly nombreAccesible = computed(() => {
+    const datos = this.datos();
+    return datos === null
+      ? `Historial de cambios de ${this.etiqueta()}`
+      : `Historial de cambios de ${this.etiqueta()} (${datos.meta.total})`;
+  });
+
   private readonly consultas = new Subject<number | null>();
   constructor() {
     this.consultas

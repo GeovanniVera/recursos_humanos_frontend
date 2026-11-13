@@ -18,7 +18,6 @@ import {
   EdicionEmpleado,
 } from '../../../core/empleados/editar.service';
 import { FichaEmpleado } from '../../../core/empleados/ficha.models';
-import { InformacionHistorial } from './informacion-historial.component';
 import { HistorialCampo } from './historial-campo.component';
 import { flattenAreaTree } from '../../../core/catalogos/area-tree';
 import {
@@ -331,7 +330,7 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  */
 @Component({
   selector: 'app-alta-page',
-  imports: [AlertBanner, Button, FormsModule, InformacionHistorial, HistorialCampo],
+  imports: [AlertBanner, Button, FormsModule, HistorialCampo],
   templateUrl: './alta-page.component.html',
   styleUrl: './alta-page.component.scss',
 })
@@ -342,6 +341,14 @@ export class AltaPage {
   readonly empleadoId = Number(this.route?.snapshot.paramMap.get('id')) || null;
   readonly editando = this.empleadoId !== null;
   readonly registroActual = signal<FichaEmpleado | null>(null);
+
+  /**
+   * Counter bumped after a successful save.
+   *
+   * The history panel only reloads on change, so it reads the value it did not
+   * cause: without the bump, an open panel would keep showing the levels of the
+   * record as it was before the user edited it.
+   */
   readonly historialRevision = signal(0);
   soloLectura(campo: string): boolean {
     return this.editando && !(CAMPOS_EDITABLES as readonly string[]).includes(campo);

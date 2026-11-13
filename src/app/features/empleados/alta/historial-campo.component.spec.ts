@@ -9,11 +9,11 @@ const respuesta = (total = 1) => ({
   datos: [
     {
       id: 2,
-      campo: 'exp_publico_anios',
-      antes: 15,
-      despues: 20,
-      valor_anterior: '15 años',
-      valor_nuevo: '20 años',
+      campo: 'nivel_estudios_id',
+      antes: 3,
+      despues: 6,
+      valor_anterior: 'Licenciatura',
+      valor_nuevo: 'Maestría',
       fecha: '2026-11-13T19:30:00Z',
       responsable: 'Responsable de prueba',
     },
@@ -32,8 +32,8 @@ describe('Historial individual de campo', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(HistorialCampo);
     fixture.componentRef.setInput('empleadoId', 17);
-    fixture.componentRef.setInput('campo', 'exp_publico_anios');
-    fixture.componentRef.setInput('etiqueta', 'Experiencia pública (años)');
+    fixture.componentRef.setInput('campo', 'nivel_estudios_id');
+    fixture.componentRef.setInput('etiqueta', 'Nivel de estudios');
     await fixture.whenStable();
   });
   afterEach(() => http.verify());
@@ -44,22 +44,28 @@ describe('Historial individual de campo', () => {
   }
   it('is initially collapsed, labelled, and makes no initial HTTP request', () => {
     expect(root().querySelector('details')?.open).toBe(false);
+    expect(root().querySelector('summary')?.textContent).toContain(
+      'Niveles de estudios ya registrados',
+    );
     expect(root().querySelector('summary')?.getAttribute('aria-label')).toContain(
-      'Experiencia pública',
+      'Nivel de estudios',
     );
     http.expectNone((r) => r.url === URL);
   });
   it('requests only its field and renders raw server history labels and responsible', async () => {
     const req = await abrir();
-    expect(req.request.params.get('campo')).toBe('exp_publico_anios');
+    expect(req.request.params.get('campo')).toBe('nivel_estudios_id');
     expect(req.request.params.get('por_pagina')).toBe('5');
     req.flush(respuesta());
     await fixture.whenStable();
-    expect(root().textContent).toContain('15 años');
-    expect(root().textContent).toContain('20 años');
+    expect(root().textContent).toContain('Licenciatura');
+    expect(root().textContent).toContain('Maestría');
     expect(root().textContent).toContain('Responsable de prueba');
     expect(root().querySelector('time')?.getAttribute('datetime')).toBe('2026-11-13T19:30:00Z');
     expect(root().querySelector('summary')?.textContent).toContain('(1)');
+    // The arrow stays decorative and the sentence is spelled out for a reader.
+    expect(root().querySelector('[aria-hidden="true"]')?.textContent).toBe('→');
+    expect(root().querySelector('.visually-hidden')?.textContent).toContain('cambió a');
     fixture.componentInstance.alternar({ target: { open: false } } as unknown as Event);
     await fixture.whenStable();
     expect(root().querySelector('.content')).toBeNull();
@@ -91,12 +97,12 @@ describe('Historial individual de campo', () => {
     req.flush({
       ...respuesta(2),
       datos: [
-        { ...respuesta().datos[0], id: 3, valor_anterior: '20 años', valor_nuevo: '25 años' },
+        { ...respuesta().datos[0], id: 3, valor_anterior: 'Maestría', valor_nuevo: 'Doctorado' },
         respuesta().datos[0],
       ],
     });
     await fixture.whenStable();
-    expect(root().textContent).toContain('25 años');
+    expect(root().textContent).toContain('Doctorado');
     expect(root().querySelectorAll('li')).toHaveLength(2);
   });
   it('clears old employee data and cancels before querying a different employee', async () => {
@@ -109,7 +115,7 @@ describe('Historial individual de campo', () => {
       .flush({ datos: [], meta: { pagina: 1, por_pagina: 5, total: 0, total_paginas: 1 } });
     await fixture.whenStable();
     expect(root().textContent).toContain('Sin cambios registrados.');
-    expect(root().textContent).not.toContain('15 años');
+    expect(root().textContent).not.toContain('Licenciatura');
   });
   it('handles read errors without exposing backend traces and permits retry', async () => {
     (await abrir()).flush({ message: 'SQL SECRET' }, { status: 500, statusText: 'Error' });
@@ -119,6 +125,6 @@ describe('Historial individual de campo', () => {
     fixture.componentInstance.cargar(1);
     http.expectOne((r) => r.url === URL).flush(respuesta());
     await fixture.whenStable();
-    expect(root().textContent).toContain('20 años');
+    expect(root().textContent).toContain('Maestría');
   });
 });

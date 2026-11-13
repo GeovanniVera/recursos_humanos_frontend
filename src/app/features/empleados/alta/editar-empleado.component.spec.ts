@@ -1,9 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { AltaPage } from './alta-page.component';
+import { HistorialCampo } from './historial-campo.component';
 import { CAMPOS_EDITABLES } from '../../../core/empleados/editar.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { editarEmpleadoGuard, puedeEditarEmpleado } from '../../../core/auth/editar-empleado.guard';
@@ -114,17 +116,6 @@ describe('US-08 reuses AltaPage in edition mode', () => {
       expect((root().querySelector('#' + k) as HTMLInputElement).readOnly).toBe(true);
     }
     expect((root().querySelector('#estado_civil_id') as HTMLSelectElement).disabled).toBe(false);
-    expect(
-      Array.from(root().querySelectorAll('app-historial-campo')).map((e) =>
-        e.getAttribute('campo'),
-      ),
-    ).toEqual(['estado_civil_id']);
-    expect(
-      root()
-        .querySelector('#estado_civil_id')
-        ?.closest('.field')
-        ?.querySelector('app-historial-campo'),
-    ).not.toBeNull();
     fixture.componentInstance.guardar('nombre', 'No permitido');
     expect(fixture.componentInstance.modelo().nombre).toBe('Prueba US08');
     expect(fixture.componentInstance.puedeContinuar()).toBe(true); // invalid protected legacy data is not revalidated
@@ -139,25 +130,9 @@ describe('US-08 reuses AltaPage in edition mode', () => {
     expect(root().textContent).toContain('CAT-HISTORICA');
     expect(root().textContent).not.toContain('Error');
   });
-  it('enables studies and experience and reads persisted history with pagination', async () => {
+  it('enables studies and experience', async () => {
     await cargar();
     fixture.componentInstance.paso.set(2);
-    await fixture.whenStable();
-    const req = http.expectOne((r) => r.url === `${URL}/17/informacion-historial`);
-    expect(req.request.params.get('por_pagina')).toBe('10');
-    req.flush({
-      datos: [
-        {
-          id: 1,
-          seccion: 'estudios',
-          fecha: '2026-11-13T12:00:00Z',
-          antes: { escuela_procedencia: 'Anterior' },
-          despues: { escuela_procedencia: 'Nueva' },
-          responsable: 'Responsable de prueba',
-        },
-      ],
-      meta: { pagina: 1, por_pagina: 10, total: 11, total_paginas: 2 },
-    });
     await fixture.whenStable();
     for (const k of [
       'escuela_procedencia',
@@ -167,22 +142,28 @@ describe('US-08 reuses AltaPage in edition mode', () => {
     ]) {
       expect((root().querySelector('#' + k) as HTMLInputElement).readOnly).toBe(false);
     }
-    expect(root().textContent).toContain('Escuela: Anterior');
-    expect(root().textContent).toContain('Escuela: Nueva');
-    expect(root().textContent).toContain('Responsable de prueba');
-    expect(root().querySelectorAll('app-historial-campo')).toHaveLength(8);
-    for (const h of root().querySelectorAll('app-historial-campo')) {
-      const campo = h.getAttribute('campo');
-      expect(h.closest('.field')?.querySelector('[id="' + campo + '"]')).not.toBeNull();
-    }
     expect(root().querySelector('form form')).toBeNull();
-    const next = Array.from(
-      root().querySelectorAll<HTMLButtonElement>('app-pagination button'),
-    ).find((b) => b.textContent?.includes('Siguiente'))!;
-    next.click();
-    const pagina = http.expectOne((r) => r.url === `${URL}/17/informacion-historial`);
-    expect(pagina.request.params.get('pagina')).toBe('2');
-    pagina.flush({ datos: [], meta: { pagina: 2, por_pagina: 10, total: 11, total_paginas: 2 } });
+  });
+  it('mounts one read-only history panel and reads its field only when expanded', async () => {
+    await cargar();
+    fixture.componentInstance.paso.set(2);
+    await fixture.whenStable();
+
+    expect(root().querySelectorAll('app-historial-campo')).toHaveLength(1);
+    const panel = fixture.debugElement.query(By.directive(HistorialCampo))
+      .componentInstance as HistorialCampo;
+    expect(panel.campo()).toBe('nivel_estudios_id');
+    expect(root().textContent).toContain('Niveles de estudios ya registrados');
+    http.expectNone((r) => r.url.includes('informacion-historial'));
+
+    panel.alternar({ target: { open: true } } as unknown as Event);
+    await fixture.whenStable();
+    const req = http.expectOne((r) => r.url === `${URL}/17/informacion-historial`);
+    expect(req.request.params.get('campo')).toBe('nivel_estudios_id');
+    expect(req.request.params.get('por_pagina')).toBe('5');
+    req.flush({ datos: [], meta: { pagina: 1, por_pagina: 5, total: 0, total_paginas: 1 } });
+    await fixture.whenStable();
+    expect(root().textContent).toContain('Sin cambios registrados.');
   });
   it('sends only the allowlist, prevents duplicate submissions and confirms success', async () => {
     await cargar();
@@ -207,7 +188,6 @@ describe('US-08 reuses AltaPage in edition mode', () => {
       expect.objectContaining({ title: 'Empleado actualizado correctamente.' }),
     );
     expect(navigation).toHaveBeenCalledWith(['/empleados/activos']);
-    expect(fixture.componentInstance.historialRevision()).toBe(1);
     expect(fixture.componentInstance.registroActual()?.id).toBe(ficha.id);
   });
   it('validates generation and maps server validation without losing entered changes', async () => {
@@ -216,11 +196,7 @@ describe('US-08 reuses AltaPage in edition mode', () => {
     fixture.componentInstance.registrar();
     http.expectNone((r) => r.method === 'PATCH');
     expect(fixture.componentInstance.paso()).toBe(2);
-    // Render step 2 starts the history read.
     await fixture.whenStable();
-    http
-      .expectOne((r) => r.url.includes('informacion-historial'))
-      .flush({ datos: [], meta: { pagina: 1, por_pagina: 10, total: 0, total_paginas: 1 } });
     fixture.componentInstance.guardar('generacion', '2020-2024');
     fixture.componentInstance.registrar();
     http
@@ -232,7 +208,6 @@ describe('US-08 reuses AltaPage in edition mode', () => {
     expect(fixture.componentInstance.modelo().generacion).toBe('2020-2024');
     expect(fixture.componentInstance.enviando()).toBe(false);
     expect(fixture.componentInstance.errorDe('generacion')).toBe('Revisa la generación.');
-    expect(fixture.componentInstance.historialRevision()).toBe(0);
   });
   it('does not enable saving when preload fails', async () => {
     http.expectOne(`${URL}/formulario`).flush(catalogos);
