@@ -10,8 +10,6 @@
  * is not inventing a second opinion, it is giving the first one sooner.
  */
 
-import { CategoriaCctCatalogo, PuestoCatalogo } from './alta.models';
-
 /** Field of the CURP that failed. It is never shown as a different sentence. */
 export type MotivoCurp = 'longitud' | 'formato' | 'entidad' | 'fecha' | 'digito';
 
@@ -403,25 +401,6 @@ export function validarLargo(valor: string, max: number): string | null {
     return `El texto no puede superar los ${max} caracteres.`;
   }
   return null;
-}
-
-/**
- * Whether a category can be held by a post.
- *
- * The two types have to be the same one; the backend answers `422` otherwise.
- * `false` while either side is missing, because there is no pair to compare.
- */
-export function categoriaCompatible(
-  categoriaId: number | null,
-  puesto: PuestoCatalogo | null,
-  categorias: readonly CategoriaCctCatalogo[],
-): boolean {
-  if (categoriaId === null || puesto === null) {
-    return false;
-  }
-
-  const categoria = categorias.find((entrada) => entrada.id === categoriaId);
-  return categoria !== undefined && categoria.tipo === puesto.tipo_puesto;
 }
 
 /**

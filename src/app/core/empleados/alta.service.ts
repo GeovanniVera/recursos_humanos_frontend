@@ -12,9 +12,9 @@ import { AltaEmpleadoRequest, EmpleadoRegistrado, FormularioCatalogos } from './
  * request that comes back.
  *
  * Nothing is added to or removed from the body here. `POST /api/empleados`
- * rejects a fixed list of fields as prohibited (`categoria`, `adscripcion`,
- * `puesto`, `email_prefix`, …), so a service that "helpfully" completed the
- * payload would be the one causing the `422`.
+ * rejects a fixed list of fields as prohibited (`categoria_cct_id`,
+ * `adscripcion`, `puesto`, `email_prefix`, …), so a service that "helpfully"
+ * completed the payload would be the one causing the `422`.
  *
  * The bearer token is out of scope here — `authInterceptor` attaches it to
  * every outgoing request and clears the session on a `401`.

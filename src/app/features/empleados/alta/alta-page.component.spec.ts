@@ -17,13 +17,20 @@ const URL_FORMULARIO = `${URL_EMPLEADOS}/formulario`;
 /** Assignable area of the fixture chart: the department sits at depth 2. */
 const AREA_ASIGNABLE = 3;
 
-/** Regular post and the only category of its type. */
+/** Second assignable area, with no posts of its own yet. */
+const AREA_SIN_PUESTOS = 5;
+
+/** Regular post and the category it points at. */
 const PUESTO_ADMIN = 7;
 const CATEGORIA_ADMIN = 3;
 
-/** `mando_medio` post and the only category of its type. */
+/** `mando_medio_superior` post and the category it points at. */
 const PUESTO_MANDO = 9;
 const CATEGORIA_MANDO = 4;
+
+/** Post of another area, and one the pivot leaves without any area. */
+const PUESTO_OTRA_AREA = 11;
+const PUESTO_SIN_AREA = 12;
 
 /** The example the RENAPO publishes: Veracruz, 1956-04-27, female. */
 const CURP_VALIDA = 'HEGG560427MVZRRL04';
@@ -64,21 +71,65 @@ const CATALOGOS: FormularioCatalogos = {
       orden: 1,
       asignable: true,
     },
+    // Second root, with the same `orden` as the first: the real payload has 17
+    // roots and ties at 0, so the order of the array cannot be trusted.
+    {
+      id: 4,
+      padre_id: null,
+      nombre: 'Consejo Directivo',
+      tipo_area: 'Gobierno',
+      naturaleza: 'Sustantiva',
+      orden: 0,
+      asignable: false,
+    },
+    // Assignable area without posts: the catalogue gap the empty state reports.
+    {
+      id: AREA_SIN_PUESTOS,
+      padre_id: null,
+      nombre: 'Dirección de Recursos Humanos',
+      tipo_area: 'Dirección',
+      naturaleza: 'Sustantiva',
+      orden: 2,
+      asignable: true,
+    },
   ],
   puestos: [
-    { id: PUESTO_ADMIN, nombre: 'Analista', tipo_puesto: 'administrativo' },
-    { id: PUESTO_MANDO, nombre: 'Director de área', tipo_puesto: 'mando_medio' },
+    {
+      id: PUESTO_ADMIN,
+      nombre: 'Analista',
+      categoria_cct_id: CATEGORIA_ADMIN,
+      area_ids: [AREA_ASIGNABLE],
+    },
+    {
+      id: PUESTO_MANDO,
+      nombre: 'Director de área',
+      categoria_cct_id: CATEGORIA_MANDO,
+      area_ids: [AREA_ASIGNABLE],
+    },
+    // Post of another area: it must not appear once an area is chosen.
+    { id: PUESTO_OTRA_AREA, nombre: 'Abogado', categoria_cct_id: CATEGORIA_ADMIN, area_ids: [2] },
+    // Empty pivot: the server accepts it nowhere, so no area offers it.
+    { id: PUESTO_SIN_AREA, nombre: 'Técnico', categoria_cct_id: CATEGORIA_ADMIN, area_ids: [] },
   ],
   categorias_cct: [
     { id: CATEGORIA_ADMIN, clave: 'CCT-01', tipo: 'administrativo', descripcion: 'Analista' },
-    { id: CATEGORIA_MANDO, clave: 'CCT-02', tipo: 'mando_medio', descripcion: 'Dirección' },
+    {
+      id: CATEGORIA_MANDO,
+      clave: 'CCT-02',
+      tipo: 'mando_medio_superior',
+      descripcion: 'Dirección',
+    },
     { id: 5, clave: 'CCT-09', tipo: 'operativo', descripcion: 'Intendencia' },
   ],
   niveles_estudios: [{ id: 2, clave: 'LIC', descripcion: 'Licenciatura' }],
   estados_civiles: [{ id: 1, clave: 'SOL', descripcion: 'Soltero' }],
   tipos_personal: ['No Aplica', 'Sindicalizado', 'No sindicalizado'],
   sexos: ['Masculino', 'Femenino'],
-  municipios: [{ id: 5, nombre: 'Nezahualcóyotl', entidad: 'México' }],
+  municipios: [
+    { id: 5, nombre: 'Nezahualcóyotl', entidad: 'edomex' },
+    { id: 6, nombre: 'Texcoco', entidad: 'edomex' },
+    { id: 7, nombre: 'Iztapalapa', entidad: 'cdmx' },
+  ],
   tipos_jornada: ['Matutina', 'Vespertina', 'Mixta'],
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };
@@ -86,20 +137,26 @@ const CATALOGOS: FormularioCatalogos = {
 /** Plaza of a regular post: it needs the personal type and the shift. */
 interface Plaza {
   puesto: number;
-  categoria: number;
   personal?: string;
   jornada?: string;
 }
 
 const PLAZA_ADMIN: Plaza = {
   puesto: PUESTO_ADMIN,
-  categoria: CATEGORIA_ADMIN,
   personal: 'Sindicalizado',
   jornada: 'Matutina',
 };
 
 /** A mando medio post: the server fixes both values, so there is nothing to choose. */
-const PLAZA_MANDO: Plaza = { puesto: PUESTO_MANDO, categoria: CATEGORIA_MANDO };
+const PLAZA_MANDO: Plaza = { puesto: PUESTO_MANDO };
+
+/** The same catalogue, with the regular post pointing at a missing category. */
+const CATALOGOS_SIN_CATEGORIA: FormularioCatalogos = {
+  ...CATALOGOS,
+  puestos: CATALOGOS.puestos.map((puesto) =>
+    puesto.id === PUESTO_ADMIN ? { ...puesto, categoria_cct_id: 999 } : puesto,
+  ),
+};
 
 const CREADO: EmpleadoRegistrado = {
   id: 42,
@@ -186,13 +243,16 @@ async function desenfocar(fixture: ComponentFixture<AltaPage>, id: string): Prom
   await fixture.whenStable();
 }
 
-/** Labels of the options of a `<select>`, trimmed. */
-function opciones(fixture: ComponentFixture<AltaPage>, id: string): string[] {
-  const selector = elemento<HTMLSelectElement>(fixture, `#${id}`);
-  if (selector === null) {
-    throw new Error(`No select #${id} rendered`);
-  }
-  return Array.from(selector.options).map((opcion) => (opcion.textContent ?? '').trim());
+/** Text of the read-only category field, trimmed. */
+function categoriaDerivada(fixture: ComponentFixture<AltaPage>): string {
+  return (elemento<HTMLElement>(fixture, '#categoria-cct')?.textContent ?? '').trim();
+}
+
+/** Note that a field prints under its control, trimmed. */
+function notaDe(fixture: ComponentFixture<AltaPage>, id: string): string {
+  const control = elemento<HTMLElement>(fixture, `#${id}`);
+  const nota = control?.parentElement?.querySelector('[role="status"]');
+  return (nota?.textContent ?? '').trim();
 }
 
 /** Clicks a button of the wizard and lets the render settle. */
@@ -218,11 +278,13 @@ describe('AltaPage', () => {
   });
 
   /** Creates the screen and answers the single catalog request. */
-  async function abrirFormulario(): Promise<ComponentFixture<AltaPage>> {
+  async function abrirFormulario(
+    catalogos: FormularioCatalogos = CATALOGOS,
+  ): Promise<ComponentFixture<AltaPage>> {
     const fixture = TestBed.createComponent(AltaPage);
     await fixture.whenStable();
 
-    httpMock.expectOne((peticion) => peticion.url === URL_FORMULARIO).flush(CATALOGOS);
+    httpMock.expectOne((peticion) => peticion.url === URL_FORMULARIO).flush(catalogos);
     await fixture.whenStable();
 
     return fixture;
@@ -240,7 +302,6 @@ describe('AltaPage', () => {
   async function llenarPlaza(fixture: ComponentFixture<AltaPage>, plaza: Plaza): Promise<void> {
     await elegir(fixture, 'area_id', AREA_ASIGNABLE);
     await elegir(fixture, 'puesto_id', plaza.puesto);
-    await elegir(fixture, 'categoria_cct_id', plaza.categoria);
     await escribir(fixture, 'fecha_inicio_puesto', '2026-01-15');
 
     if (plaza.personal !== undefined) {
@@ -297,7 +358,7 @@ describe('AltaPage', () => {
     expect(host(fixture).querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('indents the areas by their depth and refuses the ones that hold no staff', async () => {
+  it('flattens the forest of areas by name within each level, with several roots', async () => {
     const fixture = await abrirFormulario();
     await irAPlaza(fixture);
 
@@ -305,15 +366,17 @@ describe('AltaPage', () => {
     expect(selector).not.toBeNull();
 
     const areas = Array.from(selector?.options ?? []).slice(1);
-    // The chart arrives flat: the order is the one of the API, and depth is
-    // spelled out with non-breaking spaces.
+    // The endpoint sends a forest, not a tree, and `orden` ties: the traversal
+    // sorts siblings by name so the list does not move between calls.
     expect(areas.map(textoDeOpcion)).toEqual([
+      'Consejo Directivo',
+      'Dirección de Recursos Humanos',
       'Rectoría',
       '\u00A0\u00A0Secretaría Académica',
       '\u00A0\u00A0\u00A0\u00A0Departamento de Sistemas',
     ]);
-    // Only the department can hold an employee.
-    expect(areas.map((area) => area.disabled)).toEqual([true, true, false]);
+    // Only the department and the HR directorate can hold an employee.
+    expect(areas.map((area) => area.disabled)).toEqual([true, false, true, true, false]);
   });
 
   it('cannot leave step 1 without the number, the name and the email', async () => {
@@ -346,28 +409,151 @@ describe('AltaPage', () => {
     expect(stops[0].getAttribute('aria-current')).toBeNull();
   });
 
-  it('offers only the categories of the chosen post type and drops an incompatible one', async () => {
+  it('labels each post with the areas it belongs to', async () => {
+    const fixture = await abrirFormulario();
+    await irAPlaza(fixture);
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
+
+    const etiquetas = (): string[] =>
+      Array.from(elemento<HTMLSelectElement>(fixture, '#puesto_id')?.options ?? [])
+        .slice(1)
+        .map(textoDeOpcion);
+
+    // 36 posts can share a name: without the area the operator chooses blind.
+    expect(etiquetas()).toEqual([
+      'Analista · Departamento de Sistemas',
+      'Director de área · Departamento de Sistemas',
+    ]);
+
+    // A post of the `area_puesto` pivot belongs to every area of its list, and
+    // one with an empty list says so instead of pretending to belong somewhere.
+    expect(
+      fixture.componentInstance.etiquetaPuesto({
+        id: 99,
+        nombre: 'Coordinador',
+        categoria_cct_id: CATEGORIA_ADMIN,
+        area_ids: [AREA_ASIGNABLE, AREA_SIN_PUESTOS],
+      }),
+    ).toBe('Coordinador · Departamento de Sistemas, Dirección de Recursos Humanos');
+    expect(
+      fixture.componentInstance.etiquetaPuesto({
+        id: 100,
+        nombre: 'Técnico',
+        categoria_cct_id: CATEGORIA_ADMIN,
+        area_ids: [],
+      }),
+    ).toBe('Técnico · sin área asignada');
+  });
+
+  it('groups the municipalities by entity and translates the database literal', async () => {
+    const fixture = await abrirFormulario();
+
+    const grupos = Array.from(
+      host(fixture).querySelectorAll<HTMLOptGroupElement>('#municipio optgroup'),
+    );
+
+    // `edomex` and `cdmx` are database literals, not copy.
+    expect(grupos.map((grupo) => grupo.getAttribute('label'))).toEqual([
+      'Ciudad de México',
+      'Estado de México',
+    ]);
+    expect(grupos[1].querySelectorAll('option').length).toBe(2);
+  });
+
+  it('lists only the posts of the chosen area, never the ones assigned elsewhere', async () => {
     const fixture = await abrirFormulario();
     await irAPlaza(fixture);
 
-    // No post yet: there is no type to match, so there is nothing to choose.
-    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elegí primero un puesto']);
+    const valores = (): string[] =>
+      Array.from(elemento<HTMLSelectElement>(fixture, '#puesto_id')?.options ?? []).map(
+        (option) => option.value,
+      );
 
+    // Without an area there is no pair for the server to accept, so there is
+    // nothing to offer: the list is the placeholder and nothing else.
+    expect(valores()).toEqual(['']);
+
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
+
+    expect(valores()).toEqual(['', String(PUESTO_ADMIN), String(PUESTO_MANDO)]);
+    // A post of another area is absent, and so is one whose pivot is empty: the
+    // server accepts that one nowhere.
+    expect(valores()).not.toContain(String(PUESTO_OTRA_AREA));
+    expect(valores()).not.toContain(String(PUESTO_SIN_AREA));
+  });
+
+  it('shows the category derived from the post and offers no category control', async () => {
+    const fixture = await abrirFormulario();
+    await irAPlaza(fixture);
+
+    // There is no control to choose: the server derives the category from the
+    // post and prohibits receiving one.
+    expect(host(fixture).querySelector('select#categoria_cct_id')).toBeNull();
+    expect(texto(fixture)).toContain('Se asigna al elegir el puesto.');
+
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
     await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
-    expect(opciones(fixture, 'categoria_cct_id')).toEqual(['Elegí una categoría', 'CCT-01 · Analista']);
+    expect(categoriaDerivada(fixture)).toBe('CCT-01 · Analista');
 
-    await elegir(fixture, 'categoria_cct_id', CATEGORIA_ADMIN);
-    expect(elemento<HTMLSelectElement>(fixture, '#categoria_cct_id')?.value).toBe(
-      String(CATEGORIA_ADMIN),
-    );
-
+    // Another post, another category: the value follows `categoria_cct_id`.
     await elegir(fixture, 'puesto_id', PUESTO_MANDO);
-    expect(opciones(fixture, 'categoria_cct_id')).toEqual([
-      'Elegí una categoría',
-      'CCT-02 · Dirección',
-    ]);
-    // The category of the previous post is gone from the model as well.
-    expect(elemento<HTMLSelectElement>(fixture, '#categoria_cct_id')?.value).toBe('');
+    expect(categoriaDerivada(fixture)).toBe('CCT-02 · Dirección');
+  });
+
+  it('clears the post when the area changes, and says where new posts are assigned', async () => {
+    const fixture = await abrirFormulario();
+    await irAPlaza(fixture);
+
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
+    await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
+    expect(elemento<HTMLSelectElement>(fixture, '#puesto_id')?.value).toBe(String(PUESTO_ADMIN));
+
+    // The second area has no posts at all, so the choice of the first one cannot
+    // travel with it: the server would answer `422`.
+    await elegir(fixture, 'area_id', AREA_SIN_PUESTOS);
+
+    expect(elemento<HTMLSelectElement>(fixture, '#puesto_id')?.value).toBe('');
+    // The category was derived from that post, so it leaves with it.
+    expect(categoriaDerivada(fixture)).toBe('Se asigna al elegir el puesto.');
+
+    const aviso = notaDe(fixture, 'puesto_id');
+    expect(aviso).toContain('No hay puestos asociados a esta área.');
+    expect(aviso).toContain('Asignalos desde Catálogos.');
+  });
+
+  it('blocks the plaza when the chosen post has no category in the catalogue', async () => {
+    const fixture = await abrirFormulario(CATALOGOS_SIN_CATEGORIA);
+    await irAPlaza(fixture);
+
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
+    await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
+    await escribir(fixture, 'fecha_inicio_puesto', '2026-01-15');
+
+    // There is no control to fix, so the message sits under the post and the
+    // step refuses to move: the server would derive no category from it.
+    expect(boton(fixture, 'Continuar').disabled).toBe(true);
+    expect(categoriaDerivada(fixture)).toBe('Sin categoría asignada.');
+
+    await desenfocar(fixture, 'puesto_id');
+    expect(elemento<HTMLElement>(fixture, '#error-puesto_id')?.textContent).toContain(
+      'El puesto elegido no tiene categoría asignada.',
+    );
+  });
+
+  it('offers only Sindicalizado and No sindicalizado when the category is not a mando medio', async () => {
+    const fixture = await abrirFormulario();
+    await irAPlaza(fixture);
+
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
+    await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
+
+    const opciones = Array.from(
+      elemento<HTMLSelectElement>(fixture, '#tipo_personal')?.options ?? [],
+    ).map((option) => option.value);
+
+    // The catalogue carries `No Aplica`, but that value belongs to a mando medio
+    // and the server rejects it everywhere else. It is never offered as a choice.
+    expect(opciones).toEqual(['', 'Sindicalizado', 'No sindicalizado']);
   });
 
   it('hides the personal type and the shift for a mando medio post and sends the fixed values', async () => {
@@ -378,10 +564,12 @@ describe('AltaPage', () => {
     await irAPlaza(fixture);
 
     // A regular post does ask for both.
+    await elegir(fixture, 'area_id', AREA_ASIGNABLE);
     await elegir(fixture, 'puesto_id', PUESTO_ADMIN);
     expect(elemento(fixture, '#tipo_personal')).not.toBeNull();
     expect(elemento(fixture, '#tipo_jornada')).not.toBeNull();
 
+    // A `mando_medio_superior` category has neither.
     await llenarPlaza(fixture, PLAZA_MANDO);
     expect(elemento(fixture, '#tipo_personal')).toBeNull();
     expect(elemento(fixture, '#tipo_jornada')).toBeNull();
@@ -445,7 +633,6 @@ describe('AltaPage', () => {
       correo_institucional: 'ana@utn.edu.mx',
       area_id: AREA_ASIGNABLE,
       puesto_id: PUESTO_ADMIN,
-      categoria_cct_id: CATEGORIA_ADMIN,
       fecha_inicio_puesto: '2026-01-15',
     });
 
@@ -483,7 +670,7 @@ describe('AltaPage', () => {
     peticion.flush(
       {
         message: 'Los datos no son válidos.',
-        errors: { categoria_cct_id: ['La categoría no corresponde al puesto elegido.'] },
+        errors: { tipo_personal: ['El tipo de personal no es válido.'] },
       },
       { status: 422, statusText: 'Unprocessable Content' },
     );
@@ -494,12 +681,28 @@ describe('AltaPage', () => {
     // the model instead of falling back to its placeholder.
     expect(elemento<HTMLSelectElement>(fixture, '#area_id')?.value).toBe(String(AREA_ASIGNABLE));
     expect(elemento<HTMLSelectElement>(fixture, '#puesto_id')?.value).toBe(String(PUESTO_ADMIN));
-    expect(elemento<HTMLSelectElement>(fixture, '#categoria_cct_id')?.value).toBe(
-      String(CATEGORIA_ADMIN),
-    );
+    // The category is not stored in the draft: it is read from the post again.
+    expect(categoriaDerivada(fixture)).toBe('CCT-01 · Analista');
     expect(elemento<HTMLSelectElement>(fixture, '#tipo_personal')?.value).toBe('Sindicalizado');
     expect(elemento<HTMLSelectElement>(fixture, '#tipo_jornada')?.value).toBe('Matutina');
     expect(elemento<HTMLInputElement>(fixture, '#fecha_inicio_puesto')?.value).toBe('2026-01-15');
+  });
+
+  it('never sends a categoria_cct_id: the server derives it from the post', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = await abrirFormulario();
+    await irAConfirmacion(fixture);
+
+    const peticion = await enviar(fixture);
+    // Prohibited by the backend: the key does not travel at all, not even as an
+    // empty value, because the category belongs to the post it sent.
+    expect(Object.hasOwn(peticion.request.body, 'categoria_cct_id')).toBe(false);
+    expect(peticion.request.body.puesto_id).toBe(PUESTO_ADMIN);
+
+    peticion.flush(CREADO, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
   });
 
   it('toasts the created number and returns to the active roster on success', async () => {

@@ -1,9 +1,7 @@
-import { CategoriaCctCatalogo, PuestoCatalogo } from './alta.models';
 import {
   EXPLICACION_CURP,
   MENSAJE_CURP_INVALIDA,
   calcularDigitoVerificador,
-  categoriaCompatible,
   curpFechaNacimiento,
   curpSexo,
   normalizarCorreo,
@@ -25,15 +23,6 @@ import {
  * Veracruz in 1956, female, homoclave `0` (a digit, so 1900s).
  */
 const CURP_VALIDA = 'HEGG560427MVZRRL04';
-
-/** Categories used to compare a post with the category chosen for it. */
-const CATEGORIAS: readonly CategoriaCctCatalogo[] = [
-  { id: 3, clave: 'CCT-01', tipo: 'administrativo', descripcion: 'Analista' },
-  { id: 4, clave: 'CCT-02', tipo: 'mando_medio', descripcion: 'Dirección' },
-];
-
-const PUESTO: PuestoCatalogo = { id: 7, nombre: 'Analista', tipo_puesto: 'administrativo' };
-const PUESTO_MANDO: PuestoCatalogo = { id: 9, nombre: 'Director', tipo_puesto: 'mando_medio' };
 
 describe('validarCurp', () => {
   it('accepts the example published by the RENAPO', () => {
@@ -193,22 +182,6 @@ describe('validarAniosExperiencia', () => {
     expect(validarAniosExperiencia(0)).toBeNull();
     expect(validarAniosExperiencia(100)).toBeNull();
     expect(validarAniosExperiencia(null)).toBeNull();
-  });
-});
-
-describe('categoriaCompatible', () => {
-  it('rejects a category of another type', () => {
-    expect(categoriaCompatible(4, PUESTO, CATEGORIAS)).toBe(false);
-  });
-
-  it('accepts a category of the type of the post', () => {
-    expect(categoriaCompatible(3, PUESTO, CATEGORIAS)).toBe(true);
-    expect(categoriaCompatible(4, PUESTO_MANDO, CATEGORIAS)).toBe(true);
-  });
-
-  it('rejects a pair that is not complete', () => {
-    expect(categoriaCompatible(null, PUESTO, CATEGORIAS)).toBe(false);
-    expect(categoriaCompatible(3, null, CATEGORIAS)).toBe(false);
   });
 });
 

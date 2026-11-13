@@ -28,16 +28,24 @@ export interface CatalogoAreas {
   asignable: boolean;
 }
 
-/** One post. `tipo_puesto` decides the allowed `categoria_cct.tipo` and whether the post is `mando_medio`. */
+/**
+ * One post.
+ *
+ * `area_ids` is the `area_puesto` pivot: a post can be offered by several areas,
+ * and one with an empty list belongs to none, so it cannot be chosen anywhere.
+ * `categoria_cct_id` is the category the server assigns to the post; the
+ * registration derives it from here and the client never sends it.
+ */
 export interface PuestoCatalogo {
   id: number;
   nombre: string;
-  tipo_puesto: string;
+  categoria_cct_id: number;
+  area_ids: number[];
 }
 
 /**
- * One CCT category. `tipo` has to match the `tipo_puesto` of the chosen post:
- * the backend answers `422` otherwise, so the client filters the options.
+ * One CCT category. Its `tipo` decides whether the posts that point at it are
+ * `mando_medio_superior`, which is what fixes `tipo_personal` and `tipo_jornada`.
  */
 export interface CategoriaCctCatalogo {
   id: number;
@@ -93,14 +101,17 @@ export interface FormularioCatalogos {
  * Body of `POST /api/empleados`, straight from `RegistrarEmpleadoRequest`.
  *
  * `tipo_personal` and `tipo_jornada` are required **unless** the post is
- * `mando_medio`: the server then fixes them to `No Aplica` and `Mixta`, and
- * those two are the only values it accepts. They stay optional in the type
+ * `mando_medio_superior`: the server then fixes them to `No Aplica` and `Mixta`,
+ * and those two are the only values it accepts. They stay optional in the type
  * because the type describes the request, not one branch of it.
  *
  * Fields marked optional are omitted when the user leaves them empty: an absent
  * field is "not declared", while an empty string is a value the validators
  * reject. `trabaja_otro_donde` is prohibited when `trabaja_otro_lugar` is `No`,
  * so the caller must not send it in that case.
+ *
+ * `categoria_cct_id` is prohibited: the server derives the category from
+ * `puesto_id`, so the field is not part of this type at all.
  */
 export interface AltaEmpleadoRequest {
   // --- Required -------------------------------------------------------------
@@ -112,12 +123,11 @@ export interface AltaEmpleadoRequest {
   puesto_id: number;
   /** `YYYY-MM-DD`, not in the future and never before `fecha_ingreso_gobierno`. */
   fecha_inicio_puesto: string;
-  categoria_cct_id: number;
   /** Max 150, institutional domain only. */
   correo_institucional: string;
-  /** Required unless the post is `mando_medio`. */
+  /** Required unless the post is `mando_medio_superior`. */
   tipo_personal?: string;
-  /** Required unless the post is `mando_medio`. */
+  /** Required unless the post is `mando_medio_superior`. */
   tipo_jornada?: string;
 
   // --- Optional -------------------------------------------------------------

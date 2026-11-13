@@ -4,13 +4,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
+import { flattenAreaTree } from '../../../core/catalogos/area-tree';
 import {
   AltaEmpleadoRequest,
-  CatalogoAreas,
   CategoriaCctCatalogo,
   EmpleadoRegistrado,
   ErrorValidacion,
   FormularioCatalogos,
+  MunicipioCatalogo,
   PuestoCatalogo,
 } from '../../../core/empleados/alta.models';
 import { AltaService } from '../../../core/empleados/alta.service';
@@ -18,7 +19,6 @@ import {
   EXPLICACION_CURP,
   MENSAJE_CURP_INVALIDA,
   MotivoCurp,
-  categoriaCompatible,
   curpFechaNacimiento,
   curpSexo,
   hoyLocal,
@@ -66,9 +66,21 @@ const PASO_CONFIRMACION = PASOS.length - 1;
 /** Two non-breaking spaces per level of the chart, so a `<select>` can show depth. */
 const SANGRIA = '\u00A0\u00A0';
 
-/** Values the backend fixes for a `mando_medio` post. They are the only accepted ones. */
+/**
+ * `entidad` of a municipality as a database literal, translated for display.
+ * The payload sends `edomex` / `cdmx`, not the readable name.
+ */
+const ENTIDADES_VISIBLES: Record<string, string> = {
+  edomex: 'Estado de México',
+  cdmx: 'Ciudad de México',
+};
+
+/** Values the backend fixes for a `mando_medio_superior` post. They are the only accepted ones. */
 const PERSONAL_MANDO_MEDIO = 'No Aplica';
 const JORNADA_MANDO_MEDIO = 'Mixta';
+
+/** Category type whose posts carry neither a personal type nor a shift to choose. */
+const MANDO_MEDIO_SUPERIOR = 'mando_medio_superior';
 
 /** `trabaja_otro_lugar` values that turn `trabaja_otro_donde` on. */
 const OTRO_LUGAR_NO = 'No';
@@ -84,8 +96,21 @@ const MENSAJE_REQUERIDO_TEXTO = 'Completá este dato.';
 /** Sentence of a required `<select>` still sitting on its placeholder. */
 const MENSAJE_REQUERIDO_OPCION = 'Elegí una opción.';
 
-/** Sentence of the plaza when the category does not fit the chosen post. */
-const MENSAJE_CATEGORIA = 'La categoría elegida no corresponde al tipo del puesto.';
+/**
+ * Sentence of the plaza when the chosen post points at no category.
+ *
+ * The category is derived from the post and the user cannot change it, so the
+ * message sits under the post: that is the control that has to be fixed, and it
+ * is fixed in `Catálogos`, not here.
+ */
+const MENSAJE_PUESTO_SIN_CATEGORIA =
+  'El puesto elegido no tiene categoría asignada. Asignale una desde Catálogos.';
+
+/** Read-only value of the category while no post is chosen. */
+const CATEGORIA_SIN_PUESTO = 'Se asigna al elegir el puesto.';
+
+/** Read-only value of the category when the catalogue does not carry it. */
+const CATEGORIA_SIN_ASIGNAR = 'Sin categoría asignada.';
 
 /** The two fields the backend derives from a complete CURP. */
 const CAMPOS_DERIVADOS = ['fecha_nacimiento', 'sexo'] as const;
@@ -108,7 +133,6 @@ const PASO_DE_CAMPO: Readonly<Record<string, number>> = {
   correo_institucional: 0,
   area_id: 1,
   puesto_id: 1,
-  categoria_cct_id: 1,
   tipo_personal: 1,
   tipo_jornada: 1,
   fecha_inicio_puesto: 1,
@@ -141,7 +165,6 @@ interface BorradorAlta {
   correo_institucional: string;
   area_id: number | null;
   puesto_id: number | null;
-  categoria_cct_id: number | null;
   tipo_personal: string;
   tipo_jornada: string;
   fecha_inicio_puesto: string;
@@ -171,7 +194,7 @@ type CampoTexto =
 type CampoNumero = 'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_id' | 'estado_civil_id';
 
 /** Fields chosen with a `<select>` that carries a foreign key. */
-type CampoSelectNumero = 'area_id' | 'puesto_id' | 'categoria_cct_id' | 'estado_civil_id' | 'nivel_estudios_id';
+type CampoSelectNumero = 'area_id' | 'puesto_id' | 'estado_civil_id' | 'nivel_estudios_id';
 
 /** Fields chosen with a `<select>` that carries the literal value. */
 type CampoSelectTexto = 'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar' | 'municipio';
@@ -209,7 +232,6 @@ const BORRADOR: BorradorAlta = {
   correo_institucional: '',
   area_id: null,
   puesto_id: null,
-  categoria_cct_id: null,
   tipo_personal: '',
   tipo_jornada: '',
   fecha_inicio_puesto: '',
@@ -223,6 +245,18 @@ const BORRADOR: BorradorAlta = {
   trabaja_otro_donde: '',
   observaciones: '',
 };
+
+/**
+ * `clave · descripcion` of a category, the way every screen prints it.
+ *
+ * The description is nullable in the catalogue, so a row without one falls back
+ * to the key instead of printing `null`.
+ */
+function textoDeCategoria(categoria: CategoriaCctCatalogo): string {
+  return categoria.descripcion === null
+    ? categoria.clave
+    : `${categoria.clave} · ${categoria.descripcion}`;
+}
 
 /**
  * Date formatter of the summary.
@@ -254,10 +288,11 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  * and specific, so they are shown verbatim and they win over the local sentence
  * of the same field.
  *
- * A `mando_medio` post fixes `tipo_personal` and `tipo_jornada` on the server,
- * so the two controls are hidden and those two values travel in the body; the
- * category options are filtered by the type of the chosen post, because the
- * backend answers `422` when the two types differ.
+ * A `mando_medio_superior` post fixes `tipo_personal` and `tipo_jornada` on the
+ * server, so the two controls are hidden and those two values travel in the body.
+ * The category is not a choice either: it is read from the post and only shown,
+ * because `POST /api/empleados` prohibits `categoria_cct_id` and derives it from
+ * the `puesto_id` it receives.
  */
 @Component({
   selector: 'app-alta-page',
@@ -299,9 +334,9 @@ export class AltaPage {
    * Local messages of the fields the user has already seen, keyed by field.
    *
    * Rebuilt from the draft on every edit: a cross-field rule (the start of the
-   * post against the entry to the government, the category against the post)
-   * has no single owner, so one pass over the whole draft is the only way to
-   * keep every sentence true at the same time.
+   * post against the entry to the government) has no single owner, so one pass
+   * over the whole draft is the only way to keep every sentence true at the same
+   * time.
    */
   readonly errores = signal<Record<string, string>>({});
 
@@ -360,27 +395,90 @@ export class AltaPage {
   readonly bloqueado = computed(() => this.enviando() || this.cargando());
 
   /**
-   * Areas flattened the way the API sends them, plus the indent of each node.
+   * Areas as a forest, flattened with the indent of each node.
    *
-   * The endpoint sends the chart flat with `padre_id`, so depth is computed
-   * here and expressed as non-breaking spaces inside the `<option>`: a real tree
-   * widget is not what the contract asks for, and a `<select>` keeps the
-   * keyboard behaviour the user already knows.
+   * The walk itself lives in `core/catalogos/area-tree.ts`: the catalogs screen
+   * needs the same depth, and two copies of a hierarchy would drift apart. Here
+   * only the presentation differs — a `<select>` shows depth as non-breaking
+   * spaces, so it can be read without any stylesheet.
    */
-  readonly areas = computed<readonly AreaOpcion[]>(() => {
-    const lista = this.catalogos()?.areas ?? [];
-    const porId = new Map<number, CatalogoAreas>(lista.map((area) => [area.id, area]));
-
-    return lista.map((area) => ({
+  readonly areas = computed<readonly AreaOpcion[]>(() =>
+    flattenAreaTree(this.catalogos()?.areas ?? []).map(({ area, depth }) => ({
       id: area.id,
       nombre: area.nombre,
       asignable: area.asignable,
-      sangria: SANGRIA.repeat(this.profundidad(area, porId)),
-    }));
+      sangria: SANGRIA.repeat(depth),
+    })),
+  );
+
+  /** Area name by id, to label the post selector. */
+  private readonly areaPorId = computed<ReadonlyMap<number, string>>(
+    () => new Map((this.catalogos()?.areas ?? []).map((area) => [area.id, area.nombre])),
+  );
+
+  /**
+   * Label of a post in the selector.
+   *
+   * Up to 36 posts share a name ("Profesor de Asignatura"), so without the area
+   * the operator chooses blind. A post is offered by every area of its pivot, and
+   * one with an empty pivot has no area to name: it is labelled as such, because
+   * the server rejects it anywhere.
+   */
+  etiquetaPuesto(puesto: PuestoCatalogo): string {
+    if (puesto.area_ids.length === 0) {
+      return `${puesto.nombre} · sin área asignada`;
+    }
+
+    const areas = puesto.area_ids
+      .map((id) => this.areaPorId().get(id))
+      .filter((nombre): nombre is string => nombre !== undefined);
+
+    return areas.length === 0 ? puesto.nombre : `${puesto.nombre} · ${areas.join(', ')}`;
+  }
+
+  /**
+   * Municipalities grouped by entity, both alphabetical.
+   *
+   * `entidad` arrives as a database literal (`edomex`, `cdmx`); it is translated
+   * for display. 141 rows in one flat list are unusable, so they go in groups.
+   */
+  readonly municipiosPorEntidad = computed(() => {
+    const grupos = new Map<string, MunicipioCatalogo[]>();
+
+    for (const municipio of this.municipios()) {
+      const entidad = ENTIDADES_VISIBLES[municipio.entidad] ?? municipio.entidad;
+      const grupo = grupos.get(entidad) ?? [];
+      grupo.push(municipio);
+      grupos.set(entidad, grupo);
+    }
+
+    return [...grupos.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'es'))
+      .map(([entidad, municipios]) => ({
+        entidad,
+        municipios: [...municipios].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+      }));
   });
 
-  /** Posts, as the API sends them. */
-  readonly puestos = computed<readonly PuestoCatalogo[]>(() => this.catalogos()?.puestos ?? []);
+  /**
+   * Posts offered by the selector.
+   *
+   * A post belongs to the areas of its `area_puesto` pivot, and the server
+   * answers `422` when the pair does not exist, so the list follows the chosen
+   * area. Before an area is chosen there is nothing to offer — and a post with an
+   * empty pivot is offered nowhere, because it belongs to no area at all.
+   */
+  readonly puestos = computed<readonly PuestoCatalogo[]>(() => {
+    const areaId = this.modelo().area_id;
+
+    if (areaId === null) {
+      return [];
+    }
+
+    return (this.catalogos()?.puestos ?? []).filter((puesto) =>
+      puesto.area_ids.includes(areaId),
+    );
+  });
 
   /** Post chosen on screen, or `null`. */
   readonly puestoElegido = computed<PuestoCatalogo | null>(() => {
@@ -392,39 +490,55 @@ export class AltaPage {
   });
 
   /**
-   * `true` when the chosen post is `mando_medio`.
+   * Category derived from the chosen post, or `null`.
+   *
+   * The category is not a user choice: `puestos.categoria_cct_id` points at it
+   * and the server derives it from `puesto_id`, so the screen only reads it.
+   */
+  readonly categoriaElegida = computed<CategoriaCctCatalogo | null>(() =>
+    this.categoriaDePuesto(this.puestoElegido()),
+  );
+
+  /** Read-only text of that category: what the server will store for the post. */
+  readonly categoriaVisible = computed<string>(() => {
+    if (this.puestoElegido() === null) {
+      return CATEGORIA_SIN_PUESTO;
+    }
+
+    const categoria = this.categoriaElegida();
+    return categoria === null ? CATEGORIA_SIN_ASIGNAR : textoDeCategoria(categoria);
+  });
+
+  /**
+   * `true` when the category derived from the post is `mando_medio_superior`.
    *
    * It decides three things: the two fixed values that travel in the body, the
    * two controls that are hidden, and whether the step 2 gate asks for them.
    */
-  readonly esMandoMedio = computed(() => this.puestoElegido()?.tipo_puesto === 'mando_medio');
-
-  /**
-   * Categories whose `tipo` matches the type of the chosen post.
-   *
-   * The backend answers `422` when the two differ, so an incompatible category
-   * is not offered in the first place. Before a post is chosen there is no type
-   * to match, and the list is empty.
-   */
-  readonly categorias = computed<readonly CategoriaCctCatalogo[]>(() => {
-    const tipo = this.puestoElegido()?.tipo_puesto;
-    if (tipo === undefined) {
-      return [];
-    }
-    return (this.catalogos()?.categorias_cct ?? []).filter((categoria) => categoria.tipo === tipo);
-  });
+  readonly esMandoMedio = computed(
+    () => this.categoriaElegida()?.tipo === MANDO_MEDIO_SUPERIOR,
+  );
 
   /** Schooling levels. */
   readonly niveles = computed(() => this.catalogos()?.niveles_estudios ?? []);
+
+  /**
+   * Options of `tipo_personal`.
+   *
+   * The catalogue also carries `No Aplica`, which is never a choice: it is the
+   * value the server fixes for a `mando_medio_superior` category, and that
+   * control is hidden there. Offering it to an administrative or teaching
+   * category would let the user send a pair the server rejects.
+   */
+  readonly tiposPersonal = computed(() =>
+    (this.catalogos()?.tipos_personal ?? []).filter((tipo) => tipo !== PERSONAL_MANDO_MEDIO),
+  );
 
   /** Marital statuses. */
   readonly estadosCiviles = computed(() => this.catalogos()?.estados_civiles ?? []);
 
   /** Municipalities. The name is what travels, not the id. */
   readonly municipios = computed(() => this.catalogos()?.municipios ?? []);
-
-  /** Personal types offered by the backend. */
-  readonly tiposPersonal = computed(() => this.catalogos()?.tipos_personal ?? []);
 
   /** Shifts offered by the backend. */
   readonly tiposJornada = computed(() => this.catalogos()?.tipos_jornada ?? []);
@@ -441,8 +555,9 @@ export class AltaPage {
   /**
    * `tipo_personal` that will travel in the body.
    *
-   * A `mando_medio` post hides the control and sends the only value the server
-   * accepts for it.
+   * A `mando_medio_superior` category hides the control and sends the only value
+   * the server accepts for it; administrative and teaching categories send what
+   * the user chose.
    */
   readonly tipoPersonal = computed(() =>
     this.esMandoMedio() ? PERSONAL_MANDO_MEDIO : this.modelo().tipo_personal,
@@ -494,7 +609,7 @@ export class AltaPage {
         filas: [
           { etiqueta: 'Área', valor: this.nombreDeArea(datos.area_id) },
           { etiqueta: 'Puesto', valor: this.puestoElegido()?.nombre ?? SIN_DATO },
-          { etiqueta: 'Categoría CCT', valor: this.claveDeCategoria(datos.categoria_cct_id) },
+          { etiqueta: 'Categoría CCT', valor: this.categoriaDelResumen() },
           { etiqueta: 'Tipo de personal', valor: this.texto(this.tipoPersonal()) },
           { etiqueta: 'Tipo de jornada', valor: this.texto(this.tipoJornada()) },
           { etiqueta: 'Fecha de inicio en el puesto', valor: this.fecha(datos.fecha_inicio_puesto) },
@@ -705,17 +820,18 @@ export class AltaPage {
   }
 
   /**
-   * Changes the post and drops a category that no longer fits.
+   * Changes the area and drops a post that does not belong to it.
    *
-   * A `categoria_cct` of another type is a `422`; clearing it makes the user
-   * choose again instead of sending a combination the server rejects.
+   * The post selector follows the area, so a post of the previous one would sit
+   * in the model while the control no longer offers it — and the server would
+   * answer `422`. Its category is derived from the post, so it leaves with it.
    */
-  cambiarPuesto(evento: Event): void {
-    this.elegirNumero('puesto_id', evento);
+  cambiarArea(evento: Event): void {
+    this.elegirNumero('area_id', evento);
 
-    const actual = this.modelo().categoria_cct_id;
-    if (actual !== null && !this.categorias().some((categoria) => categoria.id === actual)) {
-      this.guardar('categoria_cct_id', null);
+    const actual = this.modelo().puesto_id;
+    if (actual !== null && !this.puestos().some((puesto) => puesto.id === actual)) {
+      this.guardar('puesto_id', null);
     }
   }
 
@@ -802,31 +918,15 @@ export class AltaPage {
     return indice < this.paso();
   }
 
-  /** Depth of an area in the chart, counted through `padre_id`. */
-  private profundidad(area: CatalogoAreas, porId: ReadonlyMap<number, CatalogoAreas>): number {
-    const visitadas = new Set<number>([area.id]);
-    let nivel = 0;
-    let padre = area.padre_id;
-
-    // The `Set` breaks a cycle: a malformed chart must not hang the screen.
-    while (padre !== null && !visitadas.has(padre)) {
-      visitadas.add(padre);
-      nivel += 1;
-      padre = porId.get(padre)?.padre_id ?? null;
-    }
-
-    return nivel;
-  }
-
   /**
    * Every local failure of the draft, keyed by field, in the order the steps
    * ask for them.
    *
    * One pass instead of one rule per control: several checks compare two fields
-   * (`fecha_inicio_puesto` against `fecha_ingreso_gobierno`, the category against
-   * the post), so a map built from the whole draft is the only way to keep them
-   * coherent. The insertion order is the order of the wizard, which is what lets
-   * the submit carry the user to the first thing that has to be fixed.
+   * (`fecha_inicio_puesto` against `fecha_ingreso_gobierno`), so a map built
+   * from the whole draft is the only way to keep them coherent. The insertion
+   * order is the order of the wizard, which is what lets the submit carry the
+   * user to the first thing that has to be fixed.
    */
   private evaluar(datos: BorradorAlta): Record<string, string> {
     const errores: Record<string, string> = {};
@@ -849,8 +949,7 @@ export class AltaPage {
 
     // --- Step 2: plaza -----------------------------------------------------
     poner('area_id', datos.area_id === null ? MENSAJE_REQUERIDO_OPCION : null);
-    poner('puesto_id', datos.puesto_id === null ? MENSAJE_REQUERIDO_OPCION : null);
-    poner('categoria_cct_id', this.mensajeDeCategoria(datos));
+    poner('puesto_id', this.mensajeDePuesto(datos));
     poner('fecha_inicio_puesto', this.mensajeDeInicio(datos));
     poner('fecha_ingreso_gobierno', validarFecha(datos.fecha_ingreso_gobierno, { noFutura: true }));
 
@@ -871,17 +970,24 @@ export class AltaPage {
     return errores;
   }
 
-  /** Message of the category, including whether it fits the chosen post. */
-  private mensajeDeCategoria(datos: BorradorAlta): string | null {
-    if (datos.categoria_cct_id === null) {
+  /**
+   * Message of the post: it must be chosen, and it must carry a category.
+   *
+   * The category is not a control the user can fix here, so a post the catalogue
+   * has no category for is named under the post itself: the server would derive
+   * nothing from it, and the step cannot leave.
+   */
+  private mensajeDePuesto(datos: BorradorAlta): string | null {
+    if (datos.puesto_id === null) {
       return MENSAJE_REQUERIDO_OPCION;
     }
 
-    const categorias = this.catalogos()?.categorias_cct ?? [];
     const puesto = this.puestoDe(datos.puesto_id);
-    return categoriaCompatible(datos.categoria_cct_id, puesto, categorias)
-      ? null
-      : MENSAJE_CATEGORIA;
+    if (puesto === null) {
+      return null;
+    }
+
+    return this.categoriaDePuesto(puesto) === null ? MENSAJE_PUESTO_SIN_CATEGORIA : null;
   }
 
   /** Message of the start of the post: present, real, not future, not early. */
@@ -995,9 +1101,19 @@ export class AltaPage {
     return (this.catalogos()?.puestos ?? []).find((puesto) => puesto.id === id) ?? null;
   }
 
-  /** `true` when the post of the draft is `mando_medio`, read from the catalogs. */
+  /** Category a post points at, or `null` when the catalogue does not carry it. */
+  private categoriaDePuesto(puesto: PuestoCatalogo | null): CategoriaCctCatalogo | null {
+    if (puesto === null) {
+      return null;
+    }
+
+    const categorias = this.catalogos()?.categorias_cct ?? [];
+    return categorias.find((categoria) => categoria.id === puesto.categoria_cct_id) ?? null;
+  }
+
+  /** `true` when the post of the draft is held by a `mando_medio_superior` category. */
   private esMandoMedioDe(datos: BorradorAlta): boolean {
-    return this.puestoDe(datos.puesto_id)?.tipo_puesto === 'mando_medio';
+    return this.categoriaDePuesto(this.puestoDe(datos.puesto_id))?.tipo === MANDO_MEDIO_SUPERIOR;
   }
 
   /** Forgets the `422` message of one field, after the value behind it changed. */
@@ -1026,12 +1142,11 @@ export class AltaPage {
       num_empleado: datos.num_empleado.trim(),
       nombre: datos.nombre.trim(),
       correo_institucional: datos.correo_institucional.trim(),
-      // The gate of step 2 keeps these three from being empty; if a bug ever
+      // The gate of step 2 keeps these two from being empty; if a bug ever
       // let them through, the `null` would leave and the API would answer the
       // `422` that names the field, which is better than a guess made here.
       area_id: datos.area_id as number,
       puesto_id: datos.puesto_id as number,
-      categoria_cct_id: datos.categoria_cct_id as number,
       fecha_inicio_puesto: datos.fecha_inicio_puesto,
     };
 
@@ -1210,11 +1325,9 @@ export class AltaPage {
     return this.catalogos()?.areas.find((area) => area.id === id)?.nombre ?? SIN_DATO;
   }
 
-  /** Key of a CCT category, or the placeholder. */
-  private claveDeCategoria(id: number | null): string {
-    if (id === null) {
-      return SIN_DATO;
-    }
-    return this.catalogos()?.categorias_cct.find((categoria) => categoria.id === id)?.clave ?? SIN_DATO;
+  /** Category of the summary, derived from the chosen post, or the placeholder. */
+  private categoriaDelResumen(): string {
+    const categoria = this.categoriaElegida();
+    return categoria === null ? SIN_DATO : textoDeCategoria(categoria);
   }
 }

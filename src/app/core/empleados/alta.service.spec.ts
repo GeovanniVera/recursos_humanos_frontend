@@ -29,8 +29,10 @@ const CATALOGOS: FormularioCatalogos = {
       asignable: false,
     },
   ],
-  puestos: [{ id: 7, nombre: 'Analista', tipo_puesto: 'mando_medio' }],
-  categorias_cct: [{ id: 3, clave: 'CCT-01', tipo: 'mando_medio', descripcion: 'Analista' }],
+  puestos: [{ id: 7, nombre: 'Analista', categoria_cct_id: 3, area_ids: [3] }],
+  categorias_cct: [
+    { id: 3, clave: 'CCT-01', tipo: 'mando_medio_superior', descripcion: 'Analista' },
+  ],
   niveles_estudios: [{ id: 2, clave: 'LIC', descripcion: 'Licenciatura' }],
   estados_civiles: [{ id: 1, clave: 'SOL', descripcion: 'Soltero' }],
   tipos_personal: ['No Aplica', 'Sindicalizado', 'No sindicalizado'],
@@ -40,14 +42,13 @@ const CATALOGOS: FormularioCatalogos = {
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };
 
-/** Smallest body the endpoint accepts: the seven required fields. */
+/** Smallest body the endpoint accepts: the six required fields. */
 const ALTA_MINIMA: AltaEmpleadoRequest = {
   num_empleado: '12345',
   nombre: 'Ana Martínez',
   area_id: 4,
   puesto_id: 7,
   fecha_inicio_puesto: '2026-01-15',
-  categoria_cct_id: 3,
   correo_institucional: 'ana@utn.edu.mx',
 };
 

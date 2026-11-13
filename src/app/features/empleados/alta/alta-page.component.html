@@ -269,13 +269,22 @@
                   [attr.aria-describedby]="idDeError('municipio')"
                 >
                   <option value="" [selected]="modelo().municipio === ''">Elegí un municipio</option>
-                  @for (municipio of municipios(); track municipio.id) {
-                    <option
-                      [value]="municipio.nombre"
-                      [selected]="modelo().municipio === municipio.nombre"
-                    >
-                      {{ municipio.nombre }}
-                    </option>
+                  <!--
+                    141 rows in one list are unusable: they arrive grouped by
+                    entity, and `entidad` is a database literal (`edomex`,
+                    `cdmx`) that has to be translated for display.
+                  -->
+                  @for (grupo of municipiosPorEntidad(); track grupo.entidad) {
+                    <optgroup [label]="grupo.entidad">
+                      @for (municipio of grupo.municipios; track municipio.id) {
+                        <option
+                          [value]="municipio.nombre"
+                          [selected]="modelo().municipio === municipio.nombre"
+                        >
+                          {{ municipio.nombre }}
+                        </option>
+                      }
+                    </optgroup>
                   }
                 </select>
                 @if (errorDe('municipio'); as error) {
@@ -314,7 +323,7 @@
           <fieldset class="group">
             <legend class="group-title">Plaza</legend>
             <p class="group-hint">
-              El área, el puesto, la categoría y la fecha de inicio en el puesto son obligatorios.
+              El área, el puesto y la fecha de inicio en el puesto son obligatorios.
             </p>
 
             <div class="grid">
@@ -329,7 +338,7 @@
                   id="area_id"
                   name="area_id"
                   class="control"
-                  (change)="elegirNumero('area_id', $event)"
+                  (change)="cambiarArea($event)"
                   (blur)="tocar('area_id')"
                   [class.is-invalid]="errorDe('area_id') !== null"
                   [attr.aria-invalid]="errorDe('area_id') === null ? null : 'true'"
@@ -353,11 +362,16 @@
 
               <div class="field">
                 <label class="label" for="puesto_id">Puesto</label>
+                <!--
+                  The options are the posts of the chosen area, read from the
+                  `area_puesto` pivot: a post the area does not offer is not on
+                  the list, because the server rejects that pair with a `422`.
+                -->
                 <select
                   id="puesto_id"
                   name="puesto_id"
                   class="control"
-                  (change)="cambiarPuesto($event)"
+                  (change)="elegirNumero('puesto_id', $event)"
                   (blur)="tocar('puesto_id')"
                   [class.is-invalid]="errorDe('puesto_id') !== null"
                   [attr.aria-invalid]="errorDe('puesto_id') === null ? null : 'true'"
@@ -366,47 +380,36 @@
                   <option value="" [selected]="modelo().puesto_id === null">Elegí un puesto</option>
                   @for (puesto of puestos(); track puesto.id) {
                     <option [value]="puesto.id" [selected]="modelo().puesto_id === puesto.id">
-                      {{ puesto.nombre }}
+                      {{ etiquetaPuesto(puesto) }}
                     </option>
                   }
                 </select>
+                @if (modelo().area_id !== null && puestos().length === 0) {
+                  <!--
+                    An area without posts is a catalogue gap, not a mistake of
+                    the operator: the state is announced instead of leaving a
+                    selector that only offers its placeholder.
+                  -->
+                  <p class="field-hint" role="status">
+                    No hay puestos asociados a esta área. Asignalos desde Catálogos.
+                  </p>
+                }
                 @if (errorDe('puesto_id'); as error) {
                   <p class="field-error" [id]="'error-puesto_id'" role="alert">{{ error }}</p>
                 }
               </div>
 
               <div class="field">
-                <label class="label" for="categoria_cct_id">Categoría CCT</label>
+                <span class="label">Categoría CCT</span>
                 <!--
-                  Only the categories of the chosen post's type are offered: the
-                  backend answers `422` when the two differ.
+                  The category is not a choice: the server derives it from the
+                  chosen post and prohibits sending `categoria_cct_id`, so the
+                  field only shows what will be stored. It reads as a value, not
+                  as a control that invites a click.
                 -->
-                <select
-                  id="categoria_cct_id"
-                  name="categoria_cct_id"
-                  class="control"
-                  (change)="elegirNumero('categoria_cct_id', $event)"
-                  (blur)="tocar('categoria_cct_id')"
-                  [class.is-invalid]="errorDe('categoria_cct_id') !== null"
-                  [attr.aria-invalid]="errorDe('categoria_cct_id') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('categoria_cct_id')"
-                >
-                  <option value="" [selected]="modelo().categoria_cct_id === null">
-                    {{ puestoElegido() === null ? 'Elegí primero un puesto' : 'Elegí una categoría' }}
-                  </option>
-                  @for (categoria of categorias(); track categoria.id) {
-                    <option
-                      [value]="categoria.id"
-                      [selected]="modelo().categoria_cct_id === categoria.id"
-                    >
-                      {{ categoria.clave
-                      }}{{ categoria.descripcion === null ? '' : ' · ' + categoria.descripcion }}
-                    </option>
-                  }
-                </select>
-                @if (errorDe('categoria_cct_id'); as error) {
-                  <p class="field-error" [id]="'error-categoria_cct_id'" role="alert">{{ error }}</p>
-                }
+                <p id="categoria-cct" class="control control-static" aria-live="polite">
+                  {{ categoriaVisible() }}
+                </p>
               </div>
 
               <div class="field">

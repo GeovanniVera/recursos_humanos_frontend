@@ -211,6 +211,22 @@
   resize: vertical;
 }
 
+// A value the form derives from another field. It keeps the box of a control so
+// the row reads evenly, but it is filled like a disabled one: there is nothing
+// to type and nothing to click.
+.control-static {
+  margin: 0;
+  border-color: var(--color-border-default);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+}
+
+// Nothing happens on hover: the accent border of an editable control would
+// promise an interaction that does not exist.
+.control-static:hover {
+  border-color: var(--color-border-default);
+}
+
 // A control the form fills by itself: a complete CURP already carries the birth
 // date and the sex, so the two are shown instead of asked. The note underneath
 // is what says so; this only keeps the value readable in the three themes, where
@@ -238,8 +254,9 @@
   content: '✕ ';
 }
 
-// Where a value came from when the form filled it. It sits where the error note
-// would, so the two never fight for the same line.
+// A note under a control: where a value came from when the form filled it, or
+// why there is nothing to choose. It sits where the error note would, so the two
+// never fight for the same line.
 .field-hint {
   font: var(--text-label);
   letter-spacing: var(--tracking-label);
