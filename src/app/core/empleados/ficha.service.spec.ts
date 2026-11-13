@@ -2,10 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { FichaEmpleado } from './ficha.models';
+import { FichaEmpleado, HistorialBaja } from './ficha.models';
 import { FichaService } from './ficha.service';
 
 const URL_FICHA = `${environment.apiBaseUrl}/empleados/12`;
+const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
 
 const FICHA: FichaEmpleado = {
   id: 12,
@@ -115,5 +116,37 @@ describe('FichaService', () => {
       .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
 
     expect(status).toBe(404);
+  });
+
+  it('asks GET /empleados/{id}/historial-bajas and unwraps data', () => {
+    const historial: HistorialBaja[] = [
+      {
+        id: 1,
+        tipo: 'licencia',
+        motivo_id: 2,
+        motivo: 'Baja temporal',
+        motivo_clave: 'BAJA_TEMPORAL',
+        desde: '2026-04-01',
+        hasta: null,
+        vigente: true,
+        nota: 'Licencia temporal',
+        registrado_por: 'Elena Ejecutora',
+        reactivado_por: null,
+        nota_reactivacion: null,
+        fecha_registro: '2026-04-01T10:00:00Z',
+      },
+    ];
+
+    let received: HistorialBaja[] | undefined;
+    service.consultarBajas(12).subscribe((rows) => {
+      received = rows;
+    });
+
+    const request = httpMock.expectOne(URL_HISTORIAL_BAJAS);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().length).toBe(0);
+    request.flush({ data: historial });
+
+    expect(received).toEqual(historial);
   });
 });

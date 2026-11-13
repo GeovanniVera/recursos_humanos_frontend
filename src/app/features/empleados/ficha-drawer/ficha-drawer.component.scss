@@ -287,6 +287,10 @@
   gap: var(--space-3);
 }
 
+.skeleton--compact {
+  gap: var(--space-2);
+}
+
 .skeleton-line {
   display: block;
   height: var(--space-3);
@@ -296,6 +300,78 @@
 
 .skeleton-line.is-short {
   width: 58%;
+}
+
+// ---------------------------------------------------------------------------
+// Block 07 — Absence & termination history
+// ---------------------------------------------------------------------------
+
+.block-counter {
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  font: var(--text-label);
+  color: var(--color-text-secondary);
+}
+
+.bajas-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bajas-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+.bajas-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.baja-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.baja-item.is-vigente {
+  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
+}
+
+.baja-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.baja-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.baja-tipo {
+  font: var(--text-nav-branch);
+  color: var(--color-text-primary);
+}
+
+.baja-periodo {
+  font: var(--text-label);
+  color: var(--color-text-secondary);
 }
 
 // A glass card with a coloured disc, the same failure treatment the screens use:

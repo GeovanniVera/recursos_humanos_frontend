@@ -821,6 +821,7 @@ describe('EmpleadosPage', () => {
     const ficha = httpMock.expectOne(`${URL_FICHA}/${LUIS.id}`);
     expect(ficha.request.method).toBe('GET');
     ficha.flush({ data: fichaDe(LUIS.id, LUIS.nombre) });
+    httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/historial-bajas`).flush({ data: [] });
     await fixture.whenStable();
 
     // The panel is the one mounted by the screen, with the row's record inside.
@@ -850,6 +851,7 @@ describe('EmpleadosPage', () => {
 
     const ficha = httpMock.expectOne(`${URL_FICHA}/${LUIS.id}`);
     ficha.flush({ data: fichaDe(LUIS.id, LUIS.nombre) });
+    httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/historial-bajas`).flush({ data: [] });
     await fixture.whenStable();
 
     expect(texto(fixture)).toContain('Luis Ramírez');
@@ -866,6 +868,7 @@ describe('EmpleadosPage', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(`${URL_FICHA}/${LUIS.id}`).flush({ data: fichaDe(LUIS.id, LUIS.nombre) });
+    httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/historial-bajas`).flush({ data: [] });
     await fixture.whenStable();
 
     const baja = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(

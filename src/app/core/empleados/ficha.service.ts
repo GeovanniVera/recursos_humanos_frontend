@@ -2,7 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { FichaEmpleado, FichaEmpleadoResponse } from './ficha.models';
+import {
+  FichaEmpleado,
+  FichaEmpleadoResponse,
+  HistorialBaja,
+  HistorialBajasResponse,
+} from './ficha.models';
 
 /**
  * Reads the full record of one worker.
@@ -29,6 +34,16 @@ export class FichaService {
   consultar(id: number): Observable<FichaEmpleado> {
     return this.http
       .get<FichaEmpleadoResponse>(`${this.baseUrl}/${id}`)
+      .pipe(map((response) => response.data));
+  }
+
+  /**
+   * `GET /empleados/{id}/historial-bajas` — chronological absence and
+   * termination log of one worker.
+   */
+  consultarBajas(id: number): Observable<HistorialBaja[]> {
+    return this.http
+      .get<HistorialBajasResponse>(`${this.baseUrl}/${id}/historial-bajas`)
       .pipe(map((response) => response.data));
   }
 }

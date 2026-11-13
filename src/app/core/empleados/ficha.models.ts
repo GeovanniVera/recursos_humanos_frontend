@@ -140,3 +140,28 @@ export interface FichaError {
   message?: string;
   codigo?: string;
 }
+
+/** Explicit absence classification matching `empleados_bajas.tipo`. */
+export type TipoBajaHistorial = 'licencia' | 'definitiva';
+
+/** One chronological period from `GET /api/empleados/{id}/historial-bajas`. */
+export interface HistorialBaja {
+  id: number;
+  tipo: TipoBajaHistorial | null;
+  motivo_id: number;
+  motivo: string | null;
+  motivo_clave: string | null;
+  desde: string | null;
+  hasta: string | null;
+  vigente: boolean;
+  nota: string | null;
+  registrado_por: string | null;
+  reactivado_por: string | null;
+  nota_reactivacion: string | null;
+  fecha_registro: string | null;
+}
+
+/** `200` answer of `GET /api/empleados/{id}/historial-bajas`. */
+export interface HistorialBajasResponse {
+  data: HistorialBaja[];
+}
