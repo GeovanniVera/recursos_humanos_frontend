@@ -95,6 +95,28 @@
   content: '✕ ';
 }
 
+// Effect of the chosen motive. It reads as a note, with a lane on the left, and
+// the tone changes only when the act cannot be undone.
+.efecto {
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: calc(var(--border-width) * 3) solid var(--color-state-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-glass);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+.efecto.is-definitiva {
+  border-inline-start-color: var(--color-state-error);
+  color: var(--color-text-primary);
+}
+
+.field-hint {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
 // --- Failure ---------------------------------------------------------------
 
 // The same glass card with a coloured disc the screens use: a filled red panel

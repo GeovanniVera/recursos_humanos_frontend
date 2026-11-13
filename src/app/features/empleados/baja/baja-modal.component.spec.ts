@@ -243,6 +243,69 @@ describe('BajaModal', () => {
     expect(avisos[0].message).toBe('Ana Martínez quedó dado de baja.');
   });
 
+  it('states the effect of the chosen motive, and marks the irreversible one', async () => {
+    const fixture = await abrirConMotivos();
+
+    // No motive yet: nothing to warn about.
+    expect(host(fixture).querySelector('.efecto')).toBeNull();
+
+    elegir(fixture, '4');
+    await fixture.whenStable();
+
+    const temporal = host(fixture).querySelector<HTMLElement>('.efecto');
+    // The catalogue does not send `cierra_plaza`, so the effect is derived from
+    // the key. A temporary leave keeps the post, and the operator has to know.
+    expect(temporal?.textContent).toContain('conserva su plaza');
+    expect(temporal?.classList.contains('is-definitiva')).toBe(false);
+
+    elegir(fixture, '1');
+    await fixture.whenStable();
+
+    const definitiva = host(fixture).querySelector<HTMLElement>('.efecto');
+    expect(definitiva?.textContent).toContain('No se puede deshacer');
+    expect(definitiva?.classList.contains('is-definitiva')).toBe(true);
+  });
+
+  it('says the effective date is the server side, and never sends one', async () => {
+    const fixture = await abrirConMotivos();
+
+    expect(text(fixture)).toContain('La fecha de baja la fija el servidor');
+
+    elegir(fixture, '4');
+    escribir(fixture, 'Licencia');
+    await fixture.whenStable();
+
+    boton(fixture, 'Dar de baja')?.click();
+    await fixture.whenStable();
+
+    const peticion = httpMock.expectOne(URL_BAJA);
+    // Sending a date is a `422`: the body carries only the two allowed fields.
+    expect(Object.keys(peticion.request.body as object).sort()).toEqual(['motivo_id', 'nota']);
+    peticion.flush({ mensaje: 'Baja procesada exitosamente.', empleado: {} });
+    await fixture.whenStable();
+  });
+
+  it('treats the route 404 as a worker that no longer exists', async () => {
+    const fixture = await abrirConMotivos();
+
+    elegir(fixture, '4');
+    escribir(fixture, 'Licencia');
+    await fixture.whenStable();
+
+    boton(fixture, 'Dar de baja')?.click();
+    await fixture.whenStable();
+
+    httpMock.expectOne(URL_BAJA).flush(
+      { message: 'No query results for model [App\\Models\\Empleado] 99' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await fixture.whenStable();
+
+    // Laravel's sentence names a model, not a situation: it is replaced.
+    expect(text(fixture)).toContain('Ese trabajador ya no existe');
+    expect(text(fixture)).not.toContain('No query results');
+  });
+
   it('shows the backend sentence of a 409 and keeps the layer open', async () => {
     const fixture = await abrirConMotivos();
 

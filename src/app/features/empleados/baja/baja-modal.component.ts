@@ -42,6 +42,8 @@ const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cerrá y volvé a abrir.
 
 /** Fallback of a `409` whose body carries no sentence. */
 const MESSAGE_CONFLICT = 'El trabajador ya está dado de baja.';
+/** The POST answers the route's own 404 when the worker no longer exists. */
+const MESSAGE_GONE = 'Ese trabajador ya no existe. Cerrá el panel y recargá la lista.';
 
 /** Both limits are the contract's, not a guess: `nota` is `max:1000`. */
 const MAX_NOTA = 1000;
@@ -125,6 +127,38 @@ export class BajaModal {
 
   /** Options of the `<select>`; empty while the catalog is missing. */
   readonly opciones = computed<readonly MotivoBaja[]>(() => this.motivos() ?? []);
+
+  /** Motive chosen on screen, resolved against the catalogue. */
+  readonly motivoElegido = computed<MotivoBaja | null>(() => {
+    const id = this.motivoId();
+    if (id === null) {
+      return null;
+    }
+    return this.opciones().find((motivo) => motivo.id === id) ?? null;
+  });
+
+  /** `true` when the chosen motive closes the post. */
+  readonly esDefinitiva = computed(() => this.motivoElegido()?.clave === 'BAJA_DEFINITIVA');
+
+  /**
+   * What the chosen motive does, in the operator's words.
+   *
+   * Derived from `clave` because the catalogue does not expose `cierra_plaza`.
+   * An unknown claver shows nothing instead of guessing an effect.
+   */
+  readonly efecto = computed<string | null>(() => {
+    const clave = this.motivoElegido()?.clave;
+
+    if (clave === 'BAJA_TEMPORAL') {
+      return 'No cierra el puesto ni la antigüedad: el trabajador conserva su plaza. Se le corta el acceso al sistema.';
+    }
+
+    if (clave === 'BAJA_DEFINITIVA') {
+      return 'Cierra el puesto y fija la fecha de fin en la institución. No se puede deshacer con las herramientas actuales.';
+    }
+
+    return null;
+  });
 
   /** Sentence of the alert, whichever source it came from. */
   readonly aviso = computed(() => this.mensaje() ?? this.errorMotivos());
@@ -325,6 +359,12 @@ export class BajaModal {
         // it arrives. The panel stays open, with nothing left to submit.
         this.conflicto.set(true);
         this.mensaje.set(mensajeBackend ?? MESSAGE_CONFLICT);
+        return;
+      case 404:
+        // The route's own 404 (`No query results for model…`), not the ficha's
+        // controlled one: the worker is gone, not a validation problem. Showing
+        // Laravel's sentence would tell the operator nothing.
+        this.mensaje.set(MESSAGE_GONE);
         return;
       case 422:
         this.manejarValidacion(cuerpo?.errors, mensajeLaravel);

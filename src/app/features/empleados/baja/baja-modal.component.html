@@ -63,6 +63,15 @@
         @if (errorDe('motivo_id'); as error) {
           <p class="field-error" id="error-motivo_id" role="alert">{{ error }}</p>
         }
+
+        @if (efecto(); as aviso) {
+          <!--
+            The effect is derived from the motive's `clave` because the catalogue
+            does not send `cierra_plaza`. It is what the operator is agreeing to,
+            so it is on screen before the submit, not in a toast afterwards.
+          -->
+          <p class="efecto" [class.is-definitiva]="esDefinitiva()" role="note">{{ aviso }}</p>
+        }
       </div>
 
       <div class="field">
@@ -78,6 +87,9 @@
           [class.is-invalid]="errorDe('nota') !== null"
           [attr.aria-describedby]="descripcionNota()"
         ></textarea>
+
+        <!-- The date is the server's: the contract forbids sending it. -->
+        <p class="field-hint">La fecha de baja la fija el servidor al confirmar.</p>
 
         <!-- The counter states the same limit `maxlength` enforces. -->
         <p class="counter" id="baja-nota-contador">
