@@ -68,13 +68,9 @@ export const routes: Routes = [
       },
       {
         path: 'semaforo-documentos',
-        data: {
-          breadcrumb: 'Semáforo de documentos',
-          titulo: 'Semáforo de documentos',
-          descripcion:
-            'El semáforo de expedientes por empleado, con sus faltantes y sus vencimientos, llega en la siguiente iteración.',
-        },
-        loadComponent: placeholder,
+        data: { breadcrumb: 'Semáforo de Completitud' },
+        loadComponent: () =>
+          import('./features/semaforo/semaforo-page.component').then((m) => m.SemaforoPage),
       },
       {
         path: 'admin/catalogos',

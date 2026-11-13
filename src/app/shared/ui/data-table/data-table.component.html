@@ -1,5 +1,9 @@
 <div class="wrap">
-  <table class="table" [attr.aria-busy]="loading() ? 'true' : null">
+  <table
+    class="table"
+    [class.has-leading-decoration]="leadingDecoration()"
+    [attr.aria-busy]="loading() ? 'true' : null"
+  >
     @if (caption()) {
       <caption class="visually-hidden">
         {{
@@ -16,9 +20,48 @@
             class="head-cell"
             [class.is-end]="column.align === 'end'"
             [style.width]="column.width"
+            [attr.aria-sort]="
+              column.sortable
+                ? sort()?.key === column.key
+                  ? sort()?.direction === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+                : null
+            "
           >
             @if (headCellTemplate(); as renderHead) {
               <ng-container *ngTemplateOutlet="renderHead; context: { column }" />
+            } @else if (column.sortable) {
+              <button
+                type="button"
+                class="sort-button"
+                (click)="sortChange.emit(column.key)"
+                [attr.aria-label]="
+                  'Ordenar por ' +
+                  column.header +
+                  (sort()?.key === column.key && sort()?.direction === 'asc'
+                    ? ', descendente'
+                    : ', ascendente')
+                "
+              >
+                {{ column.header }}
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  @if (sort()?.key === column.key && sort()?.direction === 'asc') {
+                    <path d="m4 10 4-4 4 4" />
+                  } @else if (sort()?.key === column.key) {
+                    <path d="m4 6 4 4 4-4" />
+                  } @else {
+                    <path d="m5 6 3-3 3 3m-6 4 3 3 3-3" />
+                  }
+                </svg>
+              </button>
             } @else {
               {{ column.header }}
             }
@@ -26,7 +69,9 @@
         }
         @if (rowActions()) {
           <th scope="col" class="head-cell actions">
-            <span class="visually-hidden">Acciones</span>
+            <span [class.visually-hidden]="!actionsLabel()">{{
+              actionsLabel() || 'Acciones'
+            }}</span>
           </th>
         }
       </tr>
@@ -48,7 +93,9 @@
         }
       } @else if (rows().length === 0) {
         <tr>
-          <td class="empty" [attr.colspan]="columnCount()">{{ emptyMessage() }}</td>
+          <td class="empty" [attr.colspan]="columnCount()">
+            {{ emptyMessage() }}
+          </td>
         </tr>
       } @else {
         @for (row of rows(); track $index) {
