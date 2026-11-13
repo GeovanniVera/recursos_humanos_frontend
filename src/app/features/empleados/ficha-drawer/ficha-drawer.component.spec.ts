@@ -21,7 +21,7 @@ const FICHA: FichaEmpleado = {
     sexo: 'M',
     estado_civil_id: 2,
     estado_civil: 'Casado',
-    municipio: 'Nezahualcóyotl',
+    entidad_nacimiento: 'Estado de México',
   },
   plaza: {
     area_id: 3,
@@ -60,7 +60,7 @@ const FICHA: FichaEmpleado = {
     estado_expediente: {
       estado: 'casi_completo',
       total_faltantes: 2,
-      campos_faltantes: ['curp', 'municipio'],
+      campos_faltantes: ['curp', 'entidad_nacimiento'],
     },
   },
 };
@@ -318,7 +318,7 @@ describe('FichaDrawer', () => {
     const missing = host(fixture).querySelector<HTMLElement>('.missing');
     expect(missing?.textContent).toContain('Faltan 2 campos');
     expect(missing?.textContent).toContain('CURP');
-    expect(missing?.textContent).toContain('Municipio');
+    expect(missing?.textContent).toContain('Entidad de nacimiento');
   });
 
   it('asks for the record again when the panel is reopened', async () => {

@@ -17,7 +17,7 @@ const FICHA: FichaEmpleado = {
     sexo: 'M',
     estado_civil_id: 2,
     estado_civil: 'Casado',
-    municipio: 'Nezahualcóyotl',
+    entidad_nacimiento: 'Estado de México',
   },
   plaza: {
     area_id: 3,
@@ -56,7 +56,7 @@ const FICHA: FichaEmpleado = {
     estado_expediente: {
       estado: 'casi_completo',
       total_faltantes: 2,
-      campos_faltantes: ['curp', 'municipio'],
+      campos_faltantes: ['curp', 'entidad_nacimiento'],
     },
   },
 };

@@ -10,7 +10,7 @@ export const ETIQUETAS_CAMPO_EXPEDIENTE: Readonly<Record<string, string>> = {
   sexo: 'Sexo',
   estado_civil: 'Estado civil',
   estado_civil_id: 'Estado civil',
-  municipio: 'Municipio',
+  entidad_nacimiento: 'Entidad de nacimiento',
   area: 'Adscripción',
   area_id: 'Adscripción',
   puesto: 'Plaza o puesto',

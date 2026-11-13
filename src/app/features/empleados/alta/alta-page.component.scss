@@ -252,6 +252,50 @@
   border-color: var(--color-state-error);
 }
 
+// The institutional address is typed without its domain, which the form appends
+// when it builds the request. The box belongs to the pair, so it is drawn once, by
+// the wrapper, and the input inside it keeps only its height and its padding: a
+// second frame around half of a value would read as two controls.
+.control-group {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.control-group:hover,
+.control-group:focus-within {
+  border-color: var(--color-accent);
+}
+
+// Declared after the hover accent so a rejected value keeps its state while the
+// pointer is over it.
+.control-group.is-invalid {
+  border-color: var(--color-state-error);
+}
+
+.control-group .control {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  border-color: var(--transparent);
+  background: var(--transparent);
+}
+
+// Fixed part of the address: it travels with every value, so it is announced and
+// never editable. Same colour as a note, because it is information about the field
+// and not a value the user typed.
+.control-suffix {
+  flex: none;
+  padding-inline-end: var(--space-4);
+  font: var(--text-field);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 .field-error {
   font: var(--text-label);
   letter-spacing: var(--tracking-label);

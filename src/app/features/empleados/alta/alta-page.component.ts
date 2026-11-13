@@ -17,21 +17,28 @@ import {
   AltaEmpleadoRequest,
   CategoriaCctCatalogo,
   EmpleadoRegistrado,
+  EntidadCatalogo,
   ErrorValidacion,
   FormularioCatalogos,
-  MunicipioCatalogo,
   PuestoCatalogo,
 } from '../../../core/empleados/alta.models';
 import { AltaService } from '../../../core/empleados/alta.service';
+import { ENTIDADES_FEDERATIVAS } from '../../../core/empleados/entidades-federativas';
 import {
+  DOMINIO_INSTITUCIONAL,
   EXPLICACION_CURP,
+  LARGO_MAXIMO_LOCAL,
   MENSAJE_CURP_INVALIDA,
   MotivoCurp,
+  correoConDominio,
+  curpClaveEntidad,
   curpFechaNacimiento,
   curpSexo,
   hoyLocal,
   normalizarCorreo,
   normalizarMayusculas,
+  normalizarNombre,
+  parteLocalCorreo,
   trabajaOtroDondeRequerido,
   validarAniosExperiencia,
   validarCorreo,
@@ -75,15 +82,6 @@ const PASO_CONFIRMACION = PASOS.length - 1;
 /** Two non-breaking spaces per level of the chart, so a `<select>` can show depth. */
 const SANGRIA = '\u00A0\u00A0';
 
-/**
- * `entidad` of a municipality as a database literal, translated for display.
- * The payload sends `edomex` / `cdmx`, not the readable name.
- */
-const ENTIDADES_VISIBLES: Record<string, string> = {
-  edomex: 'Estado de México',
-  cdmx: 'Ciudad de México',
-};
-
 /** Values the backend fixes for a `mando_medio_superior` post. They are the only accepted ones. */
 const PERSONAL_MANDO_MEDIO = 'No Aplica';
 const JORNADA_MANDO_MEDIO = 'Mixta';
@@ -121,8 +119,20 @@ const CATEGORIA_SIN_PUESTO = 'Se asigna al elegir el puesto.';
 /** Read-only value of the category when the catalogue does not carry it. */
 const CATEGORIA_SIN_ASIGNAR = 'Sin categoría asignada.';
 
-/** The two fields the backend derives from a complete CURP. */
-const CAMPOS_DERIVADOS = ['fecha_nacimiento', 'sexo'] as const;
+/**
+ * The fields the form derives instead of asking.
+ *
+ * `fecha_nacimiento` and `sexo` come from the CURP; `entidad_nacimiento` comes
+ * from characters 12 and 13 of the same value. All three are locked from the
+ * first render, with or without a document already typed: the user only writes
+ * the CURP, and the backend resolves the three values from it, so there is no
+ * state in which one of them is the user's to fill.
+ */
+const CAMPOS_DERIVADOS: ReadonlySet<string> = new Set([
+  'fecha_nacimiento',
+  'sexo',
+  'entidad_nacimiento',
+]);
 
 /**
  * Step that owns each field of the request.
@@ -138,7 +148,7 @@ const PASO_DE_CAMPO: Readonly<Record<string, number>> = {
   fecha_nacimiento: 0,
   sexo: 0,
   estado_civil_id: 0,
-  municipio: 0,
+  entidad_nacimiento: 0,
   correo_institucional: 0,
   area_id: 1,
   puesto_id: 1,
@@ -170,7 +180,7 @@ interface BorradorAlta {
   fecha_nacimiento: string;
   sexo: string;
   estado_civil_id: number | null;
-  municipio: string;
+  entidad_nacimiento: string;
   correo_institucional: string;
   area_id: number | null;
   puesto_id: number | null;
@@ -195,9 +205,16 @@ type CampoTexto =
   | 'fecha_ingreso_gobierno'
   | 'escuela_procedencia'
   | 'generacion'
-  | 'municipio'
   | 'sexo'
   | 'observaciones';
+
+/**
+ * Text fields the form fills by itself: they have no control to type into.
+ *
+ * `entidad_nacimiento` travels as the two-character key read from the CURP, so it
+ * is never one of the editable ones above and never a `<select>` value.
+ */
+type CampoDerivadoTexto = 'entidad_nacimiento';
 
 /** Optional numeric fields of the request. */
 type CampoNumero = 'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_id' | 'estado_civil_id';
@@ -206,7 +223,7 @@ type CampoNumero = 'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_i
 type CampoSelectNumero = 'area_id' | 'puesto_id' | 'estado_civil_id' | 'nivel_estudios_id';
 
 /** Fields chosen with a `<select>` that carries the literal value. */
-type CampoSelectTexto = 'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar' | 'municipio';
+type CampoSelectTexto = 'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar';
 
 /** One option of the area `<select>`, already flattened and indented. */
 interface AreaOpcion {
@@ -237,7 +254,7 @@ const BORRADOR: BorradorAlta = {
   fecha_nacimiento: '',
   sexo: '',
   estado_civil_id: null,
-  municipio: '',
+  entidad_nacimiento: '',
   correo_institucional: '',
   area_id: null,
   puesto_id: null,
@@ -387,23 +404,25 @@ export class AltaPage {
     this.evaluar(this.modelo()),
   );
 
-  /** `true` when the CURP is complete and passes every rule of the backend. */
-  private readonly curpValida = computed(() => validarCurp(this.modelo().curp).valida);
+  /**
+   * Domain the form appends to what the user types, with its `@`.
+   *
+   * The field shows it as a suffix and the body carries it as part of the value,
+   * so both read one constant instead of two copies of the same domain.
+   */
+  readonly sufijoCorreo = `@${DOMINIO_INSTITUCIONAL}`;
+
+  /** Room left for the local part, once the domain and its `@` are discounted. */
+  readonly largoLocalCorreo = LARGO_MAXIMO_LOCAL;
 
   /**
-   * `true` when the birth date is read from the CURP instead of typed.
+   * What the institutional address field shows: everything before the `@`.
    *
-   * The backend resolves the date from the CURP whenever it exists, so asking
-   * for it twice would be a field that the server silently overwrites.
+   * The draft keeps the complete address, because `validarCorreo`, the summary and
+   * the payload all read it whole, so the local part is derived on every render
+   * instead of being stored a second time and kept in sync by hand.
    */
-  readonly fechaDerivada = computed(
-    () => this.curpValida() && curpFechaNacimiento(this.modelo().curp) !== null,
-  );
-
-  /** `true` when the sex is read from the CURP. `X` leaves it to the user. */
-  readonly sexoDerivado = computed(
-    () => this.curpValida() && curpSexo(this.modelo().curp) !== null,
-  );
+  readonly correoLocal = computed(() => parteLocalCorreo(this.modelo().correo_institucional));
 
   /** Motivo behind the local CURP message, for the `title` of the note. */
   private readonly motivosCurp = computed<readonly MotivoCurp[]>(
@@ -459,27 +478,38 @@ export class AltaPage {
   }
 
   /**
-   * Municipalities grouped by entity, both alphabetical.
+   * Federative entities of birth, as the screen names them.
    *
-   * `entidad` arrives as a database literal (`edomex`, `cdmx`); it is translated
-   * for display. 141 rows in one flat list are unusable, so they go in groups.
+   * The frozen RENAPO table is the base because the live service does not send
+   * `entidades` yet: reading the payload alone left the list empty, every lookup
+   * missed and the field stayed blank while the CURP already carried the key. An
+   * entry the server does send overrides the local one of the same `clave`, so a
+   * payload that arrives late — or that lists only part of the catalog — still
+   * names every key instead of blanking the ones it omits.
+   *
+   * `ENTIDADES_FEDERATIVAS` is deleted the day `GET /api/empleados/formulario`
+   * answers with the whole catalog, and this computed goes back to reading the
+   * payload alone.
    */
-  readonly municipiosPorEntidad = computed(() => {
-    const grupos = new Map<string, MunicipioCatalogo[]>();
-
-    for (const municipio of this.municipios()) {
-      const entidad = ENTIDADES_VISIBLES[municipio.entidad] ?? municipio.entidad;
-      const grupo = grupos.get(entidad) ?? [];
-      grupo.push(municipio);
-      grupos.set(entidad, grupo);
+  readonly entidades = computed<readonly EntidadCatalogo[]>(() => {
+    const delServidor = this.catalogos()?.entidades ?? [];
+    if (delServidor.length === 0) {
+      return ENTIDADES_FEDERATIVAS;
     }
 
-    return [...grupos.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, 'es'))
-      .map(([entidad, municipios]) => ({
-        entidad,
-        municipios: [...municipios].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
-      }));
+    const porClave = new Map(delServidor.map((entidad) => [entidad.clave, entidad]));
+    return ENTIDADES_FEDERATIVAS.map((entidad) => porClave.get(entidad.clave) ?? entidad);
+  });
+
+  /**
+   * Readable name of the entity derived from the CURP, or `''` when there is none.
+   *
+   * The draft keeps the key, because that is what travels; the name is resolved
+   * here on every read, so a catalogue that arrives late still labels the field.
+   */
+  readonly entidadNacimientoNombre = computed<string>(() => {
+    const clave = this.modelo().entidad_nacimiento;
+    return clave === '' ? '' : this.nombreDeEntidad(clave);
   });
 
   /**
@@ -559,9 +589,6 @@ export class AltaPage {
   /** Marital statuses. */
   readonly estadosCiviles = computed(() => this.catalogos()?.estados_civiles ?? []);
 
-  /** Municipalities. The name is what travels, not the id. */
-  readonly municipios = computed(() => this.catalogos()?.municipios ?? []);
-
   /** Shifts offered by the backend. */
   readonly tiposJornada = computed(() => this.catalogos()?.tipos_jornada ?? []);
 
@@ -622,7 +649,7 @@ export class AltaPage {
             etiqueta: 'Estado civil',
             valor: this.descripcionDe(this.estadosCiviles(), datos.estado_civil_id),
           },
-          { etiqueta: 'Municipio', valor: this.texto(datos.municipio) },
+          { etiqueta: 'Entidad de nacimiento', valor: this.texto(this.entidadNacimientoNombre()) },
           { etiqueta: 'Correo institucional', valor: this.texto(datos.correo_institucional) },
         ],
       },
@@ -735,13 +762,37 @@ export class AltaPage {
   }
 
   /**
-   * Writes the institutional address in lower case, the way the backend
-   * normalises it before comparing. Same caret guard as `guardarNormalizado`:
-   * the control is only handed a new value when the normalisation changed it.
+   * Writes the institutional address from the local part the user types.
+   *
+   * The control asks for what goes before the `@`; the domain is appended here, so
+   * the field stays short while the draft — and therefore the body — carries a
+   * complete address. Same caret guard as `guardarNormalizado`: nothing is written
+   * when the resulting address is the one already stored, because handing Angular
+   * a new value repaints the control and would send the caret to the end of the
+   * line in the middle of a word.
    */
   guardarCorreo(valor: string): void {
-    const limpio = normalizarCorreo(valor);
-    this.guardar('correo_institucional', limpio === valor ? valor : limpio);
+    const completo = correoConDominio(valor);
+    if (completo === this.modelo().correo_institucional) {
+      return;
+    }
+    this.guardar('correo_institucional', completo);
+  }
+
+  /**
+   * Rewrites the name the way it is stored, once the user leaves the field.
+   *
+   * Collapsing the blanks on every keystroke would fight the caret: a user who
+   * types a second space would see it vanish under the cursor. On `blur` there is
+   * no caret to protect, and the cleaned value is what the user reads before
+   * moving on, so the correction is visible instead of silent.
+   */
+  salirDeNombre(): void {
+    const limpio = normalizarNombre(this.modelo().nombre);
+    if (limpio !== this.modelo().nombre) {
+      this.guardar('nombre', limpio);
+    }
+    this.tocar('nombre');
   }
 
   /**
@@ -893,29 +944,20 @@ export class AltaPage {
   /**
    * `id`s of the notes that describe a field, or `null`.
    *
-   * The control points at its message and, when the value was filled by the
-   * form, at the note that says where it came from.
+   * The control points at its message and, when the form fills the value, at the
+   * note that says where it came from. That note is no longer conditional — every
+   * derived field is locked from the first render, with or without a CURP — so
+   * the reference is always emitted together with the node it points at.
    */
   idDeError(campo: string): string | null {
     const ids: string[] = [];
-    if (this.derivado(campo)) {
+    if (CAMPOS_DERIVADOS.has(campo)) {
       ids.push(`derivado-${campo}`);
     }
     if (this.errorDe(campo) !== null) {
       ids.push(`error-${campo}`);
     }
     return ids.length === 0 ? null : ids.join(' ');
-  }
-
-  /** `true` when the form fills the field instead of the user. */
-  private derivado(campo: string): boolean {
-    if (campo === CAMPOS_DERIVADOS[0]) {
-      return this.fechaDerivada();
-    }
-    if (campo === CAMPOS_DERIVADOS[1]) {
-      return this.sexoDerivado();
-    }
-    return false;
   }
 
   /**
@@ -1095,22 +1137,28 @@ export class AltaPage {
     this.refrescarErrores();
   }
 
-  /** Copies the birth date and the sex a complete CURP already carries. */
+  /**
+   * Copies what a CURP already carries: the birth date, the sex and the entity.
+   *
+   * All three are written on every pass, `''` included. They are locked, so a
+   * value left behind by a CURP that no longer exists could never be corrected
+   * by hand, and it would still travel in the request claiming to be a fact of
+   * the document. An empty field is honest; a survivor is a lie the user cannot
+   * fix. The entity is read from the shape alone, before the completeness check,
+   * which is what lets it fill while the CURP is still being typed.
+   */
   private derivarDeCurp(destino: BorradorAlta, curp: string): void {
+    destino.entidad_nacimiento = this.claveDeEntidad(curpClaveEntidad(curp));
+
     if (!validarCurp(curp).valida) {
+      destino.fecha_nacimiento = '';
+      destino.sexo = '';
       return;
     }
 
-    const fecha = curpFechaNacimiento(curp);
-    if (fecha !== null) {
-      destino.fecha_nacimiento = fecha;
-    }
-
-    // `X` means "not specified": the field keeps whatever the user typed.
-    const sexo = curpSexo(curp);
-    if (sexo !== null) {
-      destino.sexo = sexo;
-    }
+    destino.fecha_nacimiento = curpFechaNacimiento(curp) ?? '';
+    // `X` means "not specified": the field stays empty instead of guessing.
+    destino.sexo = curpSexo(curp) ?? '';
   }
 
   /** `true` when the CURP can fill the birth date of the draft. */
@@ -1165,8 +1213,11 @@ export class AltaPage {
 
     const cuerpo: AltaEmpleadoRequest = {
       num_empleado: datos.num_empleado.trim(),
-      nombre: datos.nombre.trim(),
-      correo_institucional: datos.correo_institucional.trim(),
+      // The name and the address are cleaned the way they are stored: the blanks
+      // of the first one collapse, and the second goes out lower-cased and with
+      // the institutional domain, which the field never asked the user for.
+      nombre: normalizarNombre(datos.nombre),
+      correo_institucional: normalizarCorreo(datos.correo_institucional),
       // The gate of step 2 keeps these two from being empty; if a bug ever
       // let them through, the `null` would leave and the API would answer the
       // `422` that names the field, which is better than a guess made here.
@@ -1191,7 +1242,7 @@ export class AltaPage {
     this.agregarTexto(cuerpo, 'fecha_ingreso_gobierno', datos.fecha_ingreso_gobierno);
     this.agregarTexto(cuerpo, 'escuela_procedencia', datos.escuela_procedencia);
     this.agregarTexto(cuerpo, 'generacion', datos.generacion);
-    this.agregarTexto(cuerpo, 'municipio', datos.municipio);
+    this.agregarTexto(cuerpo, 'entidad_nacimiento', datos.entidad_nacimiento);
     this.agregarTexto(cuerpo, 'sexo', datos.sexo);
     this.agregarTexto(cuerpo, 'observaciones', datos.observaciones);
 
@@ -1215,7 +1266,11 @@ export class AltaPage {
   }
 
   /** Adds an optional text only when it carries something. */
-  private agregarTexto(cuerpo: AltaEmpleadoRequest, campo: CampoTexto, valor: string): void {
+  private agregarTexto(
+    cuerpo: AltaEmpleadoRequest,
+    campo: CampoTexto | CampoDerivadoTexto,
+    valor: string,
+  ): void {
     const limpio = valor.trim();
     if (limpio !== '') {
       cuerpo[campo] = limpio;
@@ -1389,6 +1444,25 @@ export class AltaPage {
       return SIN_DATO;
     }
     return this.catalogos()?.areas.find((area) => area.id === id)?.nombre ?? SIN_DATO;
+  }
+
+  /**
+   * Key of the entity that may travel: the one the merged list knows, or `''`.
+   *
+   * A key RENAPO does not issue would come back as a `422`, and the field exists
+   * to inform: an empty one says "the CURP does not give a known entity", which is
+   * the truth the screen can stand behind.
+   */
+  private claveDeEntidad(clave: string | null): string {
+    if (clave === null) {
+      return '';
+    }
+    return this.entidades().some((entidad) => entidad.clave === clave) ? clave : '';
+  }
+
+  /** Name of an entity of the merged list, or `''` when it does not carry the key. */
+  private nombreDeEntidad(clave: string): string {
+    return this.entidades().find((entidad) => entidad.clave === clave)?.nombre ?? '';
   }
 
   /** Category of the summary, derived from the chosen post, or the placeholder. */
