@@ -329,6 +329,93 @@
           </div>
         </dl>
       </details>
+
+      <details class="block" [open]="!record.gestion_interna.activo">
+        <summary class="block-head">
+          <span class="block-index" aria-hidden="true">07</span>
+          <h3 class="block-title">Historial de bajas</h3>
+          @if (!loadingBajas() && errorBajas() === null) {
+            <span class="block-counter">{{ bajas().length }}</span>
+          }
+          <svg class="block-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M4 6l4 4 4-4"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </summary>
+
+        <div class="bajas-body" [attr.aria-busy]="loadingBajas() ? 'true' : null">
+          @if (loadingBajas()) {
+            <div class="skeleton skeleton--compact" aria-hidden="true">
+              @for (line of bajaSkeletons; track line) {
+                <span class="skeleton-line skeleton-shimmer" [class.is-short]="line === 1"></span>
+              }
+            </div>
+          } @else if (errorBajas(); as bajaFailure) {
+            <app-alert-banner
+              variant="error"
+              [message]="bajaFailure.mensaje"
+              [detail]="bajaFailure.detalle"
+            >
+              @if (bajaFailure.accion === 'reintentar') {
+                <app-button alert-actions variant="secondary" (click)="reintentarBajas()">
+                  Reintentar
+                </app-button>
+              }
+            </app-alert-banner>
+          } @else if (bajas().length === 0) {
+            <p class="bajas-empty">Este trabajador no tiene bajas registradas.</p>
+          } @else {
+            <ol class="bajas-list">
+              @for (baja of bajas(); track baja.id) {
+                <li class="baja-item" [class.is-vigente]="baja.vigente">
+                  <div class="baja-head">
+                    <div class="baja-heading">
+                      <span class="baja-tipo">{{ etiquetaTipoBaja(baja.tipo) }}</span>
+                      <span class="baja-periodo">{{ periodoBaja(baja) }}</span>
+                    </div>
+                    <app-status-pill [estado]="estadoPillBaja(baja)">
+                      {{ etiquetaVigenciaBaja(baja) }}
+                    </app-status-pill>
+                  </div>
+
+                  <dl class="pairs">
+                    <div class="pair">
+                      <dt class="pair-label">Motivo</dt>
+                      <dd class="pair-value">{{ texto(baja.motivo) }}</dd>
+                    </div>
+
+                    <div class="pair">
+                      <dt class="pair-label">Registrada por</dt>
+                      <dd class="pair-value">{{ texto(baja.registrado_por) }}</dd>
+                    </div>
+
+                    <div class="pair">
+                      <dt class="pair-label">Nota</dt>
+                      <dd class="pair-value">{{ texto(baja.nota) }}</dd>
+                    </div>
+
+                    @if (baja.reactivado_por || baja.nota_reactivacion) {
+                      <div class="pair">
+                        <dt class="pair-label">Reactivada por</dt>
+                        <dd class="pair-value">{{ texto(baja.reactivado_por) }}</dd>
+                      </div>
+                      <div class="pair">
+                        <dt class="pair-label">Nota de reactivación</dt>
+                        <dd class="pair-value">{{ texto(baja.nota_reactivacion) }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      </details>
     }
   </div>
 

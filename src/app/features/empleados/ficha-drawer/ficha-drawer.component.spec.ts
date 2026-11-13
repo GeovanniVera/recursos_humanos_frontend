@@ -3,11 +3,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
-import { FichaEmpleado } from '../../../core/empleados/ficha.models';
+import { FichaEmpleado, HistorialBaja } from '../../../core/empleados/ficha.models';
 import { FichaDrawer } from './ficha-drawer.component';
 
 const EMPLEADO_ID = 12;
 const URL_FICHA = `${environment.apiBaseUrl}/empleados/${EMPLEADO_ID}`;
+const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
 const URL_MOTIVOS = `${environment.apiBaseUrl}/catalogos/motivos-baja`;
 
 /** The record exactly as the contract describes it, one nullable field per block. */
@@ -161,10 +162,11 @@ describe('FichaDrawer', () => {
     return fixture;
   }
 
-  it('loads the record and renders the six blocks with its name', async () => {
+  it('loads the record and renders the seven blocks with its name', async () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     expect(headings(fixture)).toEqual([
@@ -174,6 +176,7 @@ describe('FichaDrawer', () => {
       'Estudios',
       'Experiencia',
       'Gestión interna',
+      'Historial de bajas',
     ]);
     expect(text(fixture)).toContain('Nombre Apellido');
     expect(text(fixture)).toContain('UTN-001');
@@ -185,6 +188,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const head = host(fixture).querySelector<HTMLElement>('.document-head');
@@ -210,6 +214,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const rows = Array.from(host(fixture).querySelectorAll('.pair'));
@@ -235,6 +240,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     // A missing CURP and a missing `trabaja_otro_donde` read as "not registered".
@@ -253,6 +259,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     // `1990-05-14` is a calendar day, not an instant: read in a zone west of
@@ -276,6 +283,7 @@ describe('FichaDrawer', () => {
     };
 
     httpMock.expectOne(URL_FICHA).flush({ data: baja });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     expect(valueOf(fixture, 'Estado')).toBe('Baja');
@@ -296,6 +304,9 @@ describe('FichaDrawer', () => {
     httpMock
       .expectOne(URL_FICHA)
       .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
+    httpMock
+      .expectOne(URL_HISTORIAL_BAJAS)
+      .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
     await fixture.whenStable();
 
     const alert = host(fixture).querySelector('[role="alert"]');
@@ -308,6 +319,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const pills = host(fixture).querySelectorAll<HTMLElement>('.document-states app-status-pill .pill');
@@ -325,6 +337,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
     expect(text(fixture)).toContain('Nombre Apellido');
 
@@ -344,6 +357,7 @@ describe('FichaDrawer', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('Nombre Apellido');
@@ -352,6 +366,7 @@ describe('FichaDrawer', () => {
   it('enables Dar de baja for an active worker and blocks it for an inactive one', async () => {
     const fixture = await open();
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const editar = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
@@ -382,6 +397,7 @@ describe('FichaDrawer', () => {
         },
       },
     });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const inactivo = botonBaja(fixture);
@@ -400,6 +416,7 @@ describe('FichaDrawer', () => {
   it('opens the termination layer as a sibling of the drawer', async () => {
     const fixture = await open();
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     botonBaja(fixture)?.click();
@@ -428,6 +445,7 @@ describe('FichaDrawer', () => {
         gestion_interna: { ...FICHA.gestion_interna, activo: false, fecha_baja: '2024-02-29' },
       },
     });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     botonBaja(fixture)?.click();
@@ -437,9 +455,10 @@ describe('FichaDrawer', () => {
     expect(modal?.hasAttribute('open')).toBe(false);
   });
 
-  it('collapses every section but the first, and each one opens on its own', async () => {
+  it('collapses every section but the first for an active worker, and each one opens on its own', async () => {
     const fixture = await open();
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const blocks = Array.from(
@@ -448,7 +467,7 @@ describe('FichaDrawer', () => {
 
     // Native `<details>` is the control: if a block goes back to `<section>` the
     // record silently loses its ability to fold.
-    expect(blocks.length).toBe(6);
+    expect(blocks.length).toBe(7);
     expect(blocks.filter((block) => block.open).length).toBe(1);
     expect(blocks[0].open).toBe(true);
 
@@ -467,6 +486,9 @@ describe('FichaDrawer', () => {
     httpMock
       .expectOne(URL_FICHA)
       .flush({ codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
+    httpMock
+      .expectOne(URL_HISTORIAL_BAJAS)
+      .flush({ codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('No tienes permisos para ver esta ficha.');
@@ -478,6 +500,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).error(new ProgressEvent('error'), { status: 0 });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).error(new ProgressEvent('error'), { status: 0 });
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisa tu conexión.');
@@ -487,6 +510,7 @@ describe('FichaDrawer', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('Nombre Apellido');
@@ -496,6 +520,7 @@ describe('FichaDrawer', () => {
     const fixture = await open();
 
     httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
     await fixture.whenStable();
 
     const close = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
@@ -507,5 +532,98 @@ describe('FichaDrawer', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.open()).toBe(false);
+  });
+
+  it('automatically loads chronological termination history and renders vigente and reactivated periods', async () => {
+    const fixture = await open();
+
+    const historial: HistorialBaja[] = [
+      {
+        id: 8,
+        tipo: 'licencia',
+        motivo_id: 1,
+        motivo: 'Baja temporal',
+        motivo_clave: 'BAJA_TEMPORAL',
+        desde: '2026-04-01',
+        hasta: null,
+        vigente: true,
+        nota: 'Licencia sin goce de sueldo',
+        registrado_por: 'Elena Ejecutora',
+        reactivado_por: null,
+        nota_reactivacion: null,
+        fecha_registro: '2026-04-01T10:00:00Z',
+      },
+      {
+        id: 3,
+        tipo: 'licencia',
+        motivo_id: 1,
+        motivo: 'Baja temporal',
+        motivo_clave: 'BAJA_TEMPORAL',
+        desde: '2025-01-10',
+        hasta: '2025-02-10',
+        vigente: false,
+        nota: 'Incapacidad médica',
+        registrado_por: 'Elena Ejecutora',
+        reactivado_por: 'Roberto Reactivador',
+        nota_reactivacion: 'Alta médica presentada',
+        fecha_registro: '2025-01-10T09:00:00Z',
+      },
+    ];
+
+    httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: historial });
+    await fixture.whenStable();
+
+    expect(host(fixture).querySelector('.block-counter')?.textContent?.trim()).toBe('2');
+    const items = host(fixture).querySelectorAll<HTMLElement>('.baja-item');
+    expect(items.length).toBe(2);
+    expect(items[0].classList.contains('is-vigente')).toBe(true);
+    expect(items[0].textContent).toContain('Licencia temporal');
+    expect(items[0].textContent).toContain('Vigente');
+    expect(items[0].textContent).toContain('Licencia sin goce de sueldo');
+    expect(items[0].textContent).toContain('Elena Ejecutora');
+
+    expect(items[1].textContent).toContain('Reactivada');
+    expect(items[1].textContent).toContain('Roberto Reactivador');
+    expect(items[1].textContent).toContain('Alta médica presentada');
+  });
+
+  it('auto-expands section 07 when the worker is inactive and shows empty state if there are no rows', async () => {
+    const fixture = await open();
+
+    httpMock.expectOne(URL_FICHA).flush({
+      data: {
+        ...FICHA,
+        gestion_interna: { ...FICHA.gestion_interna, activo: false, fecha_baja: '2024-02-29' },
+      },
+    });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
+    await fixture.whenStable();
+
+    const blocks = Array.from(
+      host(fixture).querySelectorAll<HTMLDetailsElement>('details.block'),
+    );
+    expect(blocks[6].open).toBe(true);
+    expect(text(fixture)).toContain('Este trabajador no tiene bajas registradas.');
+  });
+
+  it('keeps the main record visible and retries only historial-bajas if the history request fails', async () => {
+    const fixture = await open();
+
+    httpMock.expectOne(URL_FICHA).flush({ data: FICHA });
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).error(new ProgressEvent('error'), { status: 0 });
+    await fixture.whenStable();
+
+    expect(text(fixture)).toContain('Nombre Apellido');
+    const retry = host(fixture).querySelector<HTMLButtonElement>('.bajas-body .alert button');
+    expect(retry).not.toBeNull();
+
+    retry?.click();
+    await fixture.whenStable();
+
+    httpMock.expectOne(URL_HISTORIAL_BAJAS).flush({ data: [] });
+    await fixture.whenStable();
+
+    expect(text(fixture)).toContain('Este trabajador no tiene bajas registradas.');
   });
 });

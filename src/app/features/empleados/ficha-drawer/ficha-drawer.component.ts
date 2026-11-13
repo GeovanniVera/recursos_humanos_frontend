@@ -18,12 +18,14 @@ import {
   FichaEmpleado,
   FichaError,
   FichaEstadoExpediente,
+  HistorialBaja,
+  TipoBajaHistorial,
 } from '../../../core/empleados/ficha.models';
 import { FichaService } from '../../../core/empleados/ficha.service';
 import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
 import { Drawer } from '../../../shared/ui/drawer/drawer.component';
-import { StatusPill } from '../../../shared/ui/status-pill/status-pill.component';
+import { StatusPill, StatusPillTone } from '../../../shared/ui/status-pill/status-pill.component';
 import { BajaModal } from '../baja/baja-modal.component';
 
 /**
@@ -37,6 +39,7 @@ import { BajaModal } from '../baja/baja-modal.component';
  */
 const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MESSAGE_PERMISSION = 'No tienes permisos para ver esta ficha.';
+const MESSAGE_BAJAS_PERMISSION = 'No tienes permisos para ver el historial de bajas.';
 const MESSAGE_NOT_FOUND = 'No encontramos ese trabajador.';
 const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
@@ -77,6 +80,9 @@ const DATE_FORMAT = new Intl.DateTimeFormat('es-MX', {
 
 /** Skeleton lines standing in for the record while it loads. */
 const SKELETON_LINES = 9;
+
+/** Skeleton lines for the auto-loaded termination history section. */
+const BAJAS_SKELETON_LINES = 3;
 
 /**
  * The full record of one worker, in a side panel.
@@ -132,8 +138,23 @@ export class FichaDrawer {
   /** Last failure, or `null`. */
   readonly error = signal<FichaFailure | null>(null);
 
+  /** Chronological absence/termination history of the loaded worker. */
+  readonly bajas = signal<HistorialBaja[]>([]);
+
+  /** `true` while the absence history request is in flight. */
+  readonly loadingBajas = signal(false);
+
+  /** Last failure of the absence history request, or `null`. */
+  readonly errorBajas = signal<FichaFailure | null>(null);
+
   /** Lines of the loading block. */
   protected readonly skeletons = Array.from({ length: SKELETON_LINES }, (_, index) => index);
+
+  /** Lines of the absence history loading block. */
+  protected readonly bajaSkeletons = Array.from(
+    { length: BAJAS_SKELETON_LINES },
+    (_, index) => index,
+  );
 
   /**
    * Termination is only offered for a loaded, active worker.
@@ -185,6 +206,7 @@ export class FichaDrawer {
    * so a slow answer for the previous worker never lands over the current one.
    */
   private readonly requests = new Subject<number | null>();
+  private readonly bajaRequests = new Subject<number | null>();
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -202,6 +224,18 @@ export class FichaDrawer {
         },
       });
 
+    this.bajaRequests
+      .pipe(
+        switchMap((id) => (id === null ? EMPTY : this.requestBajas(id))),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (bajas) => {
+          this.bajas.set(bajas);
+          this.errorBajas.set(null);
+        },
+      });
+
     effect(() => {
       const isOpen = this.open();
       const id = this.empleadoId();
@@ -210,7 +244,9 @@ export class FichaDrawer {
         // Cancel any in-flight request immediately, while keeping the current
         // snapshot during the drawer's 300ms exit transition.
         this.requests.next(null);
+        this.bajaRequests.next(null);
         this.loading.set(false);
+        this.loadingBajas.set(false);
         this.scheduleClearOnClose();
         return;
       }
@@ -236,6 +272,8 @@ export class FichaDrawer {
       if (!this.open()) {
         this.ficha.set(null);
         this.error.set(null);
+        this.bajas.set([]);
+        this.errorBajas.set(null);
       }
     }, 300);
   }
@@ -334,6 +372,55 @@ export class FichaDrawer {
     return Array.isArray(expediente.campos_faltantes) ? expediente.campos_faltantes : [];
   }
 
+  /** Asks again after a transient failure without replacing the already loaded record. */
+  protected reintentarBajas(): void {
+    const id = this.empleadoId();
+    if (id !== null) {
+      this.bajas.set([]);
+      this.bajaRequests.next(id);
+    }
+  }
+
+  /** Human label of an absence row type (`licencia` vs `definitiva`). */
+  protected etiquetaTipoBaja(tipo: TipoBajaHistorial | null): string {
+    switch (tipo) {
+      case 'licencia':
+        return 'Licencia temporal';
+      case 'definitiva':
+        return 'Baja definitiva';
+      default:
+        return 'Movimiento de baja';
+    }
+  }
+
+  /** Pill tone for one row of the termination history. */
+  protected estadoPillBaja(baja: HistorialBaja): StatusPillTone {
+    if (baja.vigente) {
+      return baja.tipo === 'licencia' ? 'casi_completo' : 'baja';
+    }
+    return 'completo';
+  }
+
+  /** Word paired with `estadoPillBaja` so color is never the only signal. */
+  protected etiquetaVigenciaBaja(baja: HistorialBaja): string {
+    if (baja.vigente) {
+      return 'Vigente';
+    }
+    return baja.reactivado_por ? 'Reactivada' : 'Concluida';
+  }
+
+  /** Formats the `[desde, hasta]` interval of one baja record in `es-MX`. */
+  protected periodoBaja(baja: HistorialBaja): string {
+    const desde = this.fecha(baja.desde);
+    if (desde === NO_VALUE) {
+      return NO_VALUE;
+    }
+    if (baja.hasta) {
+      return `${desde} — ${this.fecha(baja.hasta)}`;
+    }
+    return baja.vigente ? `Desde el ${desde} (en curso)` : desde;
+  }
+
   /** Maps a contract key (`curp`) to the same Spanish label used by FaltantesDrawer. */
   protected etiquetaCampo(campo: string): string {
     return etiquetaCampoExpediente(campo);
@@ -342,7 +429,9 @@ export class FichaDrawer {
   /** Clears what the previous record showed and asks for the new one. */
   private load(id: number): void {
     this.ficha.set(null);
+    this.bajas.set([]);
     this.requests.next(id);
+    this.bajaRequests.next(id);
   }
 
   /**
@@ -358,15 +447,29 @@ export class FichaDrawer {
 
     return this.fichaService.consultar(id).pipe(
       catchError((error: unknown) => {
-        this.handleError(error);
+        this.error.set(this.mapHttpError(error, 'ficha'));
         return EMPTY;
       }),
       finalize(() => this.loading.set(false)),
     );
   }
 
+  /** Loads the chronological absence log alongside the main record. */
+  private requestBajas(id: number): Observable<HistorialBaja[]> {
+    this.loadingBajas.set(true);
+    this.errorBajas.set(null);
+
+    return this.fichaService.consultarBajas(id).pipe(
+      catchError((error: unknown) => {
+        this.errorBajas.set(this.mapHttpError(error, 'bajas'));
+        return EMPTY;
+      }),
+      finalize(() => this.loadingBajas.set(false)),
+    );
+  }
+
   /** Maps an HTTP failure to the sentence and the action the user gets. */
-  private handleError(error: unknown): void {
+  private mapHttpError(error: unknown, scope: 'ficha' | 'bajas'): FichaFailure {
     const status = error instanceof HttpErrorResponse ? error.status : 0;
     const code = this.errorCode(error);
 
@@ -374,26 +477,28 @@ export class FichaDrawer {
       case 401:
         // The body says `Unauthenticated.`, which is not copy: English, and it
         // names a protocol rather than the situation.
-        this.error.set({ status, mensaje: MESSAGE_SESSION, detalle: null, accion: 'ninguna' });
-        return;
+        return { status, mensaje: MESSAGE_SESSION, detalle: null, accion: 'ninguna' };
       case 403:
-        this.error.set({ status, mensaje: MESSAGE_PERMISSION, detalle: code, accion: 'ninguna' });
-        return;
+        return {
+          status,
+          mensaje: scope === 'bajas' ? MESSAGE_BAJAS_PERMISSION : MESSAGE_PERMISSION,
+          detalle: code,
+          accion: 'ninguna',
+        };
       case 404:
-        this.error.set({
+        return {
           status,
           mensaje: MESSAGE_NOT_FOUND,
           detalle: this.bodyMessage(error),
           accion: 'ninguna',
-        });
-        return;
+        };
       default:
-        this.error.set({
+        return {
           status,
           mensaje: MESSAGE_CONNECTION,
           detalle: null,
           accion: 'reintentar',
-        });
+        };
     }
   }
 
