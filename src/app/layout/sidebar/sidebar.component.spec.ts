@@ -5,6 +5,7 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
 import { SidebarStateService } from '../../core/layout/sidebar-state.service';
 import { Sidebar } from './sidebar.component';
 
@@ -153,6 +154,46 @@ describe('Sidebar', () => {
     // Logging out is an action, not a destination: no link points at /login.
     expect(panel.querySelector('a[href="/login"]')).toBeNull();
     expect(panel.querySelector('nav')).toBeNull();
+  });
+
+  it('offers the catalogs to every session, above the settings', async () => {
+    const fixture = await createSidebar();
+    const auth = TestBed.inject(AuthService);
+
+    /** Loads a session with one role, the way the shell does on entry. */
+    async function conRol(rol: string): Promise<void> {
+      auth.cargarSesion().subscribe();
+      httpMock
+        .expectOne((candidate) => candidate.url.endsWith('/auth/sesion'))
+        .flush({ usuario_id: 1, empleado_id: 9, nombre: 'Ana Martínez', rol });
+      await fixture.whenStable();
+    }
+
+    // The entry is not gated: the module was impossible to find, and the backend
+    // is the one that refuses a role without `E-13`. The screen explains the 403.
+    const entrada = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
+    expect(entrada?.textContent).toContain('Catálogos');
+
+    // It stays on screen whatever the role is, including the one without E-13.
+    await conRol('SECRETARIA');
+    expect(host(fixture).querySelector('a[href="/admin/catalogos"]')).not.toBeNull();
+
+    await conRol('SUPER_ADMIN');
+    expect(host(fixture).querySelector('a[href="/admin/catalogos"]')).not.toBeNull();
+
+    // It sits in the footer, above the settings, away from the daily menu.
+    const destinos = Array.from(footer(fixture).querySelectorAll('a')).map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(destinos).toEqual(['/admin/catalogos', '/ajustes']);
+
+    // The rail keeps an accessible name, since the label leaves the tree.
+    TestBed.inject(SidebarStateService).setCollapsed(true);
+    await fixture.whenStable();
+
+    const rail = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
+    expect(rail?.getAttribute('aria-label')).toBe('Catálogos');
+    expect(rail?.getAttribute('title')).toBe('Catálogos');
   });
 
   it('leaves for the login screen even when the logout request fails', async () => {

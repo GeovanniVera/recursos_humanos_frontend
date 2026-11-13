@@ -1,0 +1,160 @@
+@if (diagnostico(); as hallazgos) {
+  @if (sinHallazgos()) {
+    <!-- Good news is a `status`, not an interruption. -->
+    <div class="strip is-success" role="status">
+      <span class="strip-icon" aria-hidden="true">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 8.5l3.5 3.5L13 5" />
+        </svg>
+      </span>
+
+      <div class="strip-copy">
+        <p class="strip-title">Catálogos mapeados</p>
+        <p class="strip-line">Ningún puesto sin área, ninguna clasificación en contra.</p>
+      </div>
+    </div>
+  } @else {
+    <div class="strip is-warning" role="alert">
+      <span class="strip-icon" aria-hidden="true">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M8 4v5" />
+          <path d="M8 11.6v.4" />
+        </svg>
+      </span>
+
+      <div class="strip-copy">
+        <p class="strip-title">Hay datos para revisar</p>
+
+        <!--
+          One line per finding, each with its own way in. A counter that cannot be
+          narrowed in the post table still leads somewhere: the category one opens
+          the tab that owns it.
+        -->
+        <ul class="counters">
+          <li class="counter">
+            <span class="counter-text">
+              {{ contador(hallazgos.puestos_sin_area, 'puesto sin área', 'puestos sin área') }}
+            </span>
+            <button
+              type="button"
+              class="counter-action"
+              aria-label="Revisar los puestos sin área"
+              (click)="revisarPuestos.emit('sin-area')"
+            >
+              Revisar
+            </button>
+          </li>
+
+          <li class="counter">
+            <span class="counter-text">
+              {{
+                contador(
+                  hallazgos.puestos_sin_empleados,
+                  'puesto sin empleados',
+                  'puestos sin empleados'
+                )
+              }}
+            </span>
+            <button
+              type="button"
+              class="counter-action"
+              aria-label="Revisar los puestos sin empleados"
+              (click)="revisarPuestos.emit('sin-empleados')"
+            >
+              Revisar
+            </button>
+          </li>
+
+          <li class="counter">
+            <span class="counter-text">
+              {{
+                contador(
+                  hallazgos.puestos_con_clasificacion_contradicha.length,
+                  'clasificación en contra',
+                  'clasificaciones en contra'
+                )
+              }}
+            </span>
+            <button
+              type="button"
+              class="counter-action"
+              aria-label="Revisar las clasificaciones en contra"
+              (click)="revisarPuestos.emit('contradiccion')"
+            >
+              Revisar
+            </button>
+          </li>
+
+          <li class="counter">
+            <span class="counter-text">
+              {{
+                contador(hallazgos.empleados_sin_area, 'empleado sin área', 'empleados sin área')
+              }}
+            </span>
+            <!--
+              An employee with no area sits in a post with no area, so the review
+              lands on those rows: it is the only place of this screen where the
+              cause can be fixed.
+            -->
+            <button
+              type="button"
+              class="counter-action"
+              aria-label="Revisar los puestos sin área de esos empleados"
+              (click)="revisarPuestos.emit('sin-area')"
+            >
+              Revisar
+            </button>
+          </li>
+
+          <li class="counter">
+            <span class="counter-text">
+              {{
+                contador(hallazgos.categorias_sin_uso, 'categoría sin uso', 'categorías sin uso')
+              }}
+            </span>
+            <button
+              type="button"
+              class="counter-action"
+              aria-label="Revisar las categorías sin uso"
+              (click)="revisarCategorias.emit()"
+            >
+              Revisar
+            </button>
+          </li>
+        </ul>
+
+        @if (hallazgos.puestos_con_clasificacion_contradicha.length > 0) {
+          <div class="finding">
+            <p class="finding-title">Clasificación en contra</p>
+            <ul class="finding-list">
+              @for (
+                contra of hallazgos.puestos_con_clasificacion_contradicha;
+                track contra.puesto
+              ) {
+                <li class="finding-item">
+                  <span class="finding-text">
+                    {{ contra.puesto }} · {{ contra.tipo_puesto }} ·
+                    {{ contra.empleados_en_contra }} en contra
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

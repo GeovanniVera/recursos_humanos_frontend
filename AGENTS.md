@@ -63,6 +63,9 @@ El tema se aplica con un atributo en la raíz: `<html data-theme="guinda|light|d
 Notas:
 - El fondo de cada tema es un degradado suave sobre `--color-bg-canvas`, con dos halos
   (dorado y rojo) que flotan despacio.
+- `--color-border-ghost` es la versión «sin línea» de `--color-border-default`: un control
+  que solo dibuja su borde al pasar el puntero o al enfocarse (los selectores y campos que
+  viven dentro de una celda de tabla).
 - En `light`, **el dorado no se usa como color de texto** (no cumple contraste). Solo en
   rellenos, líneas y degradados.
 - Sobre guinda, el **error no se pinta con rojo**: usa superficie rosa clara

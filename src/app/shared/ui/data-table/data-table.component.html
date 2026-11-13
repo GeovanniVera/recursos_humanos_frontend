@@ -17,7 +17,11 @@
             [class.is-end]="column.align === 'end'"
             [style.width]="column.width"
           >
-            {{ column.header }}
+            @if (headCellTemplate(); as renderHead) {
+              <ng-container *ngTemplateOutlet="renderHead; context: { column }" />
+            } @else {
+              {{ column.header }}
+            }
           </th>
         }
         @if (rowActions()) {

@@ -30,6 +30,26 @@ class TableHost {
   readonly activeKey = 'RH-0051';
 }
 
+/** Host whose first column is a control, so it projects a header renderer too. */
+@Component({
+  imports: [DataTable],
+  template: `
+    <app-data-table [columns]="columns" [rows]="rows">
+      <ng-template #headCell let-column="column">
+        @if (column.key === 'folio') {
+          <input type="checkbox" class="head-check" aria-label="Seleccionar todo" />
+        } @else {
+          {{ column.header }}
+        }
+      </ng-template>
+    </app-data-table>
+  `,
+})
+class HeadHost {
+  readonly columns = COLUMNS;
+  readonly rows = ROWS;
+}
+
 function tableOf(fixture: ComponentFixture<unknown>): HTMLTableElement {
   const table = (fixture.nativeElement as HTMLElement).querySelector<HTMLTableElement>('table');
   if (table === null) {
@@ -41,7 +61,7 @@ function tableOf(fixture: ComponentFixture<unknown>): HTMLTableElement {
 describe('DataTable', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DataTable, TableHost],
+      imports: [DataTable, HeadHost, TableHost],
     }).compileComponents();
   });
 
@@ -151,5 +171,20 @@ describe('DataTable', () => {
     const headers = Array.from(tableOf(fixture).querySelectorAll('th'));
     expect(headers[2].classList.contains('is-end')).toBe(true);
     expect(headers[0].classList.contains('is-end')).toBe(false);
+  });
+
+  it('renders a projected header control in place of the header text', async () => {
+    const fixture = TestBed.createComponent(HeadHost);
+    await fixture.whenStable();
+
+    const headers = Array.from(tableOf(fixture).querySelectorAll('th'));
+    // The control lives in the header of its own column, not in a row below it.
+    const casilla = headers[0].querySelector<HTMLInputElement>('input.head-check');
+    expect(casilla).not.toBeNull();
+    expect(casilla?.getAttribute('aria-label')).toBe('Seleccionar todo');
+
+    // Every other column keeps the plain header.
+    expect(headers[1].textContent?.trim()).toBe('Nombre');
+    expect(headers[2].textContent?.trim()).toBe('Antigüedad');
   });
 });

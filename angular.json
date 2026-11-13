@@ -75,8 +75,13 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "6kB",
-                  "maximumError": "8kB"
+                  // A dense administration screen (three tables, a findings
+                  // banner and its own dialogs) legitimately needs more than the
+                  // 6kB the initial scaffold assumed; the previous ceiling left
+                  // the catalog screen 12 bytes under the warning with no room
+                  // for a copy change.
+                  "maximumWarning": "7kB",
+                  "maximumError": "10kB"
                 }
               ],
               "outputHashing": "all"

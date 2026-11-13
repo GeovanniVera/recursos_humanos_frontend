@@ -1,0 +1,431 @@
+// Administration of the catalogs. Every value comes from a token.
+
+.page,
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.panel {
+  gap: var(--space-4);
+}
+
+// --- Header -----------------------------------------------------------------
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+// Every stack of the screen is the same flex column; only the rhythm changes.
+.identity,
+.field,
+.form,
+.names {
+  display: flex;
+  flex-direction: column;
+}
+
+.field {
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.overline {
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.title {
+  font: var(--text-title);
+  color: var(--color-text-primary);
+}
+
+.sub {
+  max-width: var(--content-max-width);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// --- Failure ----------------------------------------------------------------
+
+// A glass card with a coloured disc, not a filled red panel: a filled alert would
+// repaint the buttons inside it and lose their contrast.
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-pill);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.alert-icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.alert-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.alert-message,
+.name {
+  font: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+// A contract code, not copy: monospace and muted, there for support.
+.alert-code {
+  font: var(--text-overline);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}
+
+.names {
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// --- Tabs -------------------------------------------------------------------
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tab {
+  min-height: var(--space-8);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-bottom: var(--border-width) solid var(--color-border-default);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  font: var(--text-nav-branch);
+  cursor: pointer;
+}
+
+// The accent edge is the marker; the word keeps its weight, so the row cannot
+// shift when the selection moves.
+.tab.is-active,
+.tab:hover {
+  color: var(--color-text-primary);
+}
+
+.tab.is-active {
+  border-bottom-color: var(--color-accent);
+}
+
+// --- Filters ----------------------------------------------------------------
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.label {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.control {
+  width: 100%;
+  min-height: var(--space-8);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+}
+
+.control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.control:hover,
+.control:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.note {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-ghost);
+  font: var(--text-body);
+  color: var(--color-text-secondary);
+}
+
+// Reminder of the diagnostic narrowing the table, with its own way out.
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+}
+
+.chip-text,
+.selection-count {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.selection-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+// Round and square icon targets share their box; only the size and the edge
+// differ, so the two stay in one place.
+.chip-clear,
+.area-remove,
+.pager-arrow {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--color-surface-ghost);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.chip-clear {
+  width: var(--space-6);
+  height: var(--space-6);
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+.chip-clear svg {
+  width: var(--space-3);
+  height: var(--space-3);
+}
+
+.selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+}
+
+// --- Cells ------------------------------------------------------------------
+
+// The native checkbox keeps its platform behaviour — space, the label, the
+// accessibility tree — and only borrows the accent for its checked fill.
+.check {
+  width: var(--space-5);
+  height: var(--space-5);
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+// A control inside a cell reads as text until it is pointed at: a bordered box
+// per row would turn the table into a form.
+.cell-select {
+  min-height: var(--control-height-sm);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border-ghost);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+  cursor: pointer;
+}
+
+.cell-select:is(:hover, :focus-visible) {
+  border-color: var(--color-border-default);
+  background: var(--color-surface-glass);
+}
+
+// Waiting for the server: the row stays in place and stops taking input, so it
+// cannot jump while the answer is in flight.
+.cell-select:disabled,
+.area-remove:disabled {
+  color: var(--color-text-secondary);
+  cursor: progress;
+}
+
+// The areas of a post: one chip per association, each with its own way out. The
+// chip is the association, so removing it never touches the post or the area.
+.areas {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border-ghost);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-ghost);
+}
+
+.area-name,
+.area-empty {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-primary);
+}
+
+.area-empty {
+  color: var(--color-text-secondary);
+}
+
+.area-remove {
+  flex: none;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+}
+
+.area-remove:hover,
+.area-remove:focus-visible {
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+.area-remove svg {
+  width: var(--space-3);
+  height: var(--space-3);
+}
+
+// The drawn boxes are small, the pointer and the finger get more: same trick as
+// the close button of a modal, so a dense row still meets the touch target.
+.area-remove,
+.chip-clear {
+  position: relative;
+}
+
+.chip-clear::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-2) * -1);
+}
+
+// 20px drawn, 44px of target.
+.area-remove::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--space-3) * -1);
+}
+
+// Depth of a chart node: one step per level, drawn by empty spans, because the
+// indentation is layout and not text.
+.tree {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.tree-step {
+  flex: none;
+  width: var(--space-4);
+}
+
+// --- Pager ------------------------------------------------------------------
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pager-range,
+.pager-page {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.pager-range {
+  font: var(--text-body);
+}
+
+// The counter keeps its width so pressing an arrow never shifts the pair.
+.pager-page {
+  min-width: var(--space-8);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-align: center;
+}
+
+.pager-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pager-arrow {
+  width: var(--space-8);
+  height: var(--space-8);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+  font: var(--text-nav-branch);
+}
+
+.pager-arrow:hover:not(:disabled) {
+  background: var(--color-border-default);
+}
+
+.pager-arrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+// --- Modals -----------------------------------------------------------------
+
+.form {
+  gap: var(--space-4);
+}

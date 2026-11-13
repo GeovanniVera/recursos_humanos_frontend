@@ -77,6 +77,16 @@ export const routes: Routes = [
         loadComponent: placeholder,
       },
       {
+        path: 'admin/catalogos',
+        // One flat route instead of an `admin` branch with its own breadcrumb:
+        // the trail the product asked for is a single step, `Catálogos`.
+        data: { breadcrumb: 'Catálogos' },
+        loadComponent: () =>
+          import('./features/admin/catalogos/catalogos-page.component').then(
+            (m) => m.CatalogosPage,
+          ),
+      },
+      {
         path: 'ajustes',
         data: { breadcrumb: 'Ajustes' },
         loadComponent: () =>

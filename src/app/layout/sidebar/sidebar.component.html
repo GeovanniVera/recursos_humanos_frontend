@@ -204,6 +204,40 @@
 -->
 <footer class="footer">
   <ul class="list">
+    <!--
+      The catalogs sit in the footer, above the account entry: they configure the
+      system instead of operating it, so they must not mix with the daily
+      destinations of the menu above. The entry is visible to every session on
+      purpose: the endpoint answers `403` to a role without `E-13`, and the screen
+      explains it. Hiding it made the module impossible to find.
+    -->
+    <li>
+      <a
+        class="item"
+        routerLink="/admin/catalogos"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        [attr.aria-label]="collapsed() ? 'Catálogos' : null"
+        [attr.title]="collapsed() ? 'Catálogos' : null"
+      >
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 7.5l8-3.5 8 3.5-8 3.5-8-3.5Z" />
+          <path d="M4 12.2l8 3.5 8-3.5" />
+          <path d="M4 16.6l8 3.5 8-3.5" />
+        </svg>
+        <span class="item-label">Catálogos</span>
+      </a>
+    </li>
+
     <li>
       <a
         class="item"

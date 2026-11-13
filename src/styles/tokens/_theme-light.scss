@@ -14,6 +14,9 @@
 
   // Lines
   --color-border-default: var(--guinda-a14);
+  // "No line" for a control that only draws its edge on hover or focus, the way
+  // `--color-surface-ghost` is "no fill".
+  --color-border-ghost: var(--transparent);
 
   // Text
   --color-text-primary: var(--guinda-ink);

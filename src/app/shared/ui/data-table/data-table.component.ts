@@ -86,6 +86,16 @@ export class DataTable {
    */
   protected readonly cellTemplate = contentChild('cell', { read: TemplateRef });
 
+  /**
+   * Optional renderer for a header cell.
+   *
+   * It receives `{ column }`. Only the callers whose header is a control need it
+   * — a "select the whole page" checkbox has to live in the `<th>` of its own
+   * column, since a control in the body would sit one row too low. Without it
+   * the column prints its header, which is what every existing caller wants.
+   */
+  protected readonly headCellTemplate = contentChild('headCell', { read: TemplateRef });
+
   protected readonly skeletons = Array.from({ length: SKELETON_ROWS }, (_, index) => index);
 
   /** Width of the loading and empty rows: every column, plus actions. */
