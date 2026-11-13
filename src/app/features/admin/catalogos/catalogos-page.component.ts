@@ -17,6 +17,7 @@ import {
   PuestosFiltros,
 } from '../../../core/catalogos/catalogos.models';
 import { CatalogosService } from '../../../core/catalogos/catalogos.service';
+import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
 import {
   DataTable,
@@ -24,6 +25,7 @@ import {
   TableRow,
 } from '../../../shared/ui/data-table/data-table.component';
 import { Modal } from '../../../shared/ui/modal/modal.component';
+import { Pagination } from '../../../shared/ui/pagination/pagination.component';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import {
   DiagnosticoBanner,
@@ -35,10 +37,10 @@ import {
  * user, so each one gets its own sentence; a single "something went wrong"
  * would throw that distinction away.
  */
-const MENSAJE_SESION = 'Tu sesión venció. Volvé a iniciar sesión.';
-const MENSAJE_PERMISO = 'No tenés permiso para administrar los catálogos.';
-const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintentá en unos segundos.';
-const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
+const MENSAJE_PERMISO = 'No tienes permiso para administrar los catálogos.';
+const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
+const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
 /**
  * Domain codes of this API, translated. The backend sentence is specific but
@@ -146,7 +148,7 @@ interface AreaOpcion {
  */
 @Component({
   selector: 'app-catalogos-page',
-  imports: [Button, DataTable, DiagnosticoBanner, Modal],
+  imports: [AlertBanner, Button, DataTable, DiagnosticoBanner, Modal, Pagination],
   templateUrl: './catalogos-page.component.html',
   styleUrl: './catalogos-page.component.scss',
 })
@@ -681,9 +683,6 @@ export class CatalogosPage {
   /** Closes the assign modal, whatever closed it. */
   alCambiarAsignar(abierto: boolean): void {
     this.modalAsignar.set(abierto);
-    if (!abierto) {
-      this.areaDestino.set(null);
-    }
   }
 
   /** Writes the area of the assign modal. */
@@ -729,7 +728,6 @@ export class CatalogosPage {
           this.reemplazarPuestos(puestos);
           this.seleccion.set(new Set());
           this.modalAsignar.set(false);
-          this.areaDestino.set(null);
           this.refrescarDiagnostico();
         },
         error: (error: unknown) => {

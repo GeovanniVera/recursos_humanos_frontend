@@ -5,11 +5,22 @@
 
 :root {
   --motion-fast: 300ms;
+  --motion-exit: 220ms;
   --motion-base: 600ms;
   --motion-slow: 900ms;
+  --motion-spin: 750ms;
+  --motion-shimmer: 1.6s;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   // The canvas specifies 70-100ms between list items; 80ms is the midpoint.
   --motion-stagger: 80ms;
+
+  // Elastic pill indicator and spring micro-interactions
+  --motion-pill-ease: cubic-bezier(0.34, 1.35, 0.64, 1);
+  --motion-pill-snap: 260ms;
+  --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --icon-active-scale: 1.15;
+  --button-hover-lift: -2px;
+  --button-active-scale: 0.98;
 
   // Entry offsets
   --enter-rise-y: 20px;
@@ -19,6 +30,9 @@
   --enter-drawer-x-left: -70px;
   --enter-modal-y: 24px;
   --enter-modal-scale: 0.95;
+  --enter-toast-x: 32px;
+  --exit-toast-x: 32px;
+  --stage-fade-y: 10px;
 }
 
 @keyframes rise {
@@ -54,13 +68,51 @@
   }
 }
 
-@keyframes halo-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
+@keyframes stage-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--stage-fade-y));
   }
-  50% {
-    transform: translate3d(2%, -2%, 0) scale(1.08);
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--enter-toast-x));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(var(--exit-toast-x));
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
   }
 }
 
@@ -78,13 +130,45 @@
   animation: modal var(--motion-fast) var(--motion-ease) both;
 }
 
+.enter-stage {
+  animation: stage-fade-up var(--motion-fast) var(--motion-ease) both;
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-skeleton-sheen);
+    transform: translateX(-100%);
+    animation: skeleton-shimmer var(--motion-shimmer) ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+// Respect reduced motion: AGENTS.md §8: sin desplazamientos ni escalas, solo fundido.
+// Zeroing the movement offsets maintains accessible, calm fades without destroying
+// CSS durations or breaking UI micro-interactions.
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-    scroll-behavior: auto !important;
+  .skeleton-shimmer::after {
+    display: none;
+    animation: none;
+  }
+
+  :root {
+    --enter-rise-y: 0px;
+    --enter-drawer-x: 0px;
+    --enter-drawer-x-left: 0px;
+    --enter-modal-y: 0px;
+    --enter-modal-scale: 1;
+    --enter-toast-x: 0px;
+    --exit-toast-x: 0px;
+    --stage-fade-y: 0px;
+    --icon-active-scale: 1;
+    --button-hover-lift: 0px;
+    --button-active-scale: 1;
   }
 }

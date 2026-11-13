@@ -187,4 +187,73 @@ describe('DataTable', () => {
     expect(headers[1].textContent?.trim()).toBe('Nombre');
     expect(headers[2].textContent?.trim()).toBe('Antigüedad');
   });
+
+  it('adds data-label attributes and is-cards class in cards mobileMode without dropping thead', async () => {
+    const fixture = TestBed.createComponent(DataTable);
+    fixture.componentRef.setInput('columns', COLUMNS);
+    fixture.componentRef.setInput('rows', ROWS);
+    fixture.componentRef.setInput('mobileMode', 'cards');
+    await fixture.whenStable();
+
+    const table = tableOf(fixture);
+    expect(table.classList.contains('is-cards')).toBe(true);
+    expect(table.querySelector('thead')).not.toBeNull();
+
+    const firstRowCells = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+    expect(firstRowCells.map((cell) => cell.getAttribute('data-label'))).toEqual([
+      'Folio',
+      'Nombre',
+      'Antigüedad',
+    ]);
+  });
+
+  it('shows horizontal scroll indicators in scroll mobileMode when content overflows', async () => {
+    const fixture = TestBed.createComponent(DataTable);
+    fixture.componentRef.setInput('columns', COLUMNS);
+    fixture.componentRef.setInput('rows', ROWS);
+    fixture.componentRef.setInput('mobileMode', 'scroll');
+    await fixture.whenStable();
+
+    const hostEl = fixture.nativeElement as HTMLElement;
+    const wrap = hostEl.querySelector<HTMLDivElement>('.wrap')!;
+    Object.defineProperty(wrap, 'scrollWidth', { configurable: true, value: 640 });
+    Object.defineProperty(wrap, 'clientWidth', { configurable: true, value: 320 });
+    Object.defineProperty(wrap, 'scrollLeft', { configurable: true, writable: true, value: 0 });
+
+    wrap.dispatchEvent(new Event('scroll'));
+    await fixture.whenStable();
+
+    expect(wrap.classList.contains('is-scroll')).toBe(true);
+    expect(wrap.classList.contains('has-overflow')).toBe(true);
+    expect(wrap.classList.contains('can-scroll-right')).toBe(true);
+    expect(wrap.classList.contains('can-scroll-left')).toBe(false);
+    expect(hostEl.querySelector('.scroll-hint')).not.toBeNull();
+
+    wrap.scrollLeft = 100;
+    wrap.dispatchEvent(new Event('scroll'));
+    await fixture.whenStable();
+
+    expect(wrap.classList.contains('can-scroll-left')).toBe(true);
+    expect(wrap.classList.contains('can-scroll-right')).toBe(true);
+  });
+
+  it('tracks rows by rowKey identity and falls back safely when key is absent', async () => {
+    const fixture = TestBed.createComponent(DataTable);
+    fixture.componentRef.setInput('columns', COLUMNS);
+    fixture.componentRef.setInput('rows', ROWS);
+    fixture.componentRef.setInput('rowKey', 'id');
+    await fixture.whenStable();
+
+    const firstRowBefore = tableOf(fixture).querySelector('tbody tr');
+    fixture.componentRef.setInput('rows', [ROWS[1], ROWS[0]]);
+    await fixture.whenStable();
+
+    const rowsAfter = tableOf(fixture).querySelectorAll('tbody tr');
+    expect(rowsAfter[1]).toBe(firstRowBefore);
+
+    // Rows missing `rowKey` fall back to index without duplicate track key errors.
+    fixture.componentRef.setInput('rows', [{ nombre: 'Sin id 1' }, { nombre: 'Sin id 2' }]);
+    await fixture.whenStable();
+    expect(tableOf(fixture).querySelectorAll('tbody tr').length).toBe(2);
+  });
 });

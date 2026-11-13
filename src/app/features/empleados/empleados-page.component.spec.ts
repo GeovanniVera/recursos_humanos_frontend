@@ -212,7 +212,7 @@ function encabezados(fixture: ComponentFixture<EmpleadosPage>): string[] {
 /** Submits the "Ir a página" form the way the keyboard does. */
 function irAPagina(fixture: ComponentFixture<EmpleadosPage>, valor: string): void {
   const form = host(fixture).querySelector<HTMLFormElement>('.pager-jump');
-  const campo = host(fixture).querySelector<HTMLInputElement>('#pagina');
+  const campo = host(fixture).querySelector<HTMLInputElement>('.jump-field');
   if (form === null || campo === null) {
     throw new Error('No jump control rendered');
   }
@@ -438,8 +438,8 @@ describe('EmpleadosPage', () => {
     fixture.detectChanges();
 
     expect(peticiones().length).toBe(0);
-    expect(host(fixture).querySelector('#pagina-error')?.textContent).toContain(
-      'Ingresá un número entre 1 y 13.',
+    expect(host(fixture).querySelector('.jump-error[role="alert"]')?.textContent).toContain(
+      'Ingresa un número entre 1 y 13.',
     );
 
     // A valid page inside the block is still a local slice.
@@ -449,7 +449,7 @@ describe('EmpleadosPage', () => {
 
     expect(peticiones().length).toBe(0);
     expect(texto(fixture)).toContain('Página 3 de 13');
-    expect(host(fixture).querySelector('#pagina-error')).toBeNull();
+    expect(host(fixture).querySelector('.jump-error[role="alert"]')).toBeNull();
   });
 
   it('shows the skeleton only on the first load, never while a block changes', async () => {
@@ -574,7 +574,7 @@ describe('EmpleadosPage', () => {
     boton(fixture, 'Siguiente').click();
     await fixture.whenStable();
 
-    const selector = host(fixture).querySelector<HTMLSelectElement>('#porPagina');
+    const selector = host(fixture).querySelector<HTMLSelectElement>('.page-size-select');
     expect(selector).not.toBeNull();
     expect(Array.from(selector?.options ?? []).map((option) => option.value)).toEqual([
       '10',
@@ -772,7 +772,7 @@ describe('EmpleadosPage', () => {
     );
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('No tenés permisos para consultar el padrón.');
+    expect(texto(fixture)).toContain('No tienes permisos para consultar el padrón.');
     expect(texto(fixture)).toContain('permiso_denegado');
     // Nothing to retry: the answer will not change by asking again.
     expect(buscarBoton(fixture, 'Reintentar')).toBeUndefined();
@@ -891,44 +891,51 @@ describe('EmpleadosPage', () => {
     nota!.dispatchEvent(new Event('input'));
     await fixture.whenStable();
 
-    const confirmar = Array.from(
-      host(fixture).querySelectorAll<HTMLButtonElement>('app-baja-modal button'),
-    ).find((button) => (button.textContent ?? '').includes('Dar de baja'));
-    confirmar?.click();
-    await fixture.whenStable();
+    vi.useFakeTimers();
+    try {
+      const confirmar = Array.from(
+        host(fixture).querySelectorAll<HTMLButtonElement>('app-baja-modal button'),
+      ).find((button) => (button.textContent ?? '').includes('Dar de baja'));
+      confirmar?.click();
+      fixture.detectChanges();
 
-    const peticion = httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/baja`);
-    // The note travels trimmed, and nothing else travels with it.
-    expect(peticion.request.body).toEqual({ motivo_id: 4, nota: 'Licencia por incapacidad' });
-    peticion.flush({
-      mensaje: 'Baja procesada exitosamente.',
-      empleado: {
-        id: LUIS.id,
-        num_empleado: LUIS.num_empleado,
-        nombre: LUIS.nombre,
-        activo: false,
-        fecha_baja: '2026-11-11',
-        motivo_baja: 'Baja temporal',
-        nota_baja: 'Licencia por incapacidad',
-        baja_por: 1,
-      },
-    });
-    await fixture.whenStable();
+      const peticion = httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/baja`);
+      // The note travels trimmed, and nothing else travels with it.
+      expect(peticion.request.body).toEqual({ motivo_id: 4, nota: 'Licencia por incapacidad' });
+      peticion.flush({
+        mensaje: 'Baja procesada exitosamente.',
+        empleado: {
+          id: LUIS.id,
+          num_empleado: LUIS.num_empleado,
+          nombre: LUIS.nombre,
+          activo: false,
+          fecha_baja: '2026-11-11',
+          motivo_baja: 'Baja temporal',
+          nota_baja: 'Licencia por incapacidad',
+          baja_por: 1,
+        },
+      });
+      fixture.detectChanges();
 
-    // The drawer left, and the page asked the roster for the block on screen:
-    // the endpoint filters inactive workers out, so the row is gone by now.
-    expect(host(fixture).querySelector('app-ficha-drawer dialog')?.hasAttribute('open')).toBe(
-      false,
-    );
+      // The drawer left, and the page asked the roster for the block on screen:
+      // the endpoint filters inactive workers out, so the row is gone by now.
+      expect(host(fixture).querySelector('app-ficha-drawer dialog')?.hasAttribute('open')).toBe(
+        false,
+      );
 
-    const recarga = peticiones();
-    expect(recarga.length).toBe(1);
-    expect(recarga[0].request.params.get('pagina')).toBe('1');
-    expect(recarga[0].request.params.get('por_pagina')).toBe('100');
-    recarga[0].flush(respuesta([ANA], 1));
-    await fixture.whenStable();
+      const recarga = peticiones();
+      expect(recarga.length).toBe(1);
+      expect(recarga[0].request.params.get('pagina')).toBe('1');
+      expect(recarga[0].request.params.get('por_pagina')).toBe('100');
+      recarga[0].flush(respuesta([ANA], 1));
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      fixture.detectChanges();
 
-    expect(filas(fixture).length).toBe(1);
-    expect(texto(fixture)).not.toContain('Luis Ramírez');
+      expect(filas(fixture).length).toBe(1);
+      expect(texto(fixture)).not.toContain('Luis Ramírez');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

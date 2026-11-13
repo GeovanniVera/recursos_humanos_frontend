@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { ResumenDashboard, ResumenDashboardError } from '../../core/dashboard/dashboard.models';
 import { DashboardService } from '../../core/dashboard/dashboard.service';
+import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
 import { KpiCard } from '../../shared/ui/kpi-card/kpi-card.component';
 import { Modal } from '../../shared/ui/modal/modal.component';
@@ -16,7 +17,7 @@ import { Modal } from '../../shared/ui/modal/modal.component';
  * "something went wrong" would throw away that distinction.
  */
 const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
-const MENSAJE_PERMISO = 'No tenés permisos para ver el panel.';
+const MENSAJE_PERMISO = 'No tienes permisos para ver el panel.';
 const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
 const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
@@ -62,7 +63,7 @@ const SIN_PORCENTAJE = 'Sin porcentaje';
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [Button, KpiCard, Modal],
+  imports: [AlertBanner, Button, KpiCard, Modal],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
 })

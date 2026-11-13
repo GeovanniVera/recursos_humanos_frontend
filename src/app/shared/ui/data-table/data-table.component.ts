@@ -1,5 +1,22 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, TemplateRef, computed, contentChild, input, output } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  TemplateRef,
+  afterNextRender,
+  computed,
+  contentChild,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+
+/** Mobile layout strategy for `DataTable` below the mobile breakpoint. */
+export type TableMobileMode = 'cards' | 'scroll';
 
 /**
  * One column of the table.
@@ -27,11 +44,11 @@ const SKELETON_ROWS = 4;
 /**
  * The table of the design system: a semantic `<table>` inside a glass card.
  *
- * It stays generic on purpose. A typed table per feature would duplicate the
- * same markup, the same skeleton and the same empty state; a caller that needs
- * a trailing action column projects `#rowActions`, and a caller that needs a
- * cell with a shape of its own (a badge, a link) projects `#cell` and decides
- * per column. The table never learns what a state or an area is.
+ * Supports two responsive behaviors on narrow screens (`mobileMode`):
+ * - `'cards'`: stacks rows into labeled cards via CSS `attr(data-label)` while
+ *   keeping `<thead>` accessible (`sr-only`, never `display: none`).
+ * - `'scroll'`: preserves tabular grid with contained horizontal scroll and a
+ *   visual overflow indicator.
  */
 @Component({
   selector: 'app-data-table',
@@ -40,9 +57,15 @@ const SKELETON_ROWS = 4;
   styleUrl: './data-table.component.scss',
 })
 export class DataTable {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly wrapRef = viewChild<ElementRef<HTMLDivElement>>('wrap');
+  private readonly tableRef = viewChild<ElementRef<HTMLTableElement>>('table');
+
   readonly columns = input<readonly TableColumn[]>([]);
   readonly rows = input<readonly TableRow[]>([]);
   readonly loading = input(false);
+  /** Controls responsive table presentation below mobile breakpoint (`<= 767px`). */
+  readonly mobileMode = input<TableMobileMode>('scroll');
   /** Opt-in anchor for a caller-projected leading cell decoration. */
   readonly leadingDecoration = input(false);
   readonly sort = input<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -80,6 +103,12 @@ export class DataTable {
    */
   readonly rowClick = output<TableRow>();
 
+  protected readonly canScrollX = signal(false);
+  protected readonly canScrollLeft = signal(false);
+  protected readonly canScrollRight = signal(false);
+
+  private scrollCheckTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Trailing actions column, present only when something is projected. */
   protected readonly rowActions = contentChild('rowActions', {
     read: TemplateRef,
@@ -112,6 +141,35 @@ export class DataTable {
     () => this.columns().length + (this.rowActions() ? 1 : 0),
   );
 
+  constructor() {
+    effect(() => {
+      this.rows();
+      this.columns();
+      this.loading();
+      this.mobileMode();
+      this.scheduleScrollCheck();
+    });
+
+    afterNextRender(() => {
+      this.updateScrollHints();
+      this.setupResizeObserver();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.scrollCheckTimer !== null) {
+        clearTimeout(this.scrollCheckTimer);
+        this.scrollCheckTimer = null;
+      }
+    });
+  }
+
+  /** Tracks a row by its `rowKey` identifier, falling back to index for minimal rows. */
+  protected trackRow(index: number, row: TableRow): unknown {
+    const key = this.rowKey();
+    const id = row?.[key];
+    return id !== null && id !== undefined && id !== '' ? id : index;
+  }
+
   /** Reads a cell without assuming the value is printable. */
   protected cell(row: TableRow, key: string): string {
     const value = row[key];
@@ -131,6 +189,21 @@ export class DataTable {
     return this.cell(row, this.rowKey()) === String(key);
   }
 
+  protected updateScrollHints(): void {
+    const el = this.wrapRef()?.nativeElement;
+    if (!el || this.mobileMode() !== 'scroll') {
+      this.canScrollX.set(false);
+      this.canScrollLeft.set(false);
+      this.canScrollRight.set(false);
+      return;
+    }
+
+    const overflow = el.scrollWidth > el.clientWidth + 1;
+    this.canScrollX.set(overflow);
+    this.canScrollLeft.set(overflow && el.scrollLeft > 1);
+    this.canScrollRight.set(overflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }
+
   /**
    * Pointer shortcut of the row action.
    *
@@ -144,5 +217,35 @@ export class DataTable {
       return;
     }
     this.rowClick.emit(row);
+  }
+
+  private scheduleScrollCheck(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.scrollCheckTimer !== null) {
+      clearTimeout(this.scrollCheckTimer);
+    }
+    this.scrollCheckTimer = setTimeout(() => {
+      this.scrollCheckTimer = null;
+      this.updateScrollHints();
+    }, 0);
+  }
+
+  private setupResizeObserver(): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const wrapEl = this.wrapRef()?.nativeElement;
+    const tableEl = this.tableRef()?.nativeElement;
+    if (!wrapEl) {
+      return;
+    }
+    const observer = new ResizeObserver(() => this.updateScrollHints());
+    observer.observe(wrapEl);
+    if (tableEl) {
+      observer.observe(tableEl);
+    }
+    this.destroyRef.onDestroy(() => observer.disconnect());
   }
 }

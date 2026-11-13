@@ -7,8 +7,10 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
 import { PadronError } from '../../core/padron/padron.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
+import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
@@ -19,7 +21,7 @@ import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
  * "something went wrong" would throw away that distinction.
  */
 const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
-const MENSAJE_PERMISO = 'No tenés permisos para consultar el padrón.';
+const MENSAJE_PERMISO = 'No tienes permisos para consultar el padrón.';
 const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
 const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 /** Throttle without a number from the backend: there is no countdown to show. */
@@ -79,7 +81,7 @@ interface FallaPadron {
  */
 @Component({
   selector: 'app-empleados-page',
-  imports: [Button, DataTable, FichaDrawer, RouterLink, RowFlag, RowLink],
+  imports: [AlertBanner, Button, DataTable, FichaDrawer, Pagination, RouterLink, RowFlag, RowLink],
   templateUrl: './empleados-page.component.html',
   styleUrl: './empleados-page.component.scss',
   // One buffer per visit: filter, page and cached blocks are not shared with a
@@ -364,7 +366,10 @@ export class EmpleadosPage {
    */
   irAPaginaDesdeCampo(event: Event, valor: string): void {
     event.preventDefault();
+    this.irAPaginaValor(valor);
+  }
 
+  irAPaginaValor(valor: string): void {
     if (this.espera() > 0) {
       return;
     }
@@ -373,7 +378,7 @@ export class EmpleadosPage {
     const maximo = this.totalPaginasMax();
 
     if (!Number.isInteger(destino) || destino < 1 || destino > maximo) {
-      this.errorPagina.set(`Ingresá un número entre 1 y ${this.formato.format(maximo)}.`);
+      this.errorPagina.set(`Ingresa un número entre 1 y ${this.formato.format(maximo)}.`);
       return;
     }
 
@@ -389,7 +394,10 @@ export class EmpleadosPage {
    */
   cambiarPorPagina(event: Event): void {
     const valor = Number((event.target as HTMLSelectElement).value);
+    this.cambiarTamanoPagina(valor);
+  }
 
+  cambiarTamanoPagina(valor: number): void {
     if (!Number.isFinite(valor) || valor === this.store.porPagina()) {
       return;
     }

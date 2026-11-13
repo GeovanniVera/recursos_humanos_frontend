@@ -1,6 +1,5 @@
 <app-modal title="Dar de baja" size="md" [(open)]="open">
-  @if (open()) {
-    <div class="baja">
+  <div class="baja">
       <!--
         The subject of the act, when the caller knows it. It is one line above
         the warning on purpose: the sentence that follows is about a person, and
@@ -17,23 +16,7 @@
 
       @if (aviso(); as fallo) {
         <!-- `role="alert"` announces the failure as soon as it renders. -->
-        <div class="alert" role="alert">
-          <span class="alert-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            >
-              <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
-            </svg>
-          </span>
-
-          <div class="alert-copy">
-            <p class="alert-message">{{ fallo }}</p>
-          </div>
-        </div>
+        <app-alert-banner variant="error" [message]="fallo" />
       }
 
       <div class="field">
@@ -101,26 +84,23 @@
         }
       </div>
     </div>
-  }
 
   <ng-template #actions>
-    @if (open()) {
-      <app-button variant="secondary" (click)="cerrar()">{{ etiquetaSecundaria() }}</app-button>
+    <app-button variant="secondary" (click)="cerrar()">{{ etiquetaSecundaria() }}</app-button>
 
-      <!--
-        After a `409` the worker is already terminated: the submit disappears so
-        the only move left is the way out.
-      -->
-      @if (!conflicto()) {
-        <app-button
-          variant="danger"
-          [disabled]="!puedeEnviar()"
-          [loading]="enviando()"
-          (click)="darDeBaja()"
-        >
-          Dar de baja
-        </app-button>
-      }
+    <!--
+      After a `409` the worker is already terminated: the submit disappears so
+      the only move left is the way out.
+    -->
+    @if (!conflicto()) {
+      <app-button
+        variant="danger"
+        [disabled]="!puedeEnviar()"
+        [loading]="enviando()"
+        (click)="darDeBaja()"
+      >
+        Dar de baja
+      </app-button>
     }
   </ng-template>
 </app-modal>

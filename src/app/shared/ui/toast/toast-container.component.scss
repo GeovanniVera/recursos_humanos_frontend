@@ -5,8 +5,8 @@
   inset-block-start: var(--space-4);
   inset-inline-end: var(--space-4);
   // Wide enough for a full sentence, narrow enough to leave the page readable
-  // behind it, and never wider than the viewport on a phone.
-  width: min(var(--toast-width), calc(100vw - var(--space-6) * 2));
+  // behind it, and never wider than the viewport on a phone with symmetric inset.
+  width: min(var(--toast-width), calc(100vw - var(--space-4) * 2));
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -28,6 +28,12 @@
   backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-lg);
   pointer-events: auto;
+  animation: toast-enter var(--motion-fast) var(--motion-ease) both;
+}
+
+.toast.is-leaving {
+  pointer-events: none;
+  animation: toast-exit var(--motion-exit) var(--motion-ease) forwards;
 }
 
 // Each state is a coloured disc, not a coloured word: the shape and the icon

@@ -731,7 +731,7 @@ describe('CatalogosPage', () => {
     peticion('/diagnostico').flush(DIAGNOSTICO);
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('No tenés permiso para administrar los catálogos.');
+    expect(texto(fixture)).toContain('No tienes permiso para administrar los catálogos.');
     expect(texto(fixture)).toContain('permiso_denegado');
     // Nothing to administer, so the tabs leave with the alert; and asking again
     // would answer the same.

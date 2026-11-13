@@ -1,7 +1,10 @@
+@use '../../../styles/breakpoints' as bp;
+
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 .head {
   display: flex;
@@ -14,7 +17,7 @@
   display: grid;
   gap: var(--space-3);
   flex: 1;
-  min-width: min(100%, var(--drawer-width-sm));
+  min-width: min(100%, 260px);
 }
 h1 {
   font: var(--text-title);
@@ -124,12 +127,10 @@ h1 {
   gap: var(--space-4);
 }
 .search {
-  flex: 1;
-  min-width: min(100%, var(--drawer-width-sm));
-}
-.search {
   display: grid;
+  flex: 1;
   gap: var(--space-2);
+  min-width: min(100%, 260px);
 }
 label {
   font: var(--text-label);
@@ -152,174 +153,18 @@ input::placeholder {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-// --- Pager ------------------------------------------------------------------
 
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  color: var(--color-text-secondary);
-}
-
-// Range and page size travel together: both describe how much of the listing is
-// on screen, and both sit away from the navigation controls.
-.pager-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.pager-range {
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
-}
-
-.page-size {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.page-size-label,
-.jump-label,
-.pager-page {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--color-text-secondary);
-}
-
-.page-size-label,
-.jump-label {
-  white-space: nowrap;
-}
-
-// The row of secondary buttons is centered between the range and the jump form.
-.pager-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-}
-
-// The three controls of the footer share their frame; only the width, the
-// height and the alignment of what they hold differ.
-.page-size-select,
-.jump-field {
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-glass);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
-}
-
-// The shared `select` rule of the toolbar asks for a full width; this control
-// keeps the size of a select instead of spanning the footer.
-.page-size-select {
-  width: auto;
-  // 44px is the minimum touch target the design rules require of any control,
-  // so the size selector is not allowed to shrink to the compact height.
-  min-height: var(--space-8);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-// The page counter is the anchor between the buttons: it keeps its width so
-// pressing Siguiente never shifts the group sideways.
-.pager-page {
-  min-width: var(--space-8);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.pager-jump {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.jump-field {
-  width: var(--space-8);
-  min-height: var(--space-8);
-  padding: var(--space-1) var(--space-2);
-  text-align: center;
-}
-
-.jump-field:disabled,
-.page-size-select:disabled {
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-}
-
-// The invalid state is carried by the border and by the chip under the field.
-// The chip is the state fill with its own ink, so the rule survives a grayscale
-// read; red text on the guinda canvas would not be the design's error treatment.
-.pager .jump-field[aria-invalid='true'] {
-  border-color: var(--color-state-error);
-}
-
-.pager .field-error {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  align-self: flex-start;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-  font: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
-}
-
-.pager .field-error-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--space-4);
-  height: var(--space-4);
-}
-
-.pager .field-error-icon svg {
-  width: var(--space-4);
-  height: var(--space-4);
-}
-
-// The jump complaint belongs to the whole footer, not to the control row, so it
-// starts its own line instead of squeezing the buttons.
-.jump-error {
-  flex-basis: 100%;
-}
-
-.notice {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-}
-.notice p {
-  margin-block-start: var(--space-2);
-}
-@media (max-width: 760px) {
+@include bp.down(bp.$bp-md) {
   .filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  // The controls take their own line; the range and the jump form keep theirs.
-  .pager-controls {
-    width: 100%;
-  }
 }
-@media (max-width: 400px) {
+
+@include bp.down(bp.$bp-xs) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .filter {
     padding: var(--space-3);
   }

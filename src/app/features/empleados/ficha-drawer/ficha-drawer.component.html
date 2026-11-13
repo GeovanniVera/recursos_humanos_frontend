@@ -7,42 +7,25 @@
   <div class="ficha" [attr.aria-busy]="loading() ? 'true' : null">
     @if (loading()) {
       <!--
-        Static lines, not a shimmer: a pulse would fight `prefers-reduced-motion`
-        and motion in this system is a signal, not decoration. Hidden from
-        assistive tech because it says nothing a reader can use.
+        Discreet GPU-composited shimmer disabled automatically under `prefers-reduced-motion`.
+        Hidden from assistive tech while `aria-busy` announces loading on the container.
       -->
       <div class="skeleton" aria-hidden="true">
         @for (line of skeletons; track line) {
-          <span class="skeleton-line" [class.is-short]="line % 3 === 1"></span>
+          <span class="skeleton-line skeleton-shimmer" [class.is-short]="line % 3 === 1"></span>
         }
       </div>
     } @else if (error(); as failure) {
       <!-- `role="alert"` announces the failure as soon as it renders. -->
-      <div class="alert" role="alert">
-        <span class="alert-icon" aria-hidden="true">
-          <svg
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          >
-            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
-          </svg>
-        </span>
-
-        <div class="alert-copy">
-          <p class="alert-message">{{ failure.mensaje }}</p>
-          @if (failure.detalle) {
-            <!-- A contract value, not copy: it is shown as it arrives. -->
-            <p class="alert-detail">{{ failure.detalle }}</p>
-          }
-        </div>
-
+      <app-alert-banner
+        variant="error"
+        [message]="failure.mensaje"
+        [detail]="failure.detalle"
+      >
         @if (failure.accion === 'reintentar') {
-          <app-button variant="secondary" (click)="reintentar()">Reintentar</app-button>
+          <app-button alert-actions variant="secondary" (click)="reintentar()">Reintentar</app-button>
         }
-      </div>
+      </app-alert-banner>
     } @else if (ficha(); as record) {
       <!--
         Masthead of the document. It states the subject before any section does:
@@ -338,8 +321,7 @@
                     campo of camposFaltantes(record.gestion_interna.estado_expediente);
                     track campo
                   ) {
-                    <!-- A contract key (`curp`), printed as the backend spells it. -->
-                    <span class="chip">{{ campo }}</span>
+                    <span class="chip">{{ etiquetaCampo(campo) }}</span>
                   }
                 </span>
               }
@@ -358,26 +340,28 @@
       `Ya está dado de baja`.
     -->
     <div class="actions-left">
-      <button
-        type="button"
-        class="icon-action"
-        aria-label="Editar la ficha"
-        title="Editar la ficha"
-        disabled
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+      @if (puedeEditar() && ficha() !== null) {
+        <button
+          type="button"
+          class="icon-action"
+          aria-label="Editar la ficha"
+          title="Editar la ficha"
+          (click)="solicitarEdicion()"
         >
-          <path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z" />
-          <path d="M13.5 6.5l4 4" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z" />
+            <path d="M13.5 6.5l4 4" />
+          </svg>
+        </button>
+      }
 
       <app-button
         variant="danger"

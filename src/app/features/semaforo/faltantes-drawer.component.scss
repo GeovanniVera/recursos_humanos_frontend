@@ -59,15 +59,6 @@ li {
 .complete {
   color: var(--color-text-primary);
 }
-.notice {
-  padding: var(--space-4);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-  border-radius: var(--radius-md);
-}
-.notice p {
-  margin-block-start: var(--space-2);
-}
 .skeleton {
   height: var(--space-5);
   background: var(--color-border-default);

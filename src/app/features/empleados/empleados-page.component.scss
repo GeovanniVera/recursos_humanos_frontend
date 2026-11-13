@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 // The refresh sits at the top right of the heading, the way the canvas places
@@ -25,16 +26,11 @@
 // Actions of the header travel as one group: the primary link and the secondary
 // refresh keep their order on a narrow window instead of drifting apart. The
 // pager controls are the same row of secondary buttons, so they share it.
-.head-actions,
-.pager-controls {
+.head-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-}
-
-.pager-controls {
-  justify-content: center;
 }
 
 // Painted like the primary button of the design system, because it is one: the
@@ -114,17 +110,14 @@
 }
 
 .search-field:hover,
-.search-field:focus-visible,
-.jump-field:hover,
-.jump-field:focus-visible {
+.search-field:focus-visible {
   border-color: var(--color-accent);
 }
 
 // The invalid state is carried by the border and by the chip under the field.
 // The chip is the state fill with its own ink, so the rule survives a grayscale
 // read; red text on the guinda canvas would not be the design's error treatment.
-.search-field[aria-invalid='true'],
-.jump-field[aria-invalid='true'] {
+.search-field[aria-invalid='true'] {
   border-color: var(--color-state-error);
 }
 
@@ -149,69 +142,17 @@
   letter-spacing: var(--tracking-overline);
 }
 
-.field-error-icon,
-.alert-icon {
+.field-error-icon {
   display: grid;
   flex: none;
   place-items: center;
-}
-
-.field-error-icon {
   width: var(--space-4);
   height: var(--space-4);
 }
 
-.field-error-icon svg,
-.alert-icon svg {
+.field-error-icon svg {
   width: var(--space-4);
   height: var(--space-4);
-}
-
-// --- Failure ----------------------------------------------------------------
-
-// A failure is a glass card with a colored disc, not a red panel: a filled
-// alert would repaint the buttons inside it and lose their contrast.
-.alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-sm);
-}
-
-.alert-icon {
-  width: var(--space-7);
-  height: var(--space-7);
-  border-radius: var(--radius-pill);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-}
-
-.alert-copy {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.alert-message {
-  font: var(--text-body);
-  color: var(--color-text-primary);
-}
-
-// The contract code is monospace and muted: it is there for support, not to be
-// read as part of the sentence.
-.alert-code {
-  font: var(--text-overline);
-  font-family: var(--font-mono);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-secondary);
 }
 
 // --- Block loading ----------------------------------------------------------
@@ -234,102 +175,4 @@
   height: var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-accent);
-}
-
-// --- Pager ------------------------------------------------------------------
-
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-// Range and page size travel together: both describe how much of the listing is
-// on screen, and both sit away from the navigation controls.
-.pager-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.pager-range {
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
-}
-
-.page-size {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.page-size-label,
-.jump-label,
-.pager-page {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--color-text-secondary);
-}
-
-.page-size-label,
-.jump-label {
-  white-space: nowrap;
-}
-
-// The three controls of the footer share their frame; only the width, the
-// height and the alignment of what they hold differ.
-.page-size-select,
-.jump-field {
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-glass);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
-}
-
-.page-size-select {
-  // 44px is the minimum touch target the design rules require of any control,
-  // so the size selector is not allowed to shrink to the compact height.
-  min-height: var(--space-8);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-// The page counter is the anchor between the buttons: it keeps its width so
-// pressing Siguiente never shifts the group sideways.
-.pager-page {
-  min-width: var(--space-8);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.pager-jump {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.jump-field {
-  width: var(--space-8);
-  min-height: var(--space-8);
-  padding: var(--space-1) var(--space-2);
-  text-align: center;
-}
-
-.jump-field:disabled,
-.page-size-select:disabled {
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-}
-
-// The jump complaint belongs to the whole footer, not to the control row, so it
-// starts its own line instead of squeezing the buttons.
-.jump-error {
-  flex-basis: 100%;
 }

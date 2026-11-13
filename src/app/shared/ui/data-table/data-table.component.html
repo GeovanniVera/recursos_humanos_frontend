@@ -1,6 +1,25 @@
-<div class="wrap">
+@if (mobileMode() === 'scroll' && canScrollX()) {
+  <p class="scroll-hint" aria-hidden="true">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <path d="M5 5 2 8l3 3M11 5l3 3-3 3M2 8h12" />
+    </svg>
+    Desliza horizontalmente para ver más columnas
+  </p>
+}
+
+<div
+  #wrap
+  class="wrap"
+  [class.is-scroll]="mobileMode() === 'scroll'"
+  [class.has-overflow]="canScrollX()"
+  [class.can-scroll-left]="canScrollLeft()"
+  [class.can-scroll-right]="canScrollRight()"
+  (scroll)="updateScrollHints()"
+>
   <table
+    #table
     class="table"
+    [class.is-cards]="mobileMode() === 'cards'"
     [class.has-leading-decoration]="leadingDecoration()"
     [attr.aria-busy]="loading() ? 'true' : null"
   >
@@ -83,11 +102,11 @@
           <tr class="skeleton-row" aria-hidden="true">
             @for (column of columns(); track column.key) {
               <td class="cell" [class.is-end]="column.align === 'end'">
-                <span class="skeleton"></span>
+                <span class="skeleton skeleton-shimmer"></span>
               </td>
             }
             @if (rowActions()) {
-              <td class="cell actions"><span class="skeleton"></span></td>
+              <td class="cell actions"><span class="skeleton skeleton-shimmer"></span></td>
             }
           </tr>
         }
@@ -98,7 +117,7 @@
           </td>
         </tr>
       } @else {
-        @for (row of rows(); track $index) {
+        @for (row of rows(); track trackRow($index, row)) {
           <tr
             class="row"
             [class.is-active]="isActive(row)"
@@ -106,7 +125,11 @@
             (click)="onRowClick(row)"
           >
             @for (column of columns(); track column.key) {
-              <td class="cell" [class.is-end]="column.align === 'end'">
+              <td
+                class="cell"
+                [class.is-end]="column.align === 'end'"
+                [attr.data-label]="column.header"
+              >
                 @if (cellTemplate(); as renderCell) {
                   <ng-container *ngTemplateOutlet="renderCell; context: cellContext(row, column)" />
                 } @else {
@@ -115,7 +138,7 @@
               </td>
             }
             @if (rowActions(); as actionsTemplate) {
-              <td class="cell actions">
+              <td class="cell actions" [attr.data-label]="actionsLabel() || 'Acciones'">
                 <ng-container *ngTemplateOutlet="actionsTemplate; context: { $implicit: row }" />
               </td>
             }

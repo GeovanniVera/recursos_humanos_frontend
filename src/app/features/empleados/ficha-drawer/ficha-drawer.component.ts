@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Observable, Subject, catchError, finalize, switchMap } from 'rxjs';
+import { etiquetaCampoExpediente } from '../../../core/empleados/expediente-campos';
 import {
   EstadoExpediente,
   FichaEmpleado,
@@ -19,6 +20,7 @@ import {
   FichaEstadoExpediente,
 } from '../../../core/empleados/ficha.models';
 import { FichaService } from '../../../core/empleados/ficha.service';
+import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
 import { Drawer } from '../../../shared/ui/drawer/drawer.component';
 import { StatusPill } from '../../../shared/ui/status-pill/status-pill.component';
@@ -34,7 +36,7 @@ import { BajaModal } from '../baja/baja-modal.component';
  * still shown verbatim under it, for support.
  */
 const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
-const MESSAGE_PERMISSION = 'No tenés permisos para ver esta ficha.';
+const MESSAGE_PERMISSION = 'No tienes permisos para ver esta ficha.';
 const MESSAGE_NOT_FOUND = 'No encontramos ese trabajador.';
 const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
@@ -90,7 +92,7 @@ const SKELETON_LINES = 9;
  */
 @Component({
   selector: 'app-ficha-drawer',
-  imports: [BajaModal, Button, Drawer, StatusPill],
+  imports: [AlertBanner, BajaModal, Button, Drawer, StatusPill],
   templateUrl: './ficha-drawer.component.html',
   styleUrl: './ficha-drawer.component.scss',
 })
@@ -103,6 +105,12 @@ export class FichaDrawer {
 
   /** Whether the panel is open. Two-way bound to the page that hosts it. */
   readonly open = model(false);
+
+  /** Whether inline editing is enabled by a backing contract/workflow. */
+  readonly puedeEditar = input(false);
+
+  /** Emits the loaded worker id when edition is triggered and available. */
+  readonly editarSolicitado = output<number>();
 
   /**
    * Fired when the termination layer reports a `200`.
@@ -176,12 +184,15 @@ export class FichaDrawer {
    * `switchMap` keeps one in flight: a newer open cancels the one it supersedes,
    * so a slow answer for the previous worker never lands over the current one.
    */
-  private readonly requests = new Subject<number>();
+  private readonly requests = new Subject<number | null>();
+  private closeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearCloseTimer());
+
     this.requests
       .pipe(
-        switchMap((id) => this.request(id)),
+        switchMap((id) => (id === null ? EMPTY : this.request(id))),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -196,16 +207,37 @@ export class FichaDrawer {
       const id = this.empleadoId();
 
       if (!isOpen) {
-        // Closed: the record is dropped so the next open asks for it again.
-        this.ficha.set(null);
-        this.error.set(null);
+        // Cancel any in-flight request immediately, while keeping the current
+        // snapshot during the drawer's 300ms exit transition.
+        this.requests.next(null);
+        this.loading.set(false);
+        this.scheduleClearOnClose();
         return;
       }
 
+      this.clearCloseTimer();
       if (id !== null) {
         this.load(id);
       }
     });
+  }
+
+  private clearCloseTimer(): void {
+    if (this.closeTimer !== null) {
+      clearTimeout(this.closeTimer);
+      this.closeTimer = null;
+    }
+  }
+
+  private scheduleClearOnClose(): void {
+    this.clearCloseTimer();
+    this.closeTimer = setTimeout(() => {
+      this.closeTimer = null;
+      if (!this.open()) {
+        this.ficha.set(null);
+        this.error.set(null);
+      }
+    }, 300);
   }
 
   /** Retry of the alert: asks for the record on screen again. */
@@ -222,6 +254,14 @@ export class FichaDrawer {
       return;
     }
     this.bajaAbierta.set(true);
+  }
+
+  /** Emits edit request when an edit workflow is wired via `puedeEditar`. */
+  protected solicitarEdicion(): void {
+    const id = this.ficha()?.id;
+    if (id !== undefined && this.puedeEditar()) {
+      this.editarSolicitado.emit(id);
+    }
   }
 
   /**
@@ -292,6 +332,11 @@ export class FichaDrawer {
   /** Names of the missing fields, as the backend spells them. */
   protected camposFaltantes(expediente: FichaEstadoExpediente): string[] {
     return Array.isArray(expediente.campos_faltantes) ? expediente.campos_faltantes : [];
+  }
+
+  /** Maps a contract key (`curp`) to the same Spanish label used by FaltantesDrawer. */
+  protected etiquetaCampo(campo: string): string {
+    return etiquetaCampoExpediente(campo);
   }
 
   /** Clears what the previous record showed and asks for the new one. */

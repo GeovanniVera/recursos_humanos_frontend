@@ -1,3 +1,28 @@
+@use '../../../../styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.scroll-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.scroll-hint svg {
+  flex: none;
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
 // The card is the final surface: the table only paints its own rows, so the
 // radius, the hairline and the glass live here and clip in one place.
 .wrap {
@@ -5,8 +30,15 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-sm);
+}
+
+.wrap.is-scroll.can-scroll-right {
+  border-inline-end: calc(var(--border-width) * 3) solid var(--color-accent);
+}
+
+.wrap.is-scroll.can-scroll-left {
+  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
 }
 
 .table {
@@ -128,4 +160,109 @@
   outline: var(--border-width) solid var(--color-accent);
   outline-offset: calc(-1 * var(--border-width));
   background: var(--color-surface-glass);
+}
+
+@include bp.down(bp.$bp-sm) {
+  .wrap.is-scroll .cell:not(.actions) {
+    min-width: 8rem;
+  }
+
+  .table.is-cards,
+  .table.is-cards tbody {
+    display: block;
+    width: 100%;
+  }
+
+  // Keep headers in the accessibility tree and DOM for keyboard/screen readers & specs.
+  .table.is-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table.is-cards tbody tr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: var(--border-width) solid var(--color-border-default);
+  }
+
+  .table.is-cards tbody tr:last-child {
+    border-bottom-width: 0;
+  }
+
+  .table.is-cards.has-leading-decoration .row {
+    padding-inline-start: var(--space-5);
+  }
+
+  .table.is-cards.has-leading-decoration .row .cell:first-child,
+  .table.is-cards .row.is-active .cell:first-child {
+    position: static;
+  }
+
+  .table.is-cards .row.is-active .cell:first-child::before {
+    content: attr(data-label);
+    position: static;
+    inset: auto;
+    width: auto;
+    background: var(--transparent);
+  }
+
+  .table.is-cards .row.is-active::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: var(--space-1);
+    background: var(--color-accent);
+  }
+
+  .table.is-cards .row .cell {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+    text-align: end;
+    overflow-wrap: anywhere;
+  }
+
+  .table.is-cards .row .cell::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 42%;
+    font: var(--text-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    text-align: start;
+  }
+
+  .table.is-cards .row .cell.actions {
+    white-space: normal;
+  }
+
+  .table.is-cards .skeleton-row .cell {
+    display: block;
+    width: 100%;
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+  }
+
+  .table.is-cards .empty {
+    display: block;
+    width: 100%;
+    padding: var(--space-6) var(--space-3);
+  }
 }

@@ -1,0 +1,15 @@
+// Standardized responsive breakpoints aligned with reference viewports:
+// - lg (<= 1199px): compact desktop / laptop
+// - md (<= 1023px): tablet (covers 768x1024 inclusively)
+// - sm (<= 767px): mobile (covers 390x844 and below)
+// - xs (<= 479px): small mobile (covers 375x667 and 360px)
+$bp-lg: 1199px;
+$bp-md: 1023px;
+$bp-sm: 767px;
+$bp-xs: 479px;
+
+@mixin down($width) {
+  @media (max-width: $width) {
+    @content;
+  }
+}

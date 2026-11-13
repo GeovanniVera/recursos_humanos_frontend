@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 // ---------------------------------------------------------------------------
 // One-time code: six boxes. Size and gap come from tokens, the error look is
 // the error surface color plus a short shake built from motion tokens.
@@ -63,6 +65,8 @@
 
 .box:focus-visible {
   border-color: var(--color-accent);
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
   box-shadow: var(--login-focus-ring-shadow);
   transform: translateY(-2px) scale(1.05);
 }
@@ -103,5 +107,38 @@
   }
   60% {
     transform: translateX(var(--space-1));
+  }
+}
+
+@media (forced-colors: active) {
+  .box:focus-visible {
+    outline: var(--focus-ring-width) solid Highlight;
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+// Keep border/focus states while disabling entry pop, hover lift and error shake.
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    animation: none;
+  }
+
+  .box:hover,
+  .box:focus-visible {
+    transform: none;
+  }
+
+  .boxes.is-invalid {
+    animation: none;
+  }
+}
+
+@include bp.down(bp.$bp-xs) {
+  .boxes {
+    gap: var(--space-2);
+  }
+
+  .box {
+    height: var(--space-8);
   }
 }

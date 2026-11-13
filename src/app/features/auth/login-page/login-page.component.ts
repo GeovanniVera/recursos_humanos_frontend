@@ -13,7 +13,7 @@ import { OtpInput } from '../otp-input/otp-input.component';
  * Mensaje por defecto cuando no hay respuesta o falla la conexión con el servidor.
  */
 const MENSAJE_SIN_CONEXION =
-  'No pudimos conectar con el servidor. Revisa tu conexión e intentá de nuevo.';
+  'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.';
 
 /** Segundos que el enlace de reenvío permanece deshabilitado tras solicitar código. */
 const SEGUNDOS_REENVIO = 30;
@@ -83,6 +83,9 @@ export class LoginPage {
     return Math.round((this.segundos() / total) * 100);
   });
 
+  /** Escala normalizada (0..1) para animar `.prog-bar` por composición GPU (`scaleX`). */
+  readonly progresoScale = computed(() => Math.min(1, Math.max(0, this.progreso() / 100)));
+
   /** Etiqueta formateada mm:ss para el reenvío */
   readonly etiquetaReenvio = computed(() => {
     const restantes = this.segundos();
@@ -94,9 +97,13 @@ export class LoginPage {
   });
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private navTimerId: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.detenerCuenta());
+    this.destroyRef.onDestroy(() => {
+      this.detenerCuenta();
+      this.cancelarNavegacion();
+    });
   }
 
   alEscribirCorreo(event: Event): void {
@@ -146,7 +153,9 @@ export class LoginPage {
       .subscribe({
         next: () => {
           this.verificado.set(true);
-          setTimeout(() => {
+          this.cancelarNavegacion();
+          this.navTimerId = setTimeout(() => {
+            this.navTimerId = null;
             const destino = this.auth.redirect() ?? '/';
             void this.router.navigateByUrl(destino === '' ? '/' : destino);
           }, 700);
@@ -179,6 +188,7 @@ export class LoginPage {
   }
 
   cambiarCorreo(): void {
+    this.cancelarNavegacion();
     this.detenerCuenta();
     this.segundos.set(0);
     this.codigo.set('');
@@ -241,6 +251,13 @@ export class LoginPage {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+  }
+
+  private cancelarNavegacion(): void {
+    if (this.navTimerId !== null) {
+      clearTimeout(this.navTimerId);
+      this.navTimerId = null;
     }
   }
 }

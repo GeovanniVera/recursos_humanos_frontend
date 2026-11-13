@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 :host {
   display: block;
   width: 100%;
@@ -74,4 +76,15 @@
   letter-spacing: var(--tracking-label);
   color: var(--color-text-secondary);
   text-align: center;
+}
+
+@include bp.down(bp.$bp-xs) {
+  .logos.is-lg {
+    gap: var(--space-3);
+  }
+
+  .logos.is-lg .slot {
+    min-width: 0;
+    height: var(--space-8);
+  }
 }

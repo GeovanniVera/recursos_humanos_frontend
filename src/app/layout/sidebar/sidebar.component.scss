@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints' as bp;
+
 // Floating glass panel.
 //
 // The shell keeps a gutter around it, so the drawer reads as a card lifted above
@@ -13,7 +15,7 @@
   // long page scrolls past.
   position: sticky;
   top: var(--space-4);
-  height: calc(100vh - var(--space-4) * 2);
+  height: calc(100dvh - var(--space-4) * 2);
   padding: var(--space-4);
   // Clips the scrolling content to the rounded corners.
   overflow: hidden;
@@ -38,10 +40,6 @@
   // its two slots. The toggle aligns itself instead.
   align-items: stretch;
   gap: var(--space-3);
-}
-
-:host(.is-collapsed) .header {
-  align-items: center;
 }
 
 // Reads as a link, not as a boxed button. The 44px minimum height keeps the
@@ -75,24 +73,45 @@
   white-space: nowrap;
 }
 
-.chevron {
+.chevron,
+.item-chevron {
+  flex: none;
   width: var(--space-5);
   height: var(--space-5);
   transition: transform var(--motion-fast) var(--motion-ease);
 }
 
-// Collapsed: the drawer opens to the right, so the chevron points that way.
-:host(.is-collapsed) .chevron {
-  transform: rotate(180deg);
-}
-
 .nav {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
   padding-block: var(--space-3);
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+// Elastic sliding pill indicator behind active navigation item.
+.pill-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-action-primary);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, width, height;
+  transition:
+    transform var(--motion-pill-snap) var(--motion-pill-ease),
+    width var(--motion-pill-snap) var(--motion-pill-ease),
+    height var(--motion-pill-snap) var(--motion-pill-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+
+  &.is-visible {
+    opacity: 1;
+  }
 }
 
 .list {
@@ -116,6 +135,8 @@
 // fill is not decorative: a `<button>` would otherwise paint the user-agent
 // button face and break the glass of the panel.
 .item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -135,7 +156,7 @@
     color var(--motion-fast) var(--motion-ease);
 }
 
-.item:hover {
+.item:hover:not(.is-active) {
   background: var(--color-surface-glass);
 }
 
@@ -151,37 +172,79 @@
   color: var(--color-action-on-primary);
 }
 
+// Inside .nav (or .footer-nav when its sliding pill is visible), the pill-indicator
+// serves as the active backdrop.
+.nav .item.is-active,
+.footer-nav.has-pill .item.is-active {
+  background: var(--transparent);
+}
+
 .icon {
   flex: none;
   width: var(--space-5);
   height: var(--space-5);
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-spring);
+}
+
+.item.is-active .icon {
+  color: var(--color-action-on-primary);
+  transform: scale(var(--icon-active-scale));
 }
 
 .item-label {
   flex: 1 1 auto;
 }
 
-// Branch indicator of the `Empleados` toggle. It points down while the branch
-// is open and turns up when it closes, so the state reads without colour.
-.item-chevron {
-  flex: none;
-  width: var(--space-5);
-  height: var(--space-5);
-  transition: transform var(--motion-fast) var(--motion-ease);
-}
-
 .item-chevron.is-open {
   transform: rotate(180deg);
 }
 
-// Child list of a branch. A hairline guide runs down the group so the nesting is
-// legible at a glance, and the children keep a lighter weight than the parent.
+// Child list of a branch. Smooth grid accordion keeps the panel in the tree
+// while animating open/closed without magic fixed heights; closed panels become
+// `inert` and invisible at the end of the close transition.
+.submenu-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease),
+    visibility var(--motion-fast) step-end;
+}
+
+.submenu-panel.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition-timing-function: var(--motion-ease), var(--motion-ease), step-start;
+}
+
+.submenu-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submenu-panel {
+    transition-property: opacity, visibility;
+  }
+
+  .item-chevron {
+    transition: none;
+  }
+}
+
+// A hairline guide runs down the group so the nesting is legible at a glance,
+// and the children keep a lighter weight than the parent.
 .sublist {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   margin: 0 0 0 var(--space-5);
-  padding: 0 0 0 var(--space-3);
+  padding: var(--space-1) 0 0 var(--space-3);
   border-left: var(--border-width) solid var(--color-border-default);
   list-style: none;
 }
@@ -198,21 +261,55 @@
   color: var(--color-action-on-primary);
 }
 
-// Rail width. `display: none` on the labels, never `opacity: 0`: a hidden label
-// must leave the accessibility tree, not just the visible surface.
 :host(.is-collapsed) {
+  z-index: 20;
   padding: var(--space-4) 0;
+  overflow: visible;
+
+  .header {
+    align-items: center;
+  }
+
+  .user {
+    justify-content: center;
+  }
+
+  .chevron {
+    transform: rotate(180deg);
+  }
+
+  .item {
+    justify-content: center;
+    width: var(--space-8);
+    margin-inline: auto;
+    padding: 0;
+  }
+
+  .item-label,
+  .user-meta {
+    display: none;
+  }
 }
 
-:host(.is-collapsed) .item {
-  justify-content: center;
-  width: var(--space-8);
-  margin-inline: auto;
-  padding: 0;
+.footer-nav {
+  position: relative;
 }
 
-:host(.is-collapsed) .item-label {
-  display: none;
+.rail-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 // Account section, pinned to the bottom of the rail. It lives outside the
@@ -239,10 +336,6 @@
   border-top: var(--border-width) solid var(--color-border-default);
 }
 
-:host(.is-collapsed) .user {
-  justify-content: center;
-}
-
 .avatar {
   display: grid;
   flex: none;
@@ -262,10 +355,6 @@
   min-width: 0;
 }
 
-:host(.is-collapsed) .user-meta {
-  display: none;
-}
-
 .user-name {
   font: var(--text-label);
   letter-spacing: var(--tracking-label);
@@ -276,4 +365,66 @@
   font: var(--text-overline);
   letter-spacing: var(--tracking-overline);
   color: var(--color-text-secondary);
+}
+
+.mobile-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.mobile-close:hover {
+  background: var(--color-border-default);
+}
+
+.close-icon {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+@include bp.down(bp.$bp-sm) {
+  :host,
+  :host(.enter-drawer) {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(var(--sidebar-width), calc(100vw - var(--space-6)));
+    height: 100dvh;
+    overflow: hidden;
+    border-radius: var(--radius-none) var(--radius-xl) var(--radius-xl) var(--radius-none);
+    animation: none;
+    transform: translateX(-105%);
+    pointer-events: none;
+    transition: transform var(--motion-base) var(--motion-ease);
+  }
+
+  :host(.is-mobile-open),
+  :host(.enter-drawer.is-mobile-open) {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :host,
+    :host(.enter-drawer) {
+      transition: none;
+    }
+  }
 }

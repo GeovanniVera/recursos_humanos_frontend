@@ -1,33 +1,33 @@
-<div class="login-stage">
+<div class="stage">
   <!-- Fondo animado oficial (auroras, radial gradient y anillos concéntricos) -->
   <app-animated-backdrop />
 
   <!-- Escenario central centrado y equilibrado -->
-  <main class="content-wrapper">
+  <main class="layout">
     <!-- COLUMNA IZQUIERDA: Identidad Institucional -->
-    <section class="identity-section enter-rise">
+    <section class="brand enter-rise">
       <!-- Badge superior institucional -->
-      <div class="brand-pill">
+      <div class="pill">
         <span class="pill-dot" aria-hidden="true"></span>
-        <span class="pill-text">PORTAL INSTITUCIONAL UTN</span>
+        <span class="pill-txt">PORTAL INSTITUCIONAL UTN</span>
       </div>
 
       <!-- Lockup de logotipos limpio y centrado sin cajas blancas artificiales -->
-      <div class="logos-lockup">
-        <div class="logo-item">
+      <div class="logos">
+        <div class="logo">
           <img
-            class="logo-utn-img"
+            class="utn-img"
             src="brand/logo-utn.svg"
             alt="Logotipo Universidad Tecnológica de Nezahualcóyotl"
           />
-          <span class="logo-utn-caption">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</span>
+          <span class="utn-cap">UNIVERSIDAD TECNOLÓGICA DE NEZAHUALCÓYOTL</span>
         </div>
 
-        <div class="logo-divider" aria-hidden="true"></div>
+        <div class="logo-sep" aria-hidden="true"></div>
 
-        <div class="logo-item logo-item-edomex">
+        <div class="logo">
           <img
-            class="logo-edomex-img"
+            class="edo-img"
             src="brand/logo-edomex.svg"
             alt="Gobierno del Estado de México"
           />
@@ -36,29 +36,29 @@
 
       <!-- Textos y títulos institucionales -->
       @if (paso() === 'correo') {
-        <div class="hero-block">
-          <h1 class="hero-title">
-            <span class="hero-title-main">Sistema de</span>
-            <span class="hero-title-accent">Recursos Humanos</span>
+        <div class="hero">
+          <h1 class="h-title">
+            <span>Sistema de</span>
+            <span class="h-accent">Recursos Humanos</span>
           </h1>
 
-          <div class="hero-accent-bar" aria-hidden="true"></div>
+          <div class="h-bar" aria-hidden="true"></div>
 
-          <p class="hero-lede">
+          <p class="h-lede">
             Acceso para el personal de la universidad con tu correo institucional, de forma
             rápida, moderna y segura.
           </p>
         </div>
       } @else {
-        <div class="hero-block">
-          <h1 class="hero-title">
-            <span class="hero-title-main">Verifica tu</span>
-            <span class="hero-title-accent">Identidad</span>
+        <div class="hero">
+          <h1 class="h-title">
+            <span>Verifica tu</span>
+            <span class="h-accent">Identidad</span>
           </h1>
 
-          <div class="hero-accent-bar" aria-hidden="true"></div>
+          <div class="h-bar" aria-hidden="true"></div>
 
-          <p class="hero-lede">
+          <p class="h-lede">
             Ingresa el código numérico de 6 dígitos enviado a tu buzón institucional para
             completar la autenticación al sistema.
           </p>
@@ -67,50 +67,50 @@
     </section>
 
     <!-- COLUMNA DERECHA: Tarjeta de Acceso Flotante -->
-    <section class="form-section">
-      <div class="auth-card enter-modal">
+    <section class="panel">
+      <div class="card enter-modal">
         <!-- Barra de progreso / Pasos -->
-        <div class="card-step-header">
-          <div class="step-indicator-capsule">
-            <span class="step-badge" [class.is-active]="paso() === 'correo'" [class.is-done]="paso() === 'codigo'">
+        <div class="card-top">
+          <div class="steps">
+            <span class="step-n" [class.is-active]="paso() === 'correo'" [class.is-done]="paso() === 'codigo'">
               @if (paso() === 'codigo') {
                 ✓
               } @else {
                 1
               }
             </span>
-            <span class="step-connector" [class.is-active]="paso() === 'codigo'"></span>
-            <span class="step-badge" [class.is-active]="paso() === 'codigo'">2</span>
+            <span class="step-bar" [class.is-active]="paso() === 'codigo'"></span>
+            <span class="step-n" [class.is-active]="paso() === 'codigo'">2</span>
           </div>
-          <span class="step-title">
+          <span class="step-lbl">
             {{ paso() === 'correo' ? 'Paso 1: Identificación' : 'Paso 2: Verificación' }}
           </span>
         </div>
 
         <!-- Alerta de error -->
         @if (hayError()) {
-          <div class="error-banner" role="alert">
-            <span class="error-badge" aria-hidden="true">✕</span>
-            <p class="error-message">{{ error() }}</p>
+          <div class="err" role="alert">
+            <span class="err-b" aria-hidden="true">✕</span>
+            <p class="err-msg">{{ error() }}</p>
           </div>
         }
 
         <!-- Paso 1: Ingreso de Correo Institucional -->
         @if (paso() === 'correo') {
-          <div class="step-flow">
-            <div class="card-intro">
-              <h2 class="card-heading">Bienvenido</h2>
-              <p class="card-subheading">
+          <div class="flow">
+            <div class="intro">
+              <h2 class="c-title">Bienvenido</h2>
+              <p class="c-sub">
                 Ingresa tu correo institucional y te enviaremos un código de acceso. No necesitas
                 contraseña.
               </p>
             </div>
 
-            <form class="auth-form" (ngSubmit)="enviarCorreo()">
-              <div class="field-container">
-                <label class="field-tag" for="correo">CORREO INSTITUCIONAL</label>
-                <div class="input-shell">
-                  <span class="input-glyph" aria-hidden="true">
+            <form class="form" (ngSubmit)="enviarCorreo()">
+              <div class="field">
+                <label class="f-tag" for="correo">CORREO INSTITUCIONAL</label>
+                <div class="in-wrap">
+                  <span class="in-ico" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="2" y="4" width="20" height="16" rx="2" />
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
@@ -118,7 +118,7 @@
                   </span>
                   <input
                     id="correo"
-                    class="field-control"
+                    class="in-ctrl"
                     type="email"
                     name="correo"
                     autocomplete="email"
@@ -133,59 +133,62 @@
 
               <button
                 type="submit"
-                class="primary-action-btn"
+                class="cta"
                 [disabled]="!puedeEnviarCorreo()"
                 [attr.aria-busy]="enviando() ? 'true' : null"
               >
                 @if (enviando()) {
-                  <span class="btn-spinner" aria-hidden="true"></span>
-                  <span class="btn-text">Enviando código...</span>
+                  <span class="spinner" aria-hidden="true"></span>
+                  <span>Enviando código...</span>
                 } @else {
-                  <span class="btn-text">Enviar código de acceso</span>
-                  <span class="btn-arrow" aria-hidden="true">›</span>
+                  <span>Enviar código de acceso</span>
+                  <span class="cta-arr" aria-hidden="true">›</span>
                 }
               </button>
             </form>
 
-            <div class="security-footer">
-              <span class="security-shield" aria-hidden="true">
+            <div class="sec">
+              <span class="sec-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   <path d="m9 12 2 2 4-4" />
                 </svg>
               </span>
-              <span class="security-notice">El código es de un solo uso y caduca en 10 minutos.</span>
+              <span class="sec-txt">El código es de un solo uso y caduca en 10 minutos.</span>
             </div>
           </div>
         } @else {
           <!-- Paso 2: Verificación de Código OTP -->
-          <div class="step-flow">
-            <div class="card-intro">
-              <h2 class="card-heading">Revisa tu correo</h2>
-              <p class="card-subheading">
+          <div class="flow">
+            <div class="intro">
+              <h2 class="c-title">Revisa tu correo</h2>
+              <p class="c-sub">
                 Enviamos un código de 6 dígitos a
-                <strong class="email-target">{{ correo() }}</strong>
+                <strong>{{ correo() }}</strong>
               </p>
             </div>
 
-            <form class="auth-form" (ngSubmit)="enviarCodigo()">
+            <form class="form" (ngSubmit)="enviarCodigo()">
               <app-otp-input
                 [isInvalid]="hayError()"
                 [disabled]="enviando() || verificado()"
                 (valueChanges)="codigo.set($event)"
               />
 
-              <div class="progress-container">
-                <span class="progress-bar" [style.width.%]="progreso()"></span>
+              <div class="prog">
+                <span
+                  class="prog-bar"
+                  [style.transform]="'scaleX(' + progresoScale() + ')'"
+                ></span>
               </div>
 
-              <div class="timer-actions">
+              <div class="t-row">
                 @if (segundos() > 0) {
-                  <span class="timer-countdown">Reenviar código en {{ etiquetaReenvio() }}</span>
+                  <span class="t-txt">Reenviar código en {{ etiquetaReenvio() }}</span>
                 } @else {
                   <button
                     type="button"
-                    class="ghost-link-btn"
+                    class="link-btn"
                     [disabled]="enviando() || verificado()"
                     (click)="reenviarCodigo()"
                   >
@@ -195,7 +198,7 @@
 
                 <button
                   type="button"
-                  class="ghost-link-btn ghost-link-underline"
+                  class="link-btn is-ul"
                   [disabled]="enviando() || verificado()"
                   (click)="cambiarCorreo()"
                 >
@@ -205,24 +208,24 @@
 
               <button
                 type="submit"
-                class="primary-action-btn primary-action-shimmer"
+                class="cta"
                 [class.is-success]="verificado()"
                 [disabled]="!puedeVerificar() || verificado()"
                 [attr.aria-busy]="enviando() ? 'true' : null"
               >
                 @if (verificado()) {
-                  <span class="btn-check-icon" aria-hidden="true">
+                  <span class="chk-ico" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </span>
-                  <span class="btn-text">¡Acceso concedido!</span>
+                  <span>¡Acceso concedido!</span>
                 } @else if (enviando()) {
-                  <span class="btn-spinner" aria-hidden="true"></span>
-                  <span class="btn-text">Verificando...</span>
+                  <span class="spinner" aria-hidden="true"></span>
+                  <span>Verificando...</span>
                 } @else {
-                  <span class="btn-text">Verificar y entrar</span>
-                  <span class="btn-arrow" aria-hidden="true">›</span>
+                  <span>Verificar y entrar</span>
+                  <span class="cta-arr" aria-hidden="true">›</span>
                 }
               </button>
             </form>
@@ -233,7 +236,7 @@
   </main>
 
   <!-- Pie de página institucional -->
-  <footer class="bottom-footer">
-    <p class="footer-legal">Acceso exclusivo para personal autorizado • Universidad Tecnológica de Nezahualcóyotl</p>
+  <footer class="foot">
+    <p class="legal">Acceso exclusivo para personal autorizado • Universidad Tecnológica de Nezahualcóyotl</p>
   </footer>
 </div>

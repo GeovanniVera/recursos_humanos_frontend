@@ -1,6 +1,10 @@
 <div class="stack" aria-live="polite" aria-atomic="false">
   @for (toast of toasts(); track toast.id) {
-    <article class="toast enter-rise is-{{ toast.type }}" [attr.role]="role(toast.type)">
+    <article
+      class="toast is-{{ toast.type }}"
+      [class.is-leaving]="isLeaving(toast.id)"
+      [attr.role]="role(toast.type)"
+    >
       <span class="icon" aria-hidden="true">
         @switch (toast.type) {
           @case ('success') {

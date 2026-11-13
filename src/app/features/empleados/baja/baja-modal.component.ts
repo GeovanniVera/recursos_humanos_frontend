@@ -21,6 +21,7 @@ import {
   MotivoBaja,
 } from '../../../core/empleados/baja.models';
 import { BajaService } from '../../../core/empleados/baja.service';
+import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
 import { Modal } from '../../../shared/ui/modal/modal.component';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
@@ -35,15 +36,15 @@ import { ToastService } from '../../../shared/ui/toast/toast.service';
  */
 const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MESSAGE_ACCESS = 'Tu acceso ya no está vigente. Vuelve a iniciar sesión.';
-const MESSAGE_PERMISSION = 'No tenés permisos para dar de baja.';
+const MESSAGE_PERMISSION = 'No tienes permisos para dar de baja.';
 const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
-const MESSAGE_SERVER = 'No pudimos registrar la baja. Intente más tarde.';
-const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cerrá y vuelve a abrir.';
+const MESSAGE_SERVER = 'No pudimos registrar la baja. Intenta más tarde.';
+const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cierra y vuelve a abrir.';
 
 /** Fallback of a `409` whose body carries no sentence. */
 const MESSAGE_CONFLICT = 'El trabajador ya está dado de baja.';
 /** The POST answers the route's own 404 when the worker no longer exists. */
-const MESSAGE_GONE = 'Ese trabajador ya no existe. Cerrá el panel y recargá la lista.';
+const MESSAGE_GONE = 'Ese trabajador ya no existe. Cierra el panel y recarga la lista.';
 
 /** Both limits are the contract's, not a guess: `nota` is `max:1000`. */
 const MAX_NOTA = 1000;
@@ -64,7 +65,7 @@ const CAMPOS_CONOCIDOS = ['motivo_id', 'nota'] as const;
  */
 @Component({
   selector: 'app-baja-modal',
-  imports: [Button, FormsModule, Modal],
+  imports: [AlertBanner, Button, FormsModule, Modal],
   templateUrl: './baja-modal.component.html',
   styleUrl: './baja-modal.component.scss',
 })

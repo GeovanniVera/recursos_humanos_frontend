@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints' as bp;
+
 :host {
   display: block;
 }
@@ -9,13 +11,27 @@
   grid-template-columns: var(--sidebar-width) 1fr;
   align-items: stretch;
   gap: var(--space-4);
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--space-4);
   transition: grid-template-columns var(--motion-fast) var(--motion-ease);
 }
 
 .shell.is-collapsed {
   grid-template-columns: var(--sidebar-width-collapsed) 1fr;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: var(--color-scrim);
+  animation: scrim-fade var(--motion-fast) var(--motion-ease) both;
+}
+
+@keyframes scrim-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 .sidebar {
@@ -40,4 +56,29 @@
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
+
+  // Fluid fade-up entry animation for the routed view.
+  > :not(router-outlet) {
+    display: block;
+    animation: stage-fade-up var(--motion-fast) var(--motion-ease) both;
+  }
+}
+
+@include bp.down(bp.$bp-sm) {
+  .shell,
+  .shell.is-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0 var(--space-3) var(--space-4);
+  }
+
+  .content {
+    gap: var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim {
+    animation: none;
+  }
 }

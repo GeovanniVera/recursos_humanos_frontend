@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ToastContainer } from './toast-container.component';
-import { ToastService } from './toast.service';
+import { TOAST_EXIT_MS, ToastService } from './toast.service';
 
 function cards(fixture: ComponentFixture<ToastContainer>): HTMLElement[] {
   const host = fixture.nativeElement as HTMLElement;
@@ -63,19 +63,33 @@ describe('ToastContainer', () => {
     expect(live?.getAttribute('aria-atomic')).toBe('false');
   });
 
-  it('closes a toast from its own button', async () => {
-    const { fixture, service } = await createContainer();
-    service.show({ type: 'error', title: 'Error al guardar' });
-    await fixture.whenStable();
+  it('closes a toast from its own button after its exit animation', () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = TestBed.createComponent(ToastContainer);
+      const service = TestBed.inject(ToastService);
+      fixture.detectChanges();
 
-    const close = cards(fixture)[0].querySelector<HTMLButtonElement>('.close');
-    expect(close?.getAttribute('aria-label')).toBe('Cerrar notificación');
+      service.show({ type: 'error', title: 'Error al guardar' }, { duration: 0 });
+      fixture.detectChanges();
 
-    close?.click();
-    await fixture.whenStable();
+      const close = cards(fixture)[0].querySelector<HTMLButtonElement>('.close');
+      expect(close?.getAttribute('aria-label')).toBe('Cerrar notificación');
 
-    expect(cards(fixture).length).toBe(0);
-    expect(service.toasts().length).toBe(0);
+      close?.click();
+      fixture.detectChanges();
+
+      expect(cards(fixture).length).toBe(1);
+      expect(cards(fixture)[0].classList.contains('is-leaving')).toBe(true);
+
+      vi.advanceTimersByTime(TOAST_EXIT_MS);
+      fixture.detectChanges();
+
+      expect(cards(fixture).length).toBe(0);
+      expect(service.toasts().length).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('names the state with an icon that assistive tech skips', async () => {

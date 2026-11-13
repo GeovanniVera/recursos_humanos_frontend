@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 // The drawer's own body is the only scroll container and the header and footer
 // are pinned by the component, so this file only lays out the record. Nothing
 // here sets a height: a long file scrolls, the title and the `Cerrar` stay put.
@@ -28,7 +30,16 @@
   border-radius: var(--radius-md);
   background: var(--color-surface-ghost);
   color: var(--color-text-secondary);
-  cursor: not-allowed;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.icon-action:hover,
+.icon-action:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
 }
 
 .icon-action svg {
@@ -101,6 +112,22 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-glass);
+  interpolate-size: allow-keywords;
+}
+
+.block::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease),
+    content-visibility var(--motion-fast) var(--motion-ease) allow-discrete;
+}
+
+.block[open]::details-content {
+  block-size: auto;
+  opacity: 1;
 }
 
 // The index and the heading share one row: the number is what makes the six
@@ -245,9 +272,8 @@
   padding: var(--space-1) var(--space-2);
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-pill);
-  font: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
-  text-transform: uppercase;
+  font: var(--text-label);
+  letter-spacing: normal;
   color: var(--color-text-secondary);
 }
 
@@ -255,7 +281,6 @@
 // Loading and failure
 // ---------------------------------------------------------------------------
 
-// Static lines: a pulse would fight `prefers-reduced-motion`.
 .skeleton {
   display: flex;
   flex-direction: column;
@@ -275,52 +300,33 @@
 
 // A glass card with a coloured disc, the same failure treatment the screens use:
 // a filled red panel would repaint anything sitting inside it.
-.alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
+@include bp.down(bp.$bp-sm) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
 }
 
-.alert-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--space-7);
-  height: var(--space-7);
-  border-radius: var(--radius-pill);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
+@include bp.down(bp.$bp-xs) {
+  .ficha {
+    gap: var(--space-3);
+    padding: var(--space-2);
+  }
+
+  .block {
+    padding: var(--space-3);
+  }
 }
 
-.alert-icon svg {
-  width: var(--space-4);
-  height: var(--space-4);
-}
+@media (prefers-reduced-motion: reduce) {
+  .block::details-content {
+    transition:
+      opacity var(--motion-fast) var(--motion-ease),
+      content-visibility var(--motion-fast) var(--motion-ease) allow-discrete;
+  }
 
-.alert-copy {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.alert-message {
-  font: var(--text-body);
-  color: var(--color-text-primary);
-}
-
-// The contract value is monospace and muted: it is there for support, not to be
-// read as part of the sentence.
-.alert-detail {
-  font: var(--text-overline);
-  font-family: var(--font-mono);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-secondary);
+  .block-chevron {
+    transition: none;
+  }
 }
 

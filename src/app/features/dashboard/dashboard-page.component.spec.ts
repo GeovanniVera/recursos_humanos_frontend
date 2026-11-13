@@ -214,7 +214,7 @@ describe('DashboardPage', () => {
       );
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No tenés permisos para ver el panel.');
+    expect(text(fixture)).toContain('No tienes permisos para ver el panel.');
     expect(text(fixture)).toContain('permiso_denegado');
     // Nothing to retry: the answer will not change by asking again.
     expect(actionButton(fixture, 'Reintentar')).toBeUndefined();

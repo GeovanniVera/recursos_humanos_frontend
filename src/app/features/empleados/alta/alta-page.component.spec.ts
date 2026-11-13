@@ -888,7 +888,7 @@ describe('AltaPage', () => {
     await fixture.whenStable();
 
     expect(host(fixture).querySelector('[role="alert"]')).not.toBeNull();
-    expect(texto(fixture)).toContain('No tenés permisos para dar de alta empleados.');
+    expect(texto(fixture)).toContain('No tienes permisos para dar de alta empleados.');
     expect(host(fixture).querySelector('form')).toBeNull();
 
     await pulsar(fixture, 'Reintentar');
@@ -898,5 +898,37 @@ describe('AltaPage', () => {
 
     expect(host(fixture).querySelector('form')).not.toBeNull();
     expect(elemento(fixture, '#num_empleado')).not.toBeNull();
+  });
+
+  it('shows a structured loading skeleton, focuses step heading on step change, and focuses first invalid field on submit', async () => {
+    const fixture = TestBed.createComponent(AltaPage);
+    await fixture.whenStable();
+
+    const loading = host(fixture).querySelector<HTMLElement>('.loading[role="status"]');
+    expect(loading?.getAttribute('aria-busy')).toBe('true');
+    expect(loading?.querySelectorAll('.skeleton-field').length).toBeGreaterThanOrEqual(4);
+
+    httpMock.expectOne((peticion) => peticion.url === URL_FORMULARIO).flush(CATALOGOS);
+    await fixture.whenStable();
+
+    await irAPlaza(fixture);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await fixture.whenStable();
+
+    expect(document.activeElement?.tagName).toBe('LEGEND');
+    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement?.textContent?.trim()).toBe('Plaza');
+
+    await llenarPlaza(fixture, PLAZA_ADMIN);
+    await pulsar(fixture, 'Continuar');
+    await pulsar(fixture, 'Continuar');
+
+    fixture.componentInstance.guardar('correo_institucional', 'invalido');
+    await fixture.whenStable();
+    await pulsar(fixture, 'Registrar empleado');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await fixture.whenStable();
+
+    expect(document.activeElement?.id).toBe('correo_institucional');
   });
 });

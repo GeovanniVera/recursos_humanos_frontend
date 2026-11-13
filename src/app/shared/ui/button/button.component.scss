@@ -10,6 +10,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  width: 100%;
   min-height: var(--space-8);
   padding-inline: var(--space-6);
   // Always a border, transparent when the variant has no line: the box then
@@ -25,12 +26,14 @@
     transform var(--motion-fast) var(--motion-ease);
 }
 
-.button:hover {
-  transform: translateY(var(--hover-lift));
-}
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    transform: translateY(var(--button-hover-lift));
+  }
 
-.button:active {
-  transform: none;
+  .button:active:not(:disabled) {
+    transform: translateY(0) scale(var(--button-active-scale));
+  }
 }
 
 // The one action of the view: a filled pill.
@@ -46,8 +49,10 @@
   color: var(--color-text-primary);
 }
 
-.button.is-secondary:hover {
-  background: var(--color-surface-glass);
+@media (hover: hover) {
+  .button.is-secondary:hover:not(:disabled) {
+    background: var(--color-surface-glass);
+  }
 }
 
 // Inline actions inside dense rows and cards: no line, no fill, only ink.
@@ -56,9 +61,11 @@
   color: var(--color-text-secondary);
 }
 
-.button.is-ghost:hover {
-  background: var(--color-surface-glass);
-  color: var(--color-text-primary);
+@media (hover: hover) {
+  .button.is-ghost:hover:not(:disabled) {
+    background: var(--color-surface-glass);
+    color: var(--color-text-primary);
+  }
 }
 
 // Destructive emphasis uses the pale rose surface, never a red fill: on the
@@ -88,9 +95,37 @@
   cursor: progress;
 }
 
+.button .spinner {
+  flex: none;
+  width: 0;
+  height: var(--space-4);
+  margin-inline-end: calc(var(--space-2) * -1);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    width var(--motion-fast) var(--motion-ease),
+    margin-inline-end var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.button.is-loading .spinner {
+  width: var(--space-4);
+  margin-inline-end: 0;
+  opacity: 1;
+  transform: scale(1);
+  animation: button-spin var(--motion-spin) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button.is-loading .spinner {
+    animation: none;
+  }
+}
+
 // The label is a text node, so it inherits the family of the button; this only
 // keeps a projected icon from stretching.
-.button svg {
+.button svg:not(.spinner) {
   flex: none;
   width: var(--space-5);
   height: var(--space-5);

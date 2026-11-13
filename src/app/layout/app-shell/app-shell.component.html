@@ -1,5 +1,15 @@
 <div class="shell" [class.is-collapsed]="collapsed()">
-  <app-sidebar class="sidebar" />
+  @if (isMobile() && mobileOpen()) {
+    <div class="scrim" aria-hidden="true" (click)="closeMobile(true)"></div>
+  }
+
+  <app-sidebar
+    id="app-sidebar-drawer"
+    class="sidebar"
+    [attr.inert]="isMobile() && !mobileOpen() ? '' : null"
+    [attr.aria-hidden]="isMobile() && !mobileOpen() ? 'true' : null"
+    (mobileClose)="closeMobile(true)"
+  />
 
   <div class="content">
     <app-topbar />

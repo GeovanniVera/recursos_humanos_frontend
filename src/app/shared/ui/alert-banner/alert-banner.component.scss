@@ -1,0 +1,81 @@
+:host {
+  display: block;
+}
+
+// Glass card with a colored disc, not a filled state panel: a solid fill would
+// repaint nested buttons and break their contrast across themes.
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-pill);
+}
+
+.alert-icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.is-error .alert-icon {
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+}
+
+.is-warning .alert-icon {
+  background: var(--color-state-warning);
+  color: var(--color-state-warning-ink);
+}
+
+.is-info .alert-icon {
+  background: var(--color-state-info);
+  color: var(--color-state-info-ink);
+}
+
+.is-success .alert-icon {
+  background: var(--color-state-success);
+  color: var(--color-state-success-ink);
+}
+
+.alert-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.alert-title {
+  font: var(--text-nav-branch);
+  color: var(--color-text-primary);
+}
+
+.alert-message {
+  font: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+.alert.is-error .alert-title + .alert-message {
+  color: var(--color-text-secondary);
+}
+
+.alert-code,
+.alert-detail {
+  font: var(--text-overline);
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-overline);
+  color: var(--color-text-secondary);
+}

@@ -77,6 +77,7 @@ describe('Button', () => {
     expect(button.getAttribute('aria-busy')).toBe('true');
     expect(button.disabled).toBe(true);
     expect(button.classList.contains('is-loading')).toBe(true);
+    expect(button.querySelector('svg.spinner')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('keeps the projected label on screen, in Spanish, while loading', async () => {

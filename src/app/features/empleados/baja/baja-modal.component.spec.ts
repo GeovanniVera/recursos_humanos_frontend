@@ -386,7 +386,7 @@ describe('BajaModal', () => {
     );
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No tenés permisos para dar de baja.');
+    expect(text(fixture)).toContain('No tienes permisos para dar de baja.');
     expect(fixture.componentInstance.open()).toBe(true);
     expect(fixture.componentInstance.registradas).toEqual([]);
   });
@@ -409,7 +409,7 @@ describe('BajaModal', () => {
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('Tu acceso ya no está vigente. Vuelve a iniciar sesión.');
-    expect(text(fixture)).not.toContain('No tenés permisos para dar de baja.');
+    expect(text(fixture)).not.toContain('No tienes permisos para dar de baja.');
   });
 
   it('blames the connection when the request never reached the server', async () => {

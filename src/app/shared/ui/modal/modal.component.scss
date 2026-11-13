@@ -1,9 +1,11 @@
+@use '../../../../styles/breakpoints' as bp;
+
 // The dialog element *is* the panel: the scrim is its `::backdrop`, so the box
 // below is both the painted surface and the click target of the backdrop.
 .dialog {
   width: min(var(--modal-width-md), calc(100vw - var(--space-6) * 2));
   // Never taller than the viewport: the body scrolls instead of the page.
-  max-height: calc(100vh - var(--space-7) * 2);
+  max-height: calc(100dvh - var(--space-7) * 2);
   padding: 0;
   overflow: hidden;
   border: var(--border-width) solid var(--color-border-default);
@@ -14,6 +16,17 @@
   color: var(--color-text-primary);
   backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(var(--enter-modal-y)) scale(var(--enter-modal-scale));
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease),
+    overlay var(--motion-fast) var(--motion-ease) allow-discrete,
+    display var(--motion-fast) var(--motion-ease) allow-discrete;
+}
+
+.dialog.enter-modal {
+  animation: none;
 }
 
 // Only while open. The layout cannot be declared on `.dialog` itself: it would
@@ -21,6 +34,15 @@
 .dialog[open] {
   display: flex;
   flex-direction: column;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    transform: translateY(var(--enter-modal-y)) scale(var(--enter-modal-scale));
+  }
 }
 
 .dialog.is-lg {
@@ -29,6 +51,21 @@
 
 .dialog::backdrop {
   background: var(--color-scrim);
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    overlay var(--motion-fast) var(--motion-ease) allow-discrete,
+    display var(--motion-fast) var(--motion-ease) allow-discrete;
+}
+
+.dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
 }
 
 .header {
@@ -99,4 +136,25 @@
   justify-content: flex-end;
   gap: var(--space-3);
   padding: 0 var(--space-6) var(--space-6);
+}
+
+@include bp.down(bp.$bp-xs) {
+  .dialog,
+  .dialog.is-lg {
+    width: calc(100vw - var(--space-4) * 2);
+    max-height: calc(100dvh - var(--space-4) * 2);
+    border-radius: var(--radius-xl);
+  }
+
+  .header {
+    padding: var(--space-4) var(--space-4) var(--space-3);
+  }
+
+  .body {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .footer {
+    padding: 0 var(--space-4) var(--space-4);
+  }
 }

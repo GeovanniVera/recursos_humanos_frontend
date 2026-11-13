@@ -1,0 +1,210 @@
+@use '../../../../styles/breakpoints' as bp;
+
+:host {
+  display: block;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.pager-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pager-range {
+  font: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page-size-label,
+.jump-label,
+.pager-page {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.page-size-label,
+.jump-label {
+  white-space: nowrap;
+}
+
+.pager-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.is-compact .pager-controls {
+  gap: var(--space-2);
+}
+
+.page-size-select,
+.jump-field {
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.page-size-select {
+  width: auto;
+  min-height: var(--space-8);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.pager-page {
+  min-width: var(--space-8);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pager-jump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.jump-field {
+  width: var(--space-8);
+  min-height: var(--space-8);
+  padding: var(--space-1) var(--space-2);
+  text-align: center;
+}
+
+.page-size-select:hover,
+.page-size-select:focus-visible,
+.jump-field:hover,
+.jump-field:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.jump-field[aria-invalid='true'] {
+  border-color: var(--color-state-error);
+}
+
+.jump-field:disabled,
+.page-size-select:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.field-error {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+}
+
+.field-error-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.field-error-icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.jump-error {
+  flex-basis: 100%;
+}
+
+.pager-arrow {
+  display: grid;
+  place-items: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font: var(--text-nav-branch);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.pager-arrow:hover:not(:disabled) {
+  background: var(--color-border-default);
+}
+
+.pager-arrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@include bp.down(bp.$bp-sm) {
+  .pager.is-full {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .pager.is-compact {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .pager-meta {
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .pager.is-full .pager-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .pager.is-full .pager-page {
+    grid-column: 1 / -1;
+    order: -1;
+    padding-block: var(--space-1);
+  }
+
+  .pager-jump {
+    justify-content: space-between;
+    padding-top: var(--space-2);
+    border-top: var(--border-width) solid var(--color-border-default);
+  }
+
+  .jump-field {
+    flex: 1 1 auto;
+    min-width: var(--space-8);
+  }
+}

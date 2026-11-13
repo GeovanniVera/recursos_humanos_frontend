@@ -34,18 +34,26 @@ describe('FaltantesDrawer', () => {
     fixture.componentInstance.open.set(true);
     await fixture.whenStable();
   }
-  it('does not request when closed and cancels requests when closing or changing worker', async () => {
+  it('does not request when closed and cancels requests when closing or changing worker', () => {
     http.expectNone((r) => r.url.includes('/faltantes'));
-    await open();
-    const old = http.expectOne(`${URL}/1/faltantes`);
-    fixture.componentRef.setInput('empleadoId', 2);
-    await fixture.whenStable();
-    expect(old.cancelled).toBe(true);
-    const current = http.expectOne(`${URL}/2/faltantes`);
-    fixture.componentInstance.open.set(false);
-    await fixture.whenStable();
-    expect(current.cancelled).toBe(true);
-    expect(fixture.componentInstance.datos()).toBeNull();
+    vi.useFakeTimers();
+    try {
+      fixture.componentRef.setInput('empleadoId', 1);
+      fixture.componentInstance.open.set(true);
+      fixture.detectChanges();
+      const old = http.expectOne(`${URL}/1/faltantes`);
+      fixture.componentRef.setInput('empleadoId', 2);
+      fixture.detectChanges();
+      expect(old.cancelled).toBe(true);
+      const current = http.expectOne(`${URL}/2/faltantes`);
+      fixture.componentInstance.open.set(false);
+      fixture.detectChanges();
+      expect(current.cancelled).toBe(true);
+      vi.advanceTimersByTime(300);
+      expect(fixture.componentInstance.datos()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it('shows a complete empty detail exactly as the API reports, with no invented fields', async () => {
     await open();

@@ -3,22 +3,26 @@ import { Component, DestroyRef, effect, inject, input, model, signal } from '@an
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { EMPTY, Subject, catchError, finalize, switchMap, tap } from 'rxjs';
+import { etiquetaCampoExpediente } from '../../core/empleados/expediente-campos';
 import { FaltantesResponse } from '../../core/semaforo/semaforo.models';
 import { SemaforoService } from '../../core/semaforo/semaforo.service';
+import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
 import { Drawer } from '../../shared/ui/drawer/drawer.component';
 import { EstadoExpedienteBadge } from './estado-expediente.component';
 
 @Component({
   selector: 'app-faltantes-drawer',
-  imports: [Drawer, Button, EstadoExpedienteBadge],
+  imports: [AlertBanner, Drawer, Button, EstadoExpedienteBadge],
   templateUrl: './faltantes-drawer.component.html',
   styleUrl: './faltantes-drawer.component.scss',
 })
 export class FaltantesDrawer {
   private readonly api = inject(SemaforoService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly requests = new Subject<number | null>();
+  private closeTimer: ReturnType<typeof setTimeout> | null = null;
   readonly empleadoId = input<number | null>(null);
   readonly open = model(false);
   readonly datos = signal<FaltantesResponse['datos'] | null>(null);
@@ -27,16 +31,19 @@ export class FaltantesDrawer {
   readonly status = signal(0);
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearCloseTimer());
+
     this.requests
       .pipe(
         switchMap((id) => {
-          this.datos.set(null);
-          this.error.set(null);
-          this.status.set(0);
           if (id === null) {
             this.loading.set(false);
             return EMPTY;
           }
+          this.clearCloseTimer();
+          this.datos.set(null);
+          this.error.set(null);
+          this.status.set(0);
           this.loading.set(true);
           return this.api.faltantes(id).pipe(
             tap((r) => this.datos.set(r.datos)),
@@ -57,10 +64,43 @@ export class FaltantesDrawer {
             finalize(() => this.loading.set(false)),
           );
         }),
-        takeUntilDestroyed(inject(DestroyRef)),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
-    effect(() => this.requests.next(this.open() ? this.empleadoId() : null));
+    effect(() => {
+      const isOpen = this.open();
+      if (!isOpen) {
+        this.requests.next(null);
+        this.scheduleClearOnClose();
+        return;
+      }
+      this.clearCloseTimer();
+      this.requests.next(this.empleadoId());
+    });
+  }
+
+  private clearCloseTimer(): void {
+    if (this.closeTimer !== null) {
+      clearTimeout(this.closeTimer);
+      this.closeTimer = null;
+    }
+  }
+
+  private scheduleClearOnClose(): void {
+    this.clearCloseTimer();
+    this.closeTimer = setTimeout(() => {
+      this.closeTimer = null;
+      if (!this.open()) {
+        this.datos.set(null);
+        this.error.set(null);
+        this.status.set(0);
+      }
+    }, 300);
+  }
+
+  protected etiquetaCampo(campo: { campo: string; etiqueta?: string | null }): string {
+    const label = campo.etiqueta?.trim();
+    return label ? label : etiquetaCampoExpediente(campo.campo);
   }
 
   reintentar(): void {

@@ -1,3 +1,29 @@
+@if (isMobile()) {
+  <button
+    #menuBtn
+    type="button"
+    class="menu-btn"
+    aria-controls="app-sidebar-drawer"
+    [attr.aria-expanded]="mobileOpen()"
+    [attr.aria-label]="mobileOpen() ? 'Cerrar menú' : 'Abrir menú'"
+    (click)="toggleMobileMenu()"
+  >
+    <svg
+      class="menu-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </svg>
+  </button>
+}
+
 <nav class="breadcrumb" aria-label="Ruta de navegación">
   <ol class="trail">
     @for (crumb of crumbs(); track crumb.url; let last = $last) {

@@ -18,6 +18,12 @@
   --color-surface-overlay: var(--guinda-a80);
   // "No fill" for buttons that must read as inline links.
   --color-surface-ghost: var(--transparent);
+  --color-skeleton-sheen: linear-gradient(
+    90deg,
+    var(--transparent) 0%,
+    var(--white-a12) 50%,
+    var(--transparent) 100%
+  );
 
   // Lines
   --color-border-default: var(--white-a12);

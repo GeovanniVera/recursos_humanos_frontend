@@ -1,5 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -35,6 +43,7 @@ import {
   validarNombre,
   validarNumEmpleado,
 } from '../../../core/empleados/validacion';
+import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 
@@ -46,7 +55,7 @@ import { ToastService } from '../../../shared/ui/toast/toast.service';
  * displayed verbatim.
  */
 const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
-const MENSAJE_PERMISO = 'No tenés permisos para dar de alta empleados.';
+const MENSAJE_PERMISO = 'No tienes permisos para dar de alta empleados.';
 const MENSAJE_CATALOGOS = 'No pudimos cargar los catálogos del formulario.';
 const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
 const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
@@ -91,7 +100,7 @@ const OTRO_LUGAR_NO = 'No';
  * The message is the signal of the state, not the colour: every one of them
  * names what to do next.
  */
-const MENSAJE_REQUERIDO_TEXTO = 'Completá este dato.';
+const MENSAJE_REQUERIDO_TEXTO = 'Completa este dato.';
 
 /** Sentence of a required `<select>` still sitting on its placeholder. */
 const MENSAJE_REQUERIDO_OPCION = 'Elige una opción.';
@@ -296,7 +305,7 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  */
 @Component({
   selector: 'app-alta-page',
-  imports: [Button, FormsModule],
+  imports: [AlertBanner, Button, FormsModule],
   templateUrl: './alta-page.component.html',
   styleUrl: './alta-page.component.scss',
 })
@@ -304,7 +313,20 @@ export class AltaPage {
   private readonly altaService = inject(AltaService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly elementRef = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
+
+  private readonly stepHeading = viewChild<ElementRef<HTMLElement>>('stepHeading');
+  private focusTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly limpiarAlDestruir = this.destroyRef.onDestroy(() => {
+    if (this.focusTimer !== null) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = null;
+    }
+  });
+
+  /** Placeholder count for the loading skeleton grid. */
+  protected readonly skeletons = Array.from({ length: 6 }, (_, index) => index);
 
   /** Steps of the stepper, in order. */
   readonly pasos = PASOS;
@@ -742,6 +764,7 @@ export class AltaPage {
       return;
     }
     this.paso.update((actual) => actual + 1);
+    this.programarFoco(null);
   }
 
   /** Returns to the previous step. Everything typed travels with it. */
@@ -750,6 +773,7 @@ export class AltaPage {
       return;
     }
     this.paso.update((actual) => Math.max(actual - 1, 0));
+    this.programarFoco(null);
   }
 
   /** Submit of the whole form: the same button moves on, or registers. */
@@ -784,6 +808,7 @@ export class AltaPage {
       if (paso !== null) {
         this.paso.set(paso);
       }
+      this.programarFoco(`#${primerError}`);
       return;
     }
 
@@ -1257,9 +1282,50 @@ export class AltaPage {
       const paso = this.pasoDelCampo(campo);
       if (paso !== null) {
         this.paso.set(paso);
+        this.programarFoco(`#${campo}`);
         return;
       }
     }
+  }
+
+  /**
+   * Moves focus and scrolls into view after Angular renders the new step or
+   * error card, keeping `DestroyRef` safe against unmounts.
+   */
+  private programarFoco(selector: string | null): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.focusTimer !== null) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = null;
+    }
+
+    this.focusTimer = setTimeout(() => {
+      this.focusTimer = null;
+      const hostEl = this.elementRef.nativeElement as HTMLElement;
+      const target =
+        (selector !== null ? hostEl.querySelector<HTMLElement>(selector) : null) ??
+        this.stepHeading()?.nativeElement ??
+        null;
+
+      if (target === null) {
+        return;
+      }
+
+      if (typeof target.focus === 'function') {
+        target.focus({ preventScroll: true });
+      }
+
+      const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      const scrollTarget = selector !== null ? target : (target.closest<HTMLElement>('.card') ?? target);
+      if (typeof scrollTarget.scrollIntoView === 'function') {
+        scrollTarget.scrollIntoView({
+          block: selector !== null ? 'nearest' : 'start',
+          behavior: reduced ? 'auto' : 'smooth',
+        });
+      }
+    }, 0);
   }
 
   /** Sentence of a catalog failure, per status. */

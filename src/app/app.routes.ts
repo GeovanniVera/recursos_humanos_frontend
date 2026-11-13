@@ -1,10 +1,30 @@
 import { Routes } from '@angular/router';
+import { environment } from '../environments/environment';
 import { authGuard, guestGuard } from './core/auth/auth.guard';
 import { AppShell } from './layout/app-shell/app-shell.component';
 
 /** Lazy loader of the generic placeholder screen used by unbuilt destinations. */
 const placeholder = () =>
   import('./shared/ui/placeholder-page/placeholder-page.component').then((m) => m.PlaceholderPage);
+
+/** Visual token & UI kit routes exposed strictly in non-production builds. */
+const devRoutes: Routes = !environment.produccion
+  ? [
+      {
+        path: 'tokens',
+        data: { breadcrumb: 'Tokens' },
+        loadComponent: () =>
+          import('./features/dev/token-preview/token-preview.component').then(
+            (m) => m.TokenPreview,
+          ),
+      },
+      {
+        path: 'ui',
+        data: { breadcrumb: 'UI kit' },
+        loadComponent: () => import('./features/dev/ui-kit/ui-kit.component').then((m) => m.UiKit),
+      },
+    ]
+  : [];
 
 export const routes: Routes = [
   {
@@ -88,19 +108,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/ajustes/ajustes-page.component').then((m) => m.AjustesPage),
       },
-      {
-        path: 'tokens',
-        data: { breadcrumb: 'Tokens' },
-        loadComponent: () =>
-          import('./features/dev/token-preview/token-preview.component').then(
-            (m) => m.TokenPreview,
-          ),
-      },
-      {
-        path: 'ui',
-        data: { breadcrumb: 'UI kit' },
-        loadComponent: () => import('./features/dev/ui-kit/ui-kit.component').then((m) => m.UiKit),
-      },
+      ...devRoutes,
     ],
   },
   { path: '**', redirectTo: '' },

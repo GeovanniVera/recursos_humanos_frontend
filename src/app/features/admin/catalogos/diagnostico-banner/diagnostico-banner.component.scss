@@ -1,3 +1,5 @@
+@use '../../../../../styles/breakpoints' as bp;
+
 // The diagnostics strip. Colour never carries the state alone: each face has its
 // own disc, its own glyph and its own sentence.
 
@@ -9,7 +11,6 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-sm);
 }
 
@@ -113,4 +114,17 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--color-text-secondary);
+}
+
+@include bp.down(bp.$bp-xs) {
+  .strip {
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .counter,
+  .finding-item {
+    gap: var(--space-2);
+  }
 }

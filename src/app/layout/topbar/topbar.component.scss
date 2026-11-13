@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints' as bp;
+
 // Shared bar for every screen behind the shell.
 //
 // It is a header strip, not a card: no radius, no border box, no shadow. The
@@ -9,7 +11,7 @@
   // Flush to the viewport top so nothing scrolls into the gap above it. The top
   // padding keeps the text aligned with the drawer's own gutter.
   top: 0;
-  z-index: 1;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -20,11 +22,37 @@
   backdrop-filter: blur(var(--blur-glass));
 }
 
+.menu-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.menu-btn:hover {
+  background: var(--color-border-default);
+}
+
+.menu-icon {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
 .breadcrumb {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
   font: var(--text-body);
 }
 
@@ -33,6 +61,7 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -46,8 +75,10 @@
 }
 
 .crumb {
+  overflow: hidden;
   color: var(--color-text-secondary);
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 // Only the ancestors are links; the last step is the page you are on.
@@ -62,13 +93,12 @@
 }
 
 .crumb.is-current {
-  overflow: hidden;
   color: var(--color-text-primary);
   font: var(--text-nav-branch);
-  text-overflow: ellipsis;
 }
 
 .separator {
+  flex: none;
   color: var(--color-text-secondary);
 }
 
@@ -82,4 +112,30 @@
   font: var(--text-body);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+@include bp.down(bp.$bp-sm) {
+  :host {
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .clock {
+    margin-left: auto;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .breadcrumb {
+    order: 3;
+    flex: 1 0 100%;
+    padding-top: var(--space-2);
+    border-top: var(--border-width) solid var(--color-border-default);
+  }
+
+  .trail {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
 }

@@ -21,7 +21,6 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-sm);
   color: var(--color-text-primary);
   font: var(--text-body);
@@ -32,11 +31,16 @@
   cursor: pointer;
   transition:
     transform var(--motion-fast) var(--motion-ease),
-    box-shadow var(--motion-fast) var(--motion-ease);
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
 }
 
-.card.is-interactive:hover {
-  transform: translateY(var(--hover-lift));
+@media (hover: hover) {
+  .card.is-interactive:hover {
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-accent);
+  }
 }
 
 // The flag is four hairlines wide: thick enough to read as a lane marker and

@@ -10,8 +10,10 @@ import {
   SemaforoResponse,
 } from '../../core/semaforo/semaforo.models';
 import { SemaforoService } from '../../core/semaforo/semaforo.service';
+import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { ESTADOS_EXPEDIENTE } from './estado-expediente.component';
@@ -22,7 +24,7 @@ const SIN_DATO = '—';
 
 @Component({
   selector: 'app-semaforo-page',
-  imports: [RouterLink, Button, DataTable, FaltantesDrawer, RowFlag, RowLink],
+  imports: [RouterLink, AlertBanner, Button, DataTable, FaltantesDrawer, Pagination, RowFlag, RowLink],
   templateUrl: './semaforo-page.component.html',
   styleUrl: './semaforo-page.component.scss',
 })
@@ -219,6 +221,9 @@ export class SemaforoPage {
    */
   cambiarPorPagina(event: Event): void {
     const n = Number((event.target as HTMLSelectElement).value);
+    this.cambiarTamanoPagina(n);
+  }
+  cambiarTamanoPagina(n: number): void {
     if (!Number.isFinite(n) || !this.tamanos.includes(n) || n === this.porPagina()) return;
     this.errorPagina.set(null);
     this.porPagina.set(n);
@@ -246,7 +251,9 @@ export class SemaforoPage {
    */
   irAPaginaDesdeCampo(event: Event, valor: string): void {
     event.preventDefault();
-
+    this.irAPaginaValor(valor);
+  }
+  irAPaginaValor(valor: string): void {
     if (this.loading()) {
       return;
     }

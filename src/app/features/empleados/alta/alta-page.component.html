@@ -14,18 +14,43 @@
       rendered at all, so no control can show an empty list that looks like a
       real one. The icon carries the state together with the colour.
     -->
-    <div class="alert" role="alert">
-      <span class="alert-icon" aria-hidden="true">✕</span>
-      <div class="alert-copy">
-        <p class="alert-message">{{ aviso }}</p>
-      </div>
-      <app-button variant="secondary" [disabled]="cargando()" (click)="cargarCatalogos()">
+    <app-alert-banner variant="error" [message]="aviso">
+      <app-button alert-actions variant="secondary" [disabled]="cargando()" (click)="cargarCatalogos()">
         Reintentar
       </app-button>
-    </div>
+    </app-alert-banner>
   } @else if (catalogos() === null) {
-    <div class="loading" role="status">
-      <p class="loading-text">Cargando catálogos…</p>
+    <div
+      class="loading"
+      role="status"
+      aria-busy="true"
+      aria-label="Cargando catálogos del formulario"
+    >
+      <span class="visually-hidden">Cargando catálogos del formulario…</span>
+      <div class="skeleton-stepper" aria-hidden="true">
+        @for (titulo of pasos; track titulo) {
+          <div class="skeleton-stop">
+            <span class="skeleton-circle skeleton-shimmer"></span>
+            <span class="skeleton-line skeleton-shimmer"></span>
+          </div>
+        }
+      </div>
+      <div class="card skeleton-card" aria-hidden="true">
+        <span class="skeleton-heading skeleton-shimmer"></span>
+        <span class="skeleton-sub skeleton-shimmer"></span>
+        <div class="grid">
+          @for (item of skeletons; track item) {
+            <div class="skeleton-field">
+              <span class="skeleton-label skeleton-shimmer"></span>
+              <span class="skeleton-control skeleton-shimmer"></span>
+            </div>
+          }
+        </div>
+        <div class="actions">
+          <span class="skeleton-btn skeleton-shimmer"></span>
+          <span class="skeleton-btn skeleton-shimmer"></span>
+        </div>
+      </div>
     </div>
   } @else {
     <!--
@@ -53,23 +78,17 @@
           The general sentence of the failure, plus the messages that belong to
           no card. Per-field messages are printed next to their own control.
         -->
-        <div class="alert" role="alert">
-          <span class="alert-icon" aria-hidden="true">✕</span>
-          <div class="alert-copy">
-            @if (mensaje(); as aviso) {
-              <p class="alert-message">{{ aviso }}</p>
-            }
-            @for (suelto of erroresSueltos(); track suelto) {
-              <p class="alert-message">{{ suelto }}</p>
-            }
-          </div>
-        </div>
+        <app-alert-banner
+          variant="error"
+          [message]="mensaje()"
+          [messages]="erroresSueltos()"
+        />
       }
 
       @switch (paso()) {
         @case (0) {
-          <fieldset class="group">
-            <legend class="group-title">Identificación</legend>
+          <fieldset class="group enter-stage">
+            <legend class="group-title" tabindex="-1" #stepHeading>Identificación</legend>
             <p class="group-hint">
               El número de empleado, el nombre y el correo institucional son obligatorios.
             </p>
@@ -268,7 +287,7 @@
                   [attr.aria-invalid]="errorDe('municipio') === null ? null : 'true'"
                   [attr.aria-describedby]="idDeError('municipio')"
                 >
-                  <option value="" [selected]="modelo().municipio === ''">Elegí un municipio</option>
+                  <option value="" [selected]="modelo().municipio === ''">Elige un municipio</option>
                   <!--
                     141 rows in one list are unusable: they arrive grouped by
                     entity, and `entidad` is a database literal (`edomex`,
@@ -320,8 +339,8 @@
         }
 
         @case (1) {
-          <fieldset class="group">
-            <legend class="group-title">Plaza</legend>
+          <fieldset class="group enter-stage">
+            <legend class="group-title" tabindex="-1" #stepHeading>Plaza</legend>
             <p class="group-hint">
               El área, el puesto y la fecha de inicio en el puesto son obligatorios.
             </p>
@@ -527,8 +546,8 @@
         }
 
         @case (2) {
-          <fieldset class="group">
-            <legend class="group-title">Estudios y experiencia</legend>
+          <fieldset class="group enter-stage">
+            <legend class="group-title" tabindex="-1" #stepHeading>Estudios y experiencia</legend>
             <p class="group-hint">
               Todo este bloque es opcional; se puede completar después del alta.
             </p>
@@ -736,25 +755,28 @@
             a placeholder: that is what the request will not carry, and hiding
             them would leave the summary claiming a completeness it does not have.
           -->
-          <div class="summary">
-            @for (grupo of resumen(); track grupo.titulo) {
-              <section class="summary-group">
-                <h2 class="summary-title">{{ grupo.titulo }}</h2>
-                <dl class="summary-list">
-                  @for (fila of grupo.filas; track fila.etiqueta) {
-                    <div class="summary-row">
-                      <dt class="summary-label">{{ fila.etiqueta }}</dt>
-                      <dd class="summary-value">{{ fila.valor }}</dd>
-                    </div>
-                  }
-                </dl>
-              </section>
-            }
-          </div>
+          <div class="group enter-stage">
+            <h2 class="group-title" tabindex="-1" #stepHeading>Confirmación</h2>
+            <div class="summary">
+              @for (grupo of resumen(); track grupo.titulo) {
+                <section class="summary-group">
+                  <h3 class="summary-title">{{ grupo.titulo }}</h3>
+                  <dl class="summary-list">
+                    @for (fila of grupo.filas; track fila.etiqueta) {
+                      <div class="summary-row">
+                        <dt class="summary-label">{{ fila.etiqueta }}</dt>
+                        <dd class="summary-value">{{ fila.valor }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </section>
+              }
+            </div>
 
-          <p class="group-hint">
-            Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.
-          </p>
+            <p class="group-hint">
+              Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.
+            </p>
+          </div>
         }
       }
 

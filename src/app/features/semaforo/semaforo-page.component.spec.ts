@@ -103,7 +103,7 @@ describe('SemaforoPage', () => {
   const pagerButtons = () =>
     Array.from(root().querySelectorAll<HTMLButtonElement>('.pager-controls app-button button'));
   const submitJump = async (valor: string): Promise<void> => {
-    root().querySelector<HTMLInputElement>('#pagina')!.value = valor;
+    root().querySelector<HTMLInputElement>('.jump-field')!.value = valor;
     root()
       .querySelector<HTMLFormElement>('.pager-jump')!
       .dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -333,7 +333,7 @@ describe('SemaforoPage', () => {
   });
   it('keeps the initial selector in sync with the requested page size', async () => {
     await loaded();
-    expect(root().querySelector<HTMLSelectElement>('#porPagina')?.value).toBe('25');
+    expect(root().querySelector<HTMLSelectElement>('.page-size-select')?.value).toBe('25');
   });
   it('returns to page one if the last remaining results disappear', async () => {
     await loaded();
@@ -355,7 +355,7 @@ describe('SemaforoPage', () => {
     request().flush(page());
     await fixture.whenStable();
     expect(root().querySelector('footer.pager')).not.toBeNull();
-    expect(root().querySelector('#porPagina')).not.toBeNull();
+    expect(root().querySelector('.page-size-select')).not.toBeNull();
     expect(root().textContent).toContain('Mostrando 1 a 25 de 127 expedientes');
     expect(root().querySelector('.pager-page')?.textContent?.trim()).toBe('Página 1 de 6');
   });
@@ -396,8 +396,8 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
 
     expect(pagerButtons().every((b) => b.disabled)).toBe(true);
-    expect(root().querySelector<HTMLSelectElement>('#porPagina')?.disabled).toBe(true);
-    expect(root().querySelector<HTMLInputElement>('#pagina')?.disabled).toBe(true);
+    expect(root().querySelector<HTMLSelectElement>('.page-size-select')?.disabled).toBe(true);
+    expect(root().querySelector<HTMLInputElement>('.jump-field')?.disabled).toBe(true);
     expect(root().textContent).toContain('Consultando expedientes…');
 
     request().flush({ ...page(), meta: { ...page().meta, pagina: 2 } });
@@ -412,12 +412,12 @@ describe('SemaforoPage', () => {
     await loaded();
     await submitJump(valor);
 
-    const field = root().querySelector<HTMLInputElement>('#pagina')!;
+    const field = root().querySelector<HTMLInputElement>('.jump-field')!;
     const error = root().querySelector('[role="alert"].jump-error');
     expect(error?.textContent).toContain(mensaje);
-    expect(error?.id).toBe('pagina-error');
+    expect(error?.id).toBeTruthy();
     expect(field.getAttribute('aria-invalid')).toBe('true');
-    expect(field.getAttribute('aria-describedby')).toBe('pagina-error');
+    expect(field.getAttribute('aria-describedby')).toBe(error?.id);
     http.expectNone((r) => r.url === URL);
   });
   it('accepts a valid jump, clears the error and re-queries the server', async () => {
@@ -432,7 +432,7 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
 
     expect(root().querySelector('[role="alert"].jump-error')).toBeNull();
-    expect(root().querySelector<HTMLInputElement>('#pagina')?.getAttribute('aria-invalid')).toBeNull();
+    expect(root().querySelector<HTMLInputElement>('.jump-field')?.getAttribute('aria-invalid')).toBeNull();
     expect(root().querySelector('.pager-page')?.textContent?.trim()).toBe('Página 3 de 6');
   });
 });

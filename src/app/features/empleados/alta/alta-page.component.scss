@@ -1,3 +1,5 @@
+@use '../../../../styles/breakpoints' as bp;
+
 // ---------------------------------------------------------------------------
 // Registration wizard: stepper on top, one glass card per step, two actions at
 // the bottom. Nothing here declares a colour, a radius, a shadow or a duration:
@@ -12,6 +14,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 // --- Heading ---------------------------------------------------------------
@@ -114,8 +117,13 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-2xl);
   background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-sm);
+  scroll-margin-top: calc(var(--space-8) * 2);
+}
+
+.group-title,
+.grid :is(input, select) {
+  scroll-margin-top: calc(var(--space-8) * 2);
 }
 
 // --- One step --------------------------------------------------------------
@@ -153,7 +161,7 @@
   gap: var(--space-4) var(--space-5);
 }
 
-@media (max-width: 720px) {
+@include bp.down(bp.$bp-md) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -276,68 +284,90 @@
   color: var(--color-text-secondary);
 }
 
-// --- Failure ---------------------------------------------------------------
-
-.alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-sm);
-}
-
-.alert-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--space-7);
-  height: var(--space-7);
-  border-radius: var(--radius-pill);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-  font: var(--text-label);
-}
-
-.alert-copy {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.alert-message {
-  font: var(--text-body);
-  color: var(--color-text-primary);
-}
-
 // --- Loading ---------------------------------------------------------------
 
 .loading {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.loading-text {
-  font: var(--text-body);
-  color: var(--color-text-secondary);
+.skeleton-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.skeleton-stop,
+.skeleton-field {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.skeleton-stop {
+  align-items: center;
+}
+
+.skeleton-field {
+  flex-direction: column;
+}
+
+.skeleton-circle,
+.skeleton-line,
+.skeleton-heading,
+.skeleton-sub,
+.skeleton-label,
+.skeleton-control,
+.skeleton-btn {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-border-default);
+}
+
+.skeleton-circle {
+  flex: none;
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+}
+
+.skeleton-line {
+  flex: 1 1 auto;
+  height: var(--space-3);
+}
+
+.skeleton-heading {
+  width: 34%;
+  height: var(--space-5);
+}
+
+.skeleton-sub {
+  width: 68%;
+  height: var(--space-3);
+}
+
+.skeleton-label {
+  width: 42%;
+  height: var(--space-3);
+}
+
+.skeleton-control {
+  width: 100%;
+  height: var(--control-height-md);
+  border-radius: var(--radius-md);
+}
+
+.skeleton-btn {
+  width: calc(var(--space-8) * 3);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
 }
 
 // --- Summary ---------------------------------------------------------------
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--field-min-width), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--field-min-width)), 1fr));
   gap: var(--space-5);
 }
 
@@ -392,7 +422,32 @@
 // action keeps the same place on every step.
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+@include bp.down(bp.$bp-sm) {
+  .card {
+    padding: var(--space-5);
+  }
+}
+
+@include bp.down(bp.$bp-xs) {
+  .stepper,
+  .skeleton-stepper {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .stop:not(:last-child)::after {
+    display: none;
+  }
+
+  .card {
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+  }
 }

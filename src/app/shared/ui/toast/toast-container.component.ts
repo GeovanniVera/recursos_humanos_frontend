@@ -17,6 +17,10 @@ export class ToastContainer {
 
   readonly toasts = this.toastService.toasts;
 
+  isLeaving(id: number): boolean {
+    return this.toastService.isLeaving(id);
+  }
+
   dismiss(id: number): void {
     this.toastService.dismiss(id);
   }

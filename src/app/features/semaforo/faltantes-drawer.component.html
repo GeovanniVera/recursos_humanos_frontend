@@ -2,19 +2,23 @@
   <div class="detail" [attr.aria-busy]="loading()">
     @if (loading()) {
       <p role="status">Consultando el expediente…</p>
-      <div class="skeleton" aria-hidden="true"></div>
-      <div class="skeleton" aria-hidden="true"></div>
-      <div class="skeleton" aria-hidden="true"></div>
+      <div class="skeleton skeleton-shimmer" aria-hidden="true"></div>
+      <div class="skeleton skeleton-shimmer" aria-hidden="true"></div>
+      <div class="skeleton skeleton-shimmer" aria-hidden="true"></div>
     } @else if (error(); as mensaje) {
-      <div class="notice" role="alert">
-        <strong>No se pudo consultar el expediente</strong>
-        <p>{{ mensaje }}</p>
-      </div>
-      @if (status() === 401) {
-        <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
-      } @else if (status() !== 403 && status() !== 404) {
-        <app-button variant="secondary" (click)="reintentar()">Reintentar</app-button>
-      }
+      <app-alert-banner
+        variant="error"
+        title="No se pudo consultar el expediente"
+        [message]="mensaje"
+      >
+        @if (status() === 401) {
+          <app-button alert-actions variant="secondary" (click)="iniciarSesion()">
+            Iniciar sesión
+          </app-button>
+        } @else if (status() !== 403 && status() !== 404) {
+          <app-button alert-actions variant="secondary" (click)="reintentar()">Reintentar</app-button>
+        }
+      </app-alert-banner>
     } @else if (datos(); as detalle) {
       <header class="identity">
         <p class="overline">Empleado · {{ detalle.empleado.num_empleado }}</p>
@@ -51,7 +55,7 @@
           </p>
           <ul>
             @for (campo of detalle.semaforo.detalle_faltantes; track campo.campo) {
-              <li>{{ campo.etiqueta }}</li>
+              <li>{{ etiquetaCampo(campo) }}</li>
             }
           </ul>
         }

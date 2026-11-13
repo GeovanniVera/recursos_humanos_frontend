@@ -21,7 +21,7 @@
   width: var(--backdrop-aurora-size);
   height: var(--backdrop-aurora-size);
   border-radius: var(--radius-pill);
-  filter: blur(var(--blur-glass));
+  will-change: transform;
 }
 
 .aurora-gold {
@@ -30,7 +30,9 @@
   background-image: radial-gradient(
     circle,
     var(--backdrop-color-gold) 0%,
-    transparent 68%
+    color-mix(in srgb, var(--backdrop-color-gold) 42%, transparent) 36%,
+    color-mix(in srgb, var(--backdrop-color-gold) 12%, transparent) 58%,
+    transparent 76%
   );
   animation: aurora-drift var(--backdrop-aurora-1) var(--motion-ease) infinite alternate;
 }
@@ -41,7 +43,9 @@
   background-image: radial-gradient(
     circle,
     var(--backdrop-color-red) 0%,
-    transparent 70%
+    color-mix(in srgb, var(--backdrop-color-red) 42%, transparent) 36%,
+    color-mix(in srgb, var(--backdrop-color-red) 12%, transparent) 58%,
+    transparent 76%
   );
   animation: aurora-drift var(--backdrop-aurora-2) var(--motion-ease) infinite alternate-reverse;
 }
@@ -52,7 +56,9 @@
   background-image: radial-gradient(
     circle,
     var(--backdrop-color-white) 0%,
-    transparent 72%
+    color-mix(in srgb, var(--backdrop-color-white) 42%, transparent) 36%,
+    color-mix(in srgb, var(--backdrop-color-white) 12%, transparent) 58%,
+    transparent 76%
   );
   animation: aurora-drift var(--backdrop-aurora-3) var(--motion-ease) infinite alternate;
 }
@@ -209,5 +215,27 @@
   100% {
     opacity: 0;
     transform: translateY(-108vh);
+  }
+}
+
+// Stop decorative ambient motion when reduced motion is requested while keeping
+// the soft static radial backdrop and calm framing rings.
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .sweep,
+  .ring,
+  .particle {
+    animation: none;
+    will-change: auto;
+  }
+
+  .sweep,
+  .particle {
+    opacity: 0;
+  }
+
+  .ring {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1.6);
   }
 }

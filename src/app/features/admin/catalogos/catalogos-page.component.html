@@ -17,38 +17,20 @@
   </header>
 
   @if (error(); as fallo) {
-    <div class="alert" role="alert">
-      <span class="alert-icon" aria-hidden="true">
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        >
-          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
-        </svg>
-      </span>
-
-      <div class="alert-copy">
-        <p class="alert-message">{{ fallo.mensaje }}</p>
-        @if (fallo.codigo) {
-          <!-- A contract code, not copy: it is shown as it arrives. -->
-          <p class="alert-code">{{ fallo.codigo }}</p>
-        }
-      </div>
-
+    <app-alert-banner variant="error" [message]="fallo.mensaje" [code]="fallo.codigo">
       @if (puedeReintentar()) {
-        <app-button variant="secondary" [disabled]="cargando()" (click)="cargar()">
+        <app-button alert-actions variant="secondary" [disabled]="cargando()" (click)="cargar()">
           Reintentar
         </app-button>
       }
 
       @if (pideSesion()) {
         <!-- Retrying with a dead token is pointless: the way out is the door. -->
-        <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+        <app-button alert-actions variant="secondary" (click)="iniciarSesion()">
+          Iniciar sesión
+        </app-button>
       }
-    </div>
+    </app-alert-banner>
   }
 
   @if (!bloqueado()) {
@@ -85,7 +67,7 @@
     @switch (tab()) {
       @case ('puestos') {
         <section
-          class="panel"
+          class="panel enter-stage"
           role="tabpanel"
           id="panel-puestos"
           aria-labelledby="tab-puestos"
@@ -167,6 +149,7 @@
           }
 
           <app-data-table
+            mobileMode="scroll"
             [columns]="columnasPuestos"
             [rows]="filasPuestos()"
             [loading]="cargandoTabla()"
@@ -275,39 +258,20 @@
             </ng-template>
           </app-data-table>
 
-          <footer class="pager">
-            <p class="pager-range" aria-live="polite">{{ rangoPuestos() }}</p>
-
-            <div class="pager-controls">
-              <button
-                type="button"
-                class="pager-arrow"
-                aria-label="Página anterior"
-                [disabled]="paginaActual() <= 1"
-                (click)="irA(paginaActual() - 1)"
-              >
-                ‹
-              </button>
-
-              <p class="pager-page">{{ etiquetaPagina() }}</p>
-
-              <button
-                type="button"
-                class="pager-arrow"
-                aria-label="Página siguiente"
-                [disabled]="paginaActual() >= totalPaginas()"
-                (click)="irA(paginaActual() + 1)"
-              >
-                ›
-              </button>
-            </div>
-          </footer>
+          <app-pagination
+            mode="compact"
+            [rangeText]="rangoPuestos()"
+            [pageLabel]="etiquetaPagina()"
+            [page]="paginaActual()"
+            [totalPages]="totalPaginas()"
+            (pageChange)="irA($event)"
+          />
         </section>
       }
 
       @case ('categorias') {
         <section
-          class="panel"
+          class="panel enter-stage"
           role="tabpanel"
           id="panel-categorias"
           aria-labelledby="tab-categorias"
@@ -319,6 +283,7 @@
           </p>
 
           <app-data-table
+            mobileMode="scroll"
             [columns]="columnasCategorias"
             [rows]="filasCategorias()"
             [loading]="cargandoTabla()"
@@ -330,7 +295,7 @@
 
       @case ('areas') {
         <section
-          class="panel"
+          class="panel enter-stage"
           role="tabpanel"
           id="panel-areas"
           aria-labelledby="tab-areas"
@@ -344,6 +309,7 @@
           </p>
 
           <app-data-table
+            mobileMode="scroll"
             [columns]="columnasAreas"
             [rows]="filasAreas()"
             [loading]="cargandoTabla()"
@@ -380,12 +346,11 @@
   [open]="modalAsignar()"
   (openChange)="alCambiarAsignar($event)"
 >
-  @if (modalAsignar()) {
-    <div class="form">
+  <div class="form">
       <div class="field">
         <label class="label" for="asignar-area">Área destino</label>
         <select id="asignar-area" class="control" (change)="alElegirAreaDestino($event)">
-          <option value="" [selected]="areaDestino() === null">Elegí un área</option>
+          <option value="" [selected]="areaDestino() === null">Elige un área</option>
           @for (area of opcionesArea(); track area.id) {
             <option [value]="area.id" [selected]="areaDestino() === area.id">
               {{ area.sangria }}{{ area.nombre }}
@@ -406,19 +371,16 @@
 
       <p class="label" id="asignar-nombres">Puestos seleccionados</p>
       <ul class="names" aria-labelledby="asignar-nombres">
-        @for (nombre of nombresSeleccionados(); track $index) {
-          <li class="name">{{ nombre }}</li>
-        }
-      </ul>
-    </div>
-  }
+      @for (nombre of nombresSeleccionados(); track $index) {
+        <li class="name">{{ nombre }}</li>
+      }
+    </ul>
+  </div>
 
   <ng-template #actions>
-    @if (modalAsignar()) {
-      <app-button variant="secondary" (click)="alCambiarAsignar(false)">Cancelar</app-button>
-      <app-button [disabled]="areaDestino() === null" [loading]="enviando()" (click)="asignar()">
-        Asignar
-      </app-button>
-    }
+    <app-button variant="secondary" (click)="alCambiarAsignar(false)">Cancelar</app-button>
+    <app-button [disabled]="areaDestino() === null" [loading]="enviando()" (click)="asignar()">
+      Asignar
+    </app-button>
   </ng-template>
 </app-modal>

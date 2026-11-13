@@ -1,0 +1,101 @@
+<footer [class]="footerClass()">
+  @if (mode() === 'compact') {
+    <p class="pager-range" aria-live="polite">{{ rangeText() }}</p>
+
+    <div class="pager-controls">
+      <button
+        type="button"
+        class="pager-arrow"
+        aria-label="Página anterior"
+        [disabled]="prevIsDisabled()"
+        (click)="goTo(page() - 1)"
+      >
+        ‹
+      </button>
+
+      <p class="pager-page">{{ pageLabel() }}</p>
+
+      <button
+        type="button"
+        class="pager-arrow"
+        aria-label="Página siguiente"
+        [disabled]="nextIsDisabled()"
+        (click)="goTo(page() + 1)"
+      >
+        ›
+      </button>
+    </div>
+  } @else {
+    <div class="pager-meta">
+      <p class="pager-range" aria-live="polite">{{ rangeText() }}</p>
+
+      <div class="page-size">
+        <label class="page-size-label" [for]="selectId">Filas por página</label>
+        <select
+          [id]="selectId"
+          class="page-size-select"
+          [value]="pageSize()"
+          [disabled]="disabled()"
+          (change)="onSizeChange($event)"
+        >
+          @for (sizeOption of pageSizeOptions(); track sizeOption) {
+            <option [value]="sizeOption" [selected]="sizeOption === pageSize()">
+              {{ sizeOption }}
+            </option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="pager-controls">
+      <app-button variant="secondary" [disabled]="firstIsDisabled()" (click)="goTo(1)">
+        <span aria-hidden="true">«</span>
+        Primera
+      </app-button>
+
+      <app-button variant="secondary" [disabled]="prevIsDisabled()" (click)="goTo(page() - 1)">
+        Anterior
+      </app-button>
+
+      <p class="pager-page">{{ pageLabel() }}</p>
+
+      <app-button variant="secondary" [disabled]="nextIsDisabled()" (click)="goTo(page() + 1)">
+        Siguiente
+      </app-button>
+
+      <app-button variant="secondary" [disabled]="lastIsDisabled()" (click)="goTo(totalPages())">
+        Última
+        <span aria-hidden="true">»</span>
+      </app-button>
+    </div>
+
+    <form class="pager-jump" (submit)="onJumpSubmit($event, campoPagina.value)">
+      <label class="jump-label" [for]="jumpId">Ir a página</label>
+      <input
+        #campoPagina
+        [id]="jumpId"
+        class="jump-field"
+        type="number"
+        inputmode="numeric"
+        min="1"
+        [attr.max]="maxPage()"
+        [value]="page()"
+        [disabled]="disabled()"
+        [attr.aria-invalid]="jumpError() !== null ? 'true' : null"
+        [attr.aria-describedby]="jumpError() !== null ? errorId : null"
+      />
+      <app-button variant="secondary" type="submit" [disabled]="disabled()">Ir</app-button>
+    </form>
+
+    @if (jumpError(); as errorMessage) {
+      <p class="field-error jump-error" [id]="errorId" role="alert">
+        <span class="field-error-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M8 4v5M8 12h.01" />
+          </svg>
+        </span>
+        {{ errorMessage }}
+      </p>
+    }
+  }
+</footer>

@@ -180,8 +180,6 @@
   --backdrop-particle-min: 9s;
   --backdrop-particle-max: 18s;
   --backdrop-grid: 56px;
-  --backdrop-cta-shimmer: 3.2s;
-  --backdrop-cta-shimmer-delay: 1.5s;
 
   // Backdrop geometry. Sizes only; colors live in the block below.
   --backdrop-aurora-size: 46vmax;
@@ -205,5 +203,4 @@
   --backdrop-ring-color: rgba(232, 199, 102, 0.25);
   --backdrop-sweep-color: rgba(232, 199, 102, 0.18);
   --backdrop-particle-color: rgba(245, 229, 180, 0.55);
-  --backdrop-shimmer-color: rgba(255, 255, 255, 0.55);
 }

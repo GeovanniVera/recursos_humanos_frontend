@@ -82,7 +82,7 @@ describe('Sidebar', () => {
     expect(links[1].textContent).toContain('Empleados Activos');
     expect(links[2].textContent).toContain('Empleados Baja');
     // The product owner's spelling, verbatim: no accent on `Semaforo`.
-    expect(links[3].textContent?.trim()).toBe('Semaforo de documentos');
+    expect(links[3].textContent?.trim()).toBe('Semáforo de documentos');
   });
 
   it('opens the Empleados branch by default and collapses it on demand', async () => {
@@ -99,11 +99,14 @@ describe('Sidebar', () => {
     toggle.click();
     await fixture.whenStable();
 
+    const submenu = host(fixture).querySelector<HTMLElement>('#submenu-empleados');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(host(fixture).querySelector('#submenu-empleados')).toBeNull();
-    // Only the home link and the document traffic light are left: the children
-    // went with the branch.
-    expect(navLinks(fixture).length).toBe(2);
+    expect(submenu).not.toBeNull();
+    expect(submenu?.classList.contains('is-open')).toBe(false);
+    expect(submenu?.hasAttribute('inert')).toBe(true);
+    expect(submenu?.getAttribute('aria-hidden')).toBe('true');
+    // Only the home link and the document traffic light remain active; children sit in the inert panel.
+    expect(navLinks(fixture).filter((link) => link.closest('[inert]') === null).length).toBe(2);
   });
 
   it('flips aria-expanded and collapses the host when the toggle is pressed', async () => {
@@ -133,7 +136,7 @@ describe('Sidebar', () => {
     // Home, plus the branch folded into its landing link: 76px cannot nest a list.
     expect(links.length).toBe(3);
     expect(links[0].getAttribute('href')).toBe('/');
-    expect(links[1].getAttribute('href')).toBe('/empleados/activos');
+    expect(links[1].getAttribute('href')).toBe('/empleados');
     expect(links[1].getAttribute('aria-label')).toBe('Empleados');
     expect(links[1].getAttribute('title')).toBe('Empleados');
     expect(host(fixture).querySelector('#submenu-empleados')).toBeNull();
@@ -222,5 +225,109 @@ describe('Sidebar', () => {
     expect(host(fixture).textContent).toContain('Nombre Apellido');
     expect(host(fixture).textContent).toContain('Administrador');
     expect(host(fixture).querySelector('.avatar')?.textContent?.trim()).toBe('NA');
+  });
+
+  it('renders the decorative pill indicator inside nav and footer with aria-hidden', async () => {
+    const fixture = await createSidebar();
+    const navPill = host(fixture).querySelector<HTMLElement>('nav .pill-indicator');
+    const footerPill = host(fixture).querySelector<HTMLElement>('footer .pill-indicator.is-footer');
+
+    expect(navPill).not.toBeNull();
+    expect(navPill?.getAttribute('aria-hidden')).toBe('true');
+    expect(footerPill).not.toBeNull();
+    expect(footerPill?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows accessible rail tooltips on hover and keyboard focus only when collapsed on non-mobile', async () => {
+    const fixture = await createSidebar();
+    const state = TestBed.inject(SidebarStateService);
+    state.setCollapsed(true);
+    await fixture.whenStable();
+
+    const catalogos = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
+    expect(catalogos).not.toBeNull();
+
+    // Hover in 76px rail mode displays a host-level role="tooltip" linked via aria-describedby.
+    catalogos?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await fixture.whenStable();
+
+    const tooltip = host(fixture).querySelector<HTMLElement>('.rail-tooltip[role="tooltip"]');
+    expect(tooltip?.textContent?.trim()).toBe('Catálogos');
+    expect(catalogos?.getAttribute('aria-describedby')).toBe('sidebar-rail-tooltip');
+
+    // Escape dismisses the tooltip cleanly.
+    host(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(host(fixture).querySelector('.rail-tooltip')).toBeNull();
+    expect(catalogos?.getAttribute('aria-describedby')).toBeNull();
+
+    // Keyboard focus-visible displays tooltip too.
+    if (catalogos) {
+      vi.spyOn(catalogos, 'matches').mockReturnValue(true);
+      catalogos.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      await fixture.whenStable();
+      expect(host(fixture).querySelector('.rail-tooltip')?.textContent?.trim()).toBe('Catálogos');
+    }
+
+    // Expanding the sidebar clears the tooltip immediately.
+    state.setCollapsed(false);
+    await fixture.whenStable();
+    expect(host(fixture).querySelector('.rail-tooltip')).toBeNull();
+  });
+
+  it('auto-collapses to /empleados rail on tablet without desktop toggle and closes on mobile link click', async () => {
+    const original = window.matchMedia;
+    let mode: 'tablet' | 'mobile' = 'tablet';
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: (query: string) =>
+        ({
+          matches:
+            (mode === 'tablet' && query === '(min-width: 768px) and (max-width: 1023px)') ||
+            (mode === 'mobile' && query === '(max-width: 767px)'),
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    });
+
+    try {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [Sidebar],
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      }).compileComponents();
+
+      const tabletFixture = await createSidebar();
+      expect(host(tabletFixture).classList.contains('is-collapsed')).toBe(true);
+      expect(host(tabletFixture).querySelector('.toggle')).toBeNull();
+      expect(navLinks(tabletFixture)[1].getAttribute('href')).toBe('/empleados');
+      expect(localStorage.getItem('utn-rh.sidebar-collapsed')).toBe('false');
+
+      mode = 'mobile';
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [Sidebar],
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      }).compileComponents();
+
+      const state = TestBed.inject(SidebarStateService);
+      state.openMobile();
+      const mobileFixture = await createSidebar();
+
+      expect(host(mobileFixture).classList.contains('is-collapsed')).toBe(false);
+      expect(host(mobileFixture).querySelector('.mobile-close')).not.toBeNull();
+
+      navLinks(mobileFixture)[0].click();
+      await mobileFixture.whenStable();
+      expect(state.mobileOpen()).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: original,
+      });
+    }
   });
 });

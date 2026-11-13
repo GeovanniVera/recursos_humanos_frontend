@@ -1,4 +1,12 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   ActivatedRouteSnapshot,
   NavigationEnd,
@@ -6,6 +14,7 @@ import {
   RouterLink,
 } from '@angular/router';
 import { filter } from 'rxjs';
+import { SidebarStateService } from '../../core/layout/sidebar-state.service';
 
 /** One step of the location trail. The last one is never a link. */
 export interface Crumb {
@@ -14,15 +23,12 @@ export interface Crumb {
 }
 
 /**
- * Clock, weekday and a navigable location trail.
+ * Mobile drawer trigger, clock, weekday and a navigable location trail.
  *
  * The trail is derived from the route tree, not written by hand: every route that
  * declares `data.breadcrumb` adds a step, and its URL is rebuilt from the
- * accumulated segments. Adding a screen therefore never means editing the bar.
- *
- * Zoneless: mutating a signal is what schedules the re-render, so a plain
- * interval is enough. Both the interval and the router subscription are cleared
- * through `DestroyRef`.
+ * accumulated segments. On mobile (`<= 767px`), a 44×44px menu button opens the
+ * off-canvas sidebar drawer and receives focus back when the drawer closes.
  */
 @Component({
   selector: 'app-topbar',
@@ -33,8 +39,13 @@ export interface Crumb {
 export class Topbar {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
+  private readonly sidebarState = inject(SidebarStateService);
 
+  private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuBtn');
   private readonly now = signal(new Date());
+
+  readonly isMobile = this.sidebarState.isMobile;
+  readonly mobileOpen = this.sidebarState.mobileOpen;
 
   /** Home first, then every route that declares a breadcrumb label. */
   readonly crumbs = signal<readonly Crumb[]>(this.trailOf(this.router.routerState.snapshot.root));
@@ -56,15 +67,52 @@ export class Topbar {
   /** Machine-readable twin of `clock`, so the `<time>` element is semantic. */
   readonly iso = computed(() => this.now().toISOString());
 
+  private syncTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private minuteIntervalId: ReturnType<typeof setInterval> | null = null;
+
   constructor() {
-    const timer = setInterval(() => this.now.set(new Date()), 1000);
-    this.destroyRef.onDestroy(() => clearInterval(timer));
+    this.scheduleClock();
 
     const subscription = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => this.crumbs.set(this.trailOf(this.router.routerState.snapshot.root)));
 
-    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+    this.destroyRef.onDestroy(() => {
+      this.clearClockTimers();
+      subscription.unsubscribe();
+    });
+  }
+
+  private scheduleClock(): void {
+    const current = new Date();
+    this.now.set(current);
+    const msUntilNextMinute = 60_000 - (current.getSeconds() * 1000 + current.getMilliseconds());
+
+    this.syncTimeoutId = setTimeout(() => {
+      this.syncTimeoutId = null;
+      this.now.set(new Date());
+      this.minuteIntervalId = setInterval(() => this.now.set(new Date()), 60_000);
+    }, msUntilNextMinute);
+  }
+
+  private clearClockTimers(): void {
+    if (this.syncTimeoutId !== null) {
+      clearTimeout(this.syncTimeoutId);
+      this.syncTimeoutId = null;
+    }
+    if (this.minuteIntervalId !== null) {
+      clearInterval(this.minuteIntervalId);
+      this.minuteIntervalId = null;
+    }
+  }
+
+  toggleMobileMenu(): void {
+    this.sidebarState.toggleMobile();
+  }
+
+  /** Restores keyboard focus to the mobile trigger button after drawer dismissal. */
+  focusMenuButton(): void {
+    this.menuButton()?.nativeElement.focus();
   }
 
   /** Walks the activated route tree, collecting labels and rebuilding URLs. */

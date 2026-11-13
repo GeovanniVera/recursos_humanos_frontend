@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 // The refresh sits at the top right of the heading, the way the canvas places
@@ -39,71 +40,20 @@
   color: var(--color-text-secondary);
 }
 
-// A failure is a glass card with a colored disc, not a red panel: a filled
-// alert would repaint the buttons inside it and lose their contrast.
-.alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-sm);
-}
-
-.alert-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--space-7);
-  height: var(--space-7);
-  border-radius: var(--radius-pill);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-}
-
-.alert-icon svg {
-  width: var(--space-4);
-  height: var(--space-4);
-}
-
-.alert-copy {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.alert-message {
-  font: var(--text-body);
-  color: var(--color-text-primary);
-}
-
-// The contract code is monospace and muted: it is there for support, not to be
-// read as part of the sentence.
-.alert-code {
-  font: var(--text-overline);
-  font-family: var(--font-mono);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-secondary);
-}
+// --- KPI grid -------------------------------------------------------------
 
 // Three cards that collapse to one column on a narrow window instead of
 // squeezing the display figure.
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: var(--space-4);
 }
 
 // Body of the metric layer: the two figures the modal explains, side by side.
 .figures {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: var(--space-3);
   margin: var(--space-4) 0 0;
 }

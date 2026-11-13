@@ -1,7 +1,9 @@
 # AGENTS.md
 
 Guía para personas y agentes de IA que trabajen en este repositorio (Angular).
-Lee este archivo completo antes de crear o modificar cualquier componente o estilo.
+Lee este archivo completo y la guía técnica obligatoria [FRONTEND_GUIDELINES.md](./FRONTEND_GUIDELINES.md) antes de crear o modificar cualquier vista, componente o estilo.
+
+> **Lectura obligatoria:** Toda regla de arquitectura Angular (Zoneless/Signals), breakpoints responsive, primitivas compartidas de `src/app/shared/ui/`, presupuesto CSS (`< 7.00 kB`), rendimiento GPU/Motion, accesibilidad (`inert`, `forced-colors`, `prefers-reduced-motion`) y redacción en tuteo mexicano se rige por [FRONTEND_GUIDELINES.md](./FRONTEND_GUIDELINES.md).
 
 ## 1. Producto y principio central
 
@@ -23,6 +25,8 @@ tema decide el valor.
 
 | Qué | Dónde |
 | --- | --- |
+| Arquitectura, UX, responsive y rendimiento | [FRONTEND_GUIDELINES.md](./FRONTEND_GUIDELINES.md) (**lectura obligatoria**) |
+| Breakpoints responsive | `src/styles/_breakpoints.scss` |
 | Tokens primitivos | `src/styles/tokens/_primitives.scss` |
 | Tokens semánticos por tema | `src/styles/tokens/_theme-guinda.scss`, `_theme-light.scss`, `_theme-dark.scss` |
 | Movimiento y utilidades | `src/styles/tokens/_motion.scss` |
@@ -225,6 +229,7 @@ Pendiente: las sidebars de empleados y formulario aún muestran el logo genéric
 
 ## 14. Historial de cambios
 
+- 2026-11-13: se incorpora y enlaza [FRONTEND_GUIDELINES.md](./FRONTEND_GUIDELINES.md) como guía técnica obligatoria tras completar las 4 etapas de mejora UX/UI, responsive, motion y rendimiento.
 - 2026-11-11: se añade identidad institucional (logos UTN y Gobierno del Estado de México),
   login institucional con fondo animado, tokens `logo-*` y `backdrop-*`, y reglas de acceso.
 - 2026-11-11: versión inicial del sistema de diseño (tokens, tres temas, componentes).

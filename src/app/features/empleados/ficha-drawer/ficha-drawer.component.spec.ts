@@ -317,8 +317,8 @@ describe('FichaDrawer', () => {
 
     const missing = host(fixture).querySelector<HTMLElement>('.missing');
     expect(missing?.textContent).toContain('Faltan 2 campos');
-    expect(missing?.textContent).toContain('curp');
-    expect(missing?.textContent).toContain('municipio');
+    expect(missing?.textContent).toContain('CURP');
+    expect(missing?.textContent).toContain('Municipio');
   });
 
   it('asks for the record again when the panel is reopened', async () => {
@@ -328,11 +328,17 @@ describe('FichaDrawer', () => {
     await fixture.whenStable();
     expect(text(fixture)).toContain('Nombre Apellido');
 
-    fixture.componentInstance.open.set(false);
-    await fixture.whenStable();
-
-    // Closed, the panel holds nothing: the next open cannot show stale data.
-    expect(text(fixture)).not.toContain('Nombre Apellido');
+    // Closed, stale data stays for the 300ms exit transition and leaves once finished.
+    vi.useFakeTimers();
+    try {
+      fixture.componentInstance.open.set(false);
+      fixture.detectChanges();
+      vi.advanceTimersByTime(300);
+      fixture.detectChanges();
+      expect(text(fixture)).not.toContain('Nombre Apellido');
+    } finally {
+      vi.useRealTimers();
+    }
 
     fixture.componentInstance.open.set(true);
     await fixture.whenStable();
@@ -351,8 +357,8 @@ describe('FichaDrawer', () => {
     const editar = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
       (button) => button.getAttribute('aria-label') === 'Editar la ficha',
     );
-    // The edition still has no contract: it remains a placeholder.
-    expect(editar?.disabled).toBe(true);
+    // Without an edit contract wired via `puedeEditar`, the edit button is not shown.
+    expect(editar).toBeUndefined();
 
     const activo = botonBaja(fixture);
     expect(activo?.textContent?.trim()).toBe('Dar de baja');
@@ -463,7 +469,7 @@ describe('FichaDrawer', () => {
       .flush({ codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No tenés permisos para ver esta ficha.');
+    expect(text(fixture)).toContain('No tienes permisos para ver esta ficha.');
     expect(text(fixture)).toContain('permiso_denegado');
     expect(host(fixture).querySelector('.alert app-button')).toBeNull();
   });
