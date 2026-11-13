@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font: var(--text-body);
+}
+details {
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+summary {
+  min-height: var(--space-8);
+  padding-block: var(--space-3);
+  font: var(--text-label);
+  cursor: pointer;
+}
+.content {
+  padding-block-end: var(--space-3);
+  overflow-wrap: anywhere;
+}
+ol {
+  padding-inline-start: var(--space-4);
+}
+li + li {
+  margin-block-start: var(--space-3);
+}
+.metadata {
+  font: var(--text-label);
+  margin-block-start: var(--space-1);
+}
+.skeleton-shimmer {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  height: var(--space-5);
+  background: var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+@media (forced-colors: active) {
+  summary {
+    forced-color-adjust: auto;
+  }
+}

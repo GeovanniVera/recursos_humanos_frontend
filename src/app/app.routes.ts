@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { editarEmpleadoGuard } from './core/auth/editar-empleado.guard';
 import { environment } from '../environments/environment';
 import { authGuard, guestGuard } from './core/auth/auth.guard';
 import { AppShell } from './layout/app-shell/app-shell.component';
@@ -65,6 +66,13 @@ export const routes: Routes = [
             data: { breadcrumb: 'Empleados activos' },
             loadComponent: () =>
               import('./features/empleados/empleados-page.component').then((m) => m.EmpleadosPage),
+          },
+          {
+            path: ':id/editar',
+            canActivate: [editarEmpleadoGuard],
+            data: { breadcrumb: 'Editar empleado' },
+            loadComponent: () =>
+              import('./features/empleados/alta/alta-page.component').then((m) => m.AltaPage),
           },
           {
             path: 'alta',

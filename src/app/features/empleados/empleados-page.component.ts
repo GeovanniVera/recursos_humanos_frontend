@@ -3,6 +3,7 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
+import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { AuthService } from '../../core/auth/auth.service';
 import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
 import { PadronError } from '../../core/padron/padron.models';
@@ -91,6 +92,11 @@ interface FallaPadron {
 export class EmpleadosPage {
   private readonly store = inject(PadronBufferStore);
   private readonly auth = inject(AuthService);
+  readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
+  editarEmpleado(id: number): void {
+    this.fichaAbierta.set(false);
+    void this.router.navigate(['/empleados', id, 'editar']);
+  }
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -497,7 +503,8 @@ export class EmpleadosPage {
         // Our client-side mirror should catch the term before it travels, but a
         // stricter backend is still possible. Its sentence is the one to show,
         // and the typed term stays in the field.
-        const cuerpo = error instanceof HttpErrorResponse ? (error.error as PadronError | null) : null;
+        const cuerpo =
+          error instanceof HttpErrorResponse ? (error.error as PadronError | null) : null;
         return {
           status,
           mensaje: cuerpo?.mensaje ?? MENSAJE_PARAMETROS,
