@@ -52,7 +52,7 @@
           [class.is-invalid]="errorDe('motivo_id') !== null"
           [attr.aria-describedby]="idDeError('motivo_id')"
         >
-          <option value="" [selected]="motivoId() === null">Elegí un motivo</option>
+          <option value="" [selected]="motivoId() === null">Elige un motivo</option>
           @for (motivo of opciones(); track motivo.id) {
             <option [value]="motivo.id" [selected]="motivoId() === motivo.id">
               {{ motivo.descripcion }}

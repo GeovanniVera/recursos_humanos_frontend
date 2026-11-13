@@ -1,11 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
-import { EMPTY, Observable, Subject, catchError, debounceTime, finalize, switchMap } from 'rxjs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subject, debounceTime } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { PadronError, PadronResponse } from '../../core/padron/padron.models';
-import { PadronService } from '../../core/padron/padron.service';
+import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
+import { PadronError } from '../../core/padron/padron.models';
+import { validarBusqueda } from '../../core/padron/validacion-busqueda';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
@@ -15,18 +16,16 @@ import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
  * user, so each one gets its own sentence and its own action; a single
  * "something went wrong" would throw away that distinction.
  */
-const MENSAJE_SESION = 'Tu sesión venció. Volvé a iniciar sesión.';
+const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MENSAJE_PERMISO = 'No tenés permisos para consultar el padrón.';
-const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintentá en unos segundos.';
-const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisá tu conexión.';
+const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
+const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 /** Throttle without a number from the backend: there is no countdown to show. */
-const MENSAJE_LIMITE = 'Hiciste demasiadas consultas. Esperá un momento antes de reintentar.';
+const MENSAJE_LIMITE = 'Hiciste demasiadas consultas. Espera un momento antes de reintentar.';
+const MENSAJE_PARAMETROS = 'Los parámetros de consulta no son válidos.';
 
 /** Silence that turns typing into a search. */
 const RETRASO_BUSQUEDA = 300;
-
-/** Page size of the roster. The contract allows up to 100. */
-const POR_PAGINA = 10;
 
 /** Sizes the control offers. The backend rejects anything above 100. */
 const TAMANOS_PAGINA = [10, 20, 50, 100] as const;
@@ -42,7 +41,7 @@ const SIN_DATO = '—';
  * What the alert offers the user.
  * - `reintentar`: another request may succeed (server, network or throttle).
  * - `iniciar-sesion`: the token is gone, retrying is pointless.
- * - `ninguna`: the answer is final until an administrator grants access.
+ * - `ninguna`: the answer is final until the user changes the criteria.
  */
 type PadronErrorAction = 'reintentar' | 'iniciar-sesion' | 'ninguna';
 
@@ -55,54 +54,76 @@ interface FallaPadron {
   /** Contract code from the body (`permiso_denegado`, …), when there is one. */
   codigo: string | null;
   accion: PadronErrorAction;
+  /** Seconds the API asked to wait after a `429`; `null` when it sent no number. */
+  segundos: number | null;
 }
 
 /**
  * Active employees, reachable at `/empleados/activos`.
  *
- * The backend filters the listing itself — `ConsultarPadron` runs
- * `where('activo', true)->whereNull('fecha_baja')` — so this screen never has to
- * hide rows: every employee the endpoint returns is active. Paging and search
- * are asked to the server, which is the only side that knows the real totals.
+ * Paging has two levels. The user sees 20 rows at a time; the store asks the
+ * backend for 100 records per request and serves five logical pages out of that
+ * block. Moving inside the window is a local slice and sends no request; the
+ * sixth page fetches the next block once.
  *
- * The screen owns all of the state — the service holds none — so the request
- * that goes out is always the one described by the controls on screen.
+ * The screen owns the controls and the presentation. The list, the cache, the
+ * page/block math and the cancellation live in `PadronBufferStore`, so this
+ * component only maps rows, errors and counts to the design system.
+ *
+ * The page lives in `?pagina=` so a deep link and the browser's back button
+ * work. The search term deliberately does not: the backend avoids writing it
+ * in its audit log, and putting it in the URL would write it into the browser
+ * history instead.
  */
 @Component({
   selector: 'app-empleados-page',
   imports: [Button, DataTable, FichaDrawer, RouterLink],
   templateUrl: './empleados-page.component.html',
   styleUrl: './empleados-page.component.scss',
+  // One buffer per visit: filter, page and cached blocks are not shared with a
+  // second tab or with a later visit to the screen.
+  providers: [PadronBufferStore],
 })
 export class EmpleadosPage {
-  private readonly padronService = inject(PadronService);
+  private readonly store = inject(PadronBufferStore);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Term of the search field, as typed. */
   readonly buscar = signal('');
 
-  /** Page on screen, 1-based. */
-  readonly pagina = signal(1);
+  /** Client-side complaint about the term, or `null`. */
+  readonly errorBusqueda = signal<string | null>(null);
 
-  /** Page size, driven by the "Filas por página" control. */
-  readonly porPagina = signal(POR_PAGINA);
-
-  /** Sizes offered by that control. */
-  readonly tamanosPagina = TAMANOS_PAGINA;
-
-  /** Last page the backend served, or `null` before the first answer. */
-  readonly padron = signal<PadronResponse | null>(null);
-
-  /** `true` while a page is in flight. */
-  readonly loading = signal(false);
-
-  /** Last failure, or `null`. */
-  readonly error = signal<FallaPadron | null>(null);
+  /** Complaint about the "Ir a página" field, or `null`. */
+  readonly errorPagina = signal<string | null>(null);
 
   /** Seconds left before a `429` lets the user ask again; `0` when free. */
   readonly espera = signal(0);
+
+  /** Sizes offered by the page-size control. */
+  readonly tamanosPagina = TAMANOS_PAGINA;
+
+  /** Logical page on screen. */
+  readonly paginaActual = this.store.pagina;
+
+  /** Logical page size, driven by the "Filas por página" control. */
+  readonly porPagina = this.store.porPagina;
+
+  /** Logical pages, derived from `total`; the backend counts blocks instead. */
+  readonly totalPaginas = this.store.totalPaginas;
+
+  /** Whether a block has been served, which is not the same as `total > 0`. */
+  readonly hayDatos = this.store.hayDatos;
+
+  readonly cargandoInicial = this.store.cargandoInicial;
+  readonly cargandoBloque = this.store.cargandoBloque;
+  readonly cargando = this.store.cargando;
+
+  /** Page the in-flight block (or the failed one) is trying to reach. */
+  readonly paginaObjetivo = this.store.paginaObjetivo;
 
   /**
    * Internal key of the employee whose record is open, or `null`.
@@ -115,8 +136,31 @@ export class EmpleadosPage {
   /** Whether the record panel is open. Two-way bound to it. */
   readonly fichaAbierta = signal(false);
 
-  /** One formatter for every count, so the three figures group digits alike. */
+  /** One formatter for every count, so the figures group digits alike. */
   private readonly formato = new Intl.NumberFormat('es-MX');
+
+  /**
+   * Terms typed into the search field, before the silence that turns them into
+   * a request. The debounce lives on this stream so `takeUntilDestroyed` drops
+   * a pending term when the screen goes away.
+   */
+  private readonly terminos = new Subject<string>();
+
+  private relojId: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * A search the `429` wait did not let through.
+   *
+   * Dropping it would leave the field showing a term whose results never
+   * arrive, so it is remembered and applied when the clock runs out.
+   */
+  private busquedaDiferida: string | null = null;
+
+  /** Page the URL currently names, to keep the URL effect from looping. */
+  private paginaEnUrl = 1;
+
+  /** Failure mapped to copy and to the action the alert offers. */
+  readonly falla = computed<FallaPadron | null>(() => this.describirError(this.store.error()));
 
   /** Columns of the roster, in the order the canvas lists them. */
   readonly columnas: readonly TableColumn[] = [
@@ -134,7 +178,7 @@ export class EmpleadosPage {
    * column shows.
    */
   readonly filas = computed<readonly TableRow[]>(() =>
-    (this.padron()?.datos ?? []).map((empleado) => ({
+    this.store.filas().map((empleado) => ({
       id: empleado.id,
       num_empleado: empleado.num_empleado,
       nombre: empleado.nombre,
@@ -143,144 +187,213 @@ export class EmpleadosPage {
     })),
   );
 
-  /** Emptiness has two causes, and the message has to name the right one. */
-  readonly mensajeVacio = computed(() =>
-    this.buscar().trim().length > 0
+  /** Emptiness has three causes, and the message has to name the right one. */
+  readonly mensajeVacio = computed(() => {
+    if (this.falla() !== null && !this.hayDatos()) {
+      return 'No se pudo cargar el padrón.';
+    }
+    return this.store.buscar().trim().length > 0
       ? 'No hay empleados que coincidan con la búsqueda.'
-      : 'Todavía no hay empleados activos.',
-  );
+      : 'Todavía no hay empleados activos.';
+  });
 
-  /** Pages the backend reported. `0` before the first answer, so both ends lock. */
-  readonly totalPaginas = computed(() => this.padron()?.meta.total_paginas ?? 0);
-
-  /**
-   * Page the backend served last, or `0` before the first answer.
-   *
-   * The pager moves relative to this figure and not to the page that was
-   * requested: after a failed request the two differ, and stepping from the page
-   * on screen is the only move that never skips one.
-   */
-  readonly paginaActual = computed(() => this.padron()?.meta.pagina ?? 0);
-
-  /** `Mostrando 1–20 de 42`. */
+  /** `Mostrando 1–20 de 250`. */
   readonly rango = computed(() => {
-    const respuesta = this.padron();
-    if (respuesta === null) {
+    if (!this.hayDatos()) {
       return SIN_DATO;
     }
 
-    const { pagina, por_pagina, total } = respuesta.meta;
+    const total = this.store.total();
     if (total === 0) {
       return 'Sin empleados';
     }
 
-    const desde = (pagina - 1) * por_pagina + 1;
-    const hasta = Math.min(pagina * por_pagina, total);
-    return `Mostrando ${this.formato.format(desde)}–${this.formato.format(hasta)} de ${this.formato.format(total)}`;
+    return `Mostrando ${this.formato.format(this.store.desde())}–${this.formato.format(this.store.hasta())} de ${this.formato.format(total)}`;
   });
 
-  /** `Página 1 de 3`. Never `de 0`: an empty roster still has one page. */
+  /** `Página 1 de 13`. Never `de 0`: an empty roster still has one page. */
   readonly etiquetaPagina = computed(() => {
-    const meta = this.padron()?.meta;
-    if (meta === undefined) {
+    if (!this.hayDatos()) {
       return SIN_DATO;
     }
-    const total = Math.max(meta.total_paginas, 1);
-    return `Página ${this.formato.format(meta.pagina)} de ${this.formato.format(total)}`;
+    const total = Math.max(this.store.totalPaginas(), 1);
+    return `Página ${this.formato.format(this.store.pagina())} de ${this.formato.format(total)}`;
   });
 
-  /** True at the first page, while loading, and before the first answer. */
-  readonly anteriorDeshabilitado = computed(() => this.loading() || this.paginaActual() <= 1);
+  /** Upper bound of the "Ir a página" field. */
+  readonly totalPaginasMax = computed(() => Math.max(this.store.totalPaginas(), 1));
 
-  /** True on the last page, while loading, and before the first answer. */
-  readonly siguienteDeshabilitado = computed(
-    () => this.loading() || this.paginaActual() >= this.totalPaginas(),
+  /** A load or a throttle wait freezes every control that would ask for a block. */
+  readonly controlesDeshabilitados = computed(() => this.cargando() || this.espera() > 0);
+
+  readonly primeraDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.store.pagina() <= 1,
   );
 
-  /**
-   * Every request the screen wants to send.
-   *
-   * `switchMap` below keeps one request in flight: a newer one cancels the one
-   * it supersedes, so a slow answer never lands over a newer page.
-   */
-  private readonly solicitudes = new Subject<void>();
+  readonly anteriorDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || !this.store.hayAnterior(),
+  );
 
-  /**
-   * Terms typed into the search field, before the silence that turns them into
-   * a request. The debounce lives on this stream so `takeUntilDestroyed` drops
-   * a pending term when the screen goes away.
-   */
-  private readonly terminos = new Subject<string>();
+  readonly siguienteDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || !this.store.haySiguiente(),
+  );
 
-  private relojId: ReturnType<typeof setInterval> | null = null;
-
-  /**
-   * A request the `429` wait did not let through.
-   *
-   * Dropping it would leave the field showing a term whose results never
-   * arrive, so it is remembered and sent when the clock runs out.
-   */
-  private diferida = false;
+  readonly ultimaDeshabilitado = computed(
+    () => this.controlesDeshabilitados() || this.store.pagina() >= this.store.totalPaginas(),
+  );
 
   constructor() {
+    const paginaUrl = this.route.snapshot.queryParamMap.get('pagina');
+    const paginaInicial = this.paginaDeUrl(paginaUrl);
+    this.paginaEnUrl = paginaInicial;
+    this.store.iniciar(paginaInicial);
+
+    // Normalize a page the URL invented (`0`, `abc`, `06`). A valid value is
+    // left untouched so opening the screen does not add a history entry.
+    if (paginaUrl !== null && String(paginaInicial) !== paginaUrl) {
+      void this.sincronizarUrl(paginaInicial, true);
+    }
+
     this.terminos
       .pipe(debounceTime(RETRASO_BUSQUEDA), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.solicitar());
+      .subscribe((termino) => this.aplicarTermino(termino));
 
-    this.solicitudes
-      .pipe(
-        switchMap(() => this.pedirPagina()),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (respuesta) => {
-          this.padron.set(respuesta);
-          // An answer arrived, so whatever wait the API asked for is over.
-          this.limpiarEspera();
-          this.ajustarPaginaVacia(respuesta);
-        },
-      });
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.alCambiarUrl(params.get('pagina')));
+
+    // A page change that came from the buffer (cache hit or a new block) has to
+    // reach the URL. The guard keeps the query subscription from echoing it.
+    effect(() => {
+      const pagina = this.store.pagina();
+      if (pagina === this.paginaEnUrl) {
+        return;
+      }
+      this.paginaEnUrl = pagina;
+      void this.sincronizarUrl(pagina, false);
+    });
+
+    // A failed jump must not leave the URL naming a page the screen never
+    // reached. The retry still remembers its target inside the buffer.
+    effect(() => {
+      if (this.falla() === null || this.cargando()) {
+        return;
+      }
+      const visible = this.store.pagina();
+      if (visible !== this.paginaEnUrl) {
+        this.paginaEnUrl = visible;
+        void this.sincronizarUrl(visible, true);
+      }
+    });
+
+    // The countdown is a side effect of the failure, not of rendering. The
+    // effect only tracks the mapped failure, so a tick of `espera` does not
+    // restart it.
+    effect(() => {
+      const fallo = this.falla();
+      if (fallo === null) {
+        this.limpiarEspera();
+        return;
+      }
+      if (fallo.status === 429 && fallo.segundos !== null) {
+        this.iniciarEspera(fallo.segundos);
+        return;
+      }
+      this.detenerReloj();
+      this.espera.set(0);
+    });
 
     this.destroyRef.onDestroy(() => this.detenerReloj());
-
-    // First page on entry: the screen has no data of its own to restore.
-    this.solicitar();
   }
 
-  /** Reads the field into state and restarts the search from the first page. */
+  /** Reads the field into state and schedules the search. */
   alBuscar(event: Event): void {
     const termino = (event.target as HTMLInputElement).value;
     this.buscar.set(termino);
-    // A new term is a new result set: page 3 of the previous one means nothing.
-    this.pagina.set(1);
+    // Immediate feedback, before the debounce: the field explains the format
+    // while the user is still deciding what to type.
+    this.errorBusqueda.set(validarBusqueda(termino));
+    this.errorPagina.set(null);
     this.terminos.next(termino);
   }
 
-  /** Asks for the page on screen again. Also the retry of the alert. */
+  /** Asks for the current block again. Also the retry of the refresh action. */
   solicitar(): void {
     if (this.espera() > 0) {
-      // The API asked for silence: the request waits for the clock instead of
-      // being thrown away, so a term typed during the wait is not lost.
-      this.diferida = true;
       return;
     }
-    this.solicitudes.next();
+    this.errorPagina.set(null);
+    this.store.recargar();
+  }
+
+  /** Retries the block that failed, which may be a page different from this one. */
+  reintentar(): void {
+    if (this.espera() > 0) {
+      return;
+    }
+    this.store.reintentar();
   }
 
   /**
-   * Moves to a page, refusing the two ends of the range: page `0` and a page
-   * past `total_paginas` both exist only as bugs, never as data.
+   * Moves to a page. Inside the cached block this is a local slice and sends no
+   * request; outside it starts one and keeps the current rows until it arrives.
    */
   irA(destino: number): void {
-    if (this.loading() || destino < 1 || destino > this.totalPaginas()) {
+    if (this.espera() > 0) {
       return;
     }
-    if (destino === this.paginaActual()) {
+    this.errorPagina.set(null);
+    this.store.irAPagina(destino);
+  }
+
+  irAPrimera(): void {
+    this.irA(1);
+  }
+
+  irAUltima(): void {
+    this.irA(this.store.totalPaginas());
+  }
+
+  /**
+   * Jump from the "Ir a página" field.
+   *
+   * The field is a real number input with the range as its `max`, but a number
+   * input still accepts typed values, so the range is checked again here.
+   */
+  irAPaginaDesdeCampo(event: Event, valor: string): void {
+    event.preventDefault();
+
+    if (this.espera() > 0) {
       return;
     }
 
-    this.pagina.set(destino);
-    this.solicitar();
+    const destino = Number(valor);
+    const maximo = this.totalPaginasMax();
+
+    if (!Number.isInteger(destino) || destino < 1 || destino > maximo) {
+      this.errorPagina.set(`Ingresá un número entre 1 y ${this.formato.format(maximo)}.`);
+      return;
+    }
+
+    this.errorPagina.set(null);
+    this.store.irAPagina(destino);
+  }
+
+  /**
+   * Changes how many rows a page holds.
+   *
+   * A different logical size is a different window over the same block, so the
+   * buffer drops its cache and restarts at page 1.
+   */
+  cambiarPorPagina(event: Event): void {
+    const valor = Number((event.target as HTMLSelectElement).value);
+
+    if (!Number.isFinite(valor) || valor === this.store.porPagina()) {
+      return;
+    }
+
+    this.errorPagina.set(null);
+    this.store.cambiarPorPagina(valor);
   }
 
   /**
@@ -319,94 +432,116 @@ export class EmpleadosPage {
   }
 
   /**
-   * Asks for the page on screen again after a termination.
+   * Asks for the roster again after a termination.
    *
-   * The roster endpoint filters `activo = true AND fecha_baja IS NULL`, so the
-   * worker that was just terminated has to disappear: keeping the table on
-   * screen would show someone the backend no longer lists.
+   * The endpoint filters `activo = true AND fecha_baja IS NULL`, so the worker
+   * that was just terminated has to disappear. The refresh keeps the current
+   * rows while the new block travels.
    */
   alRegistrarBaja(): void {
-    this.solicitar();
+    this.errorPagina.set(null);
+    this.store.recargar();
   }
 
-  /**
-   * Changes how many rows a page holds.
-   *
-   * Page 3 of ten rows is not page 3 of fifty: the size change restarts at the
-   * first page instead of landing somewhere the user never asked for.
-   */
-  cambiarPorPagina(event: Event): void {
-    const valor = Number((event.target as HTMLSelectElement).value);
+  /** Validates the typed term and either schedules it or explains the format. */
+  private aplicarTermino(termino: string): void {
+    const mensaje = validarBusqueda(termino);
+    this.errorBusqueda.set(mensaje);
 
-    if (!Number.isFinite(valor) || valor === this.porPagina()) {
+    if (mensaje !== null) {
       return;
     }
 
-    this.porPagina.set(valor);
-    this.pagina.set(1);
-    this.solicitar();
+    if (this.espera() > 0) {
+      // The API asked for silence: the request waits for the clock instead of
+      // being thrown away, so a term typed during the wait is not lost.
+      this.busquedaDiferida = termino;
+      return;
+    }
+
+    this.aplicarBusqueda(termino);
   }
 
-  /**
-   * One request, with `loading` and the failure mapped as it comes back.
-   *
-   * On failure the last page stays on screen: the alert explains what went
-   * wrong, while an empty table under it would claim the roster is empty, which
-   * is a different and false sentence.
-   */
-  private pedirPagina(): Observable<PadronResponse> {
-    this.loading.set(true);
-    this.error.set(null);
+  private aplicarBusqueda(termino: string): void {
+    const normalizado = termino.trim();
+    if (normalizado === this.store.buscar()) {
+      return;
+    }
 
-    return this.padronService
-      .consultar({
-        buscar: this.buscar(),
-        pagina: this.pagina(),
-        porPagina: this.porPagina(),
-      })
-      .pipe(
-        catchError((error: unknown) => {
-          this.manejarError(error);
-          return EMPTY;
-        }),
-        finalize(() => this.loading.set(false)),
-      );
+    this.busquedaDiferida = null;
+    this.errorPagina.set(null);
+    this.store.aplicarBusqueda(normalizado);
   }
 
   /** Maps an HTTP failure to the sentence and the action the user gets. */
-  private manejarError(error: unknown): void {
+  private describirError(error: unknown): FallaPadron | null {
+    if (error === null) {
+      return null;
+    }
+
     const status = error instanceof HttpErrorResponse ? error.status : 0;
     const codigo = this.codigoDe(error);
 
     switch (status) {
+      case 400: {
+        // Our client-side mirror should catch the term before it travels, but a
+        // stricter backend is still possible. Its sentence is the one to show,
+        // and the typed term stays in the field.
+        const cuerpo = error instanceof HttpErrorResponse ? (error.error as PadronError | null) : null;
+        return {
+          status,
+          mensaje: cuerpo?.mensaje ?? MENSAJE_PARAMETROS,
+          codigo,
+          accion: 'ninguna',
+          segundos: null,
+        };
+      }
       case 401:
-        this.error.set({ status, mensaje: MENSAJE_SESION, codigo, accion: 'iniciar-sesion' });
-        return;
+        return {
+          status,
+          mensaje: MENSAJE_SESION,
+          codigo,
+          accion: 'iniciar-sesion',
+          segundos: null,
+        };
       case 403:
-        this.error.set({ status, mensaje: MENSAJE_PERMISO, codigo, accion: 'ninguna' });
-        return;
+        return {
+          status,
+          mensaje: MENSAJE_PERMISO,
+          codigo,
+          accion: 'ninguna',
+          segundos: null,
+        };
       case 429: {
         // The backend says how long to wait; adopt its number instead of a guess.
         const segundos = this.segundosDeEspera(error);
-        this.error.set({
+        return {
           status,
           mensaje:
             segundos === null
               ? MENSAJE_LIMITE
-              : `Hiciste demasiadas consultas. Esperá ${segundos} segundos.`,
+              : `Hiciste demasiadas consultas. Espera ${segundos} segundos.`,
           codigo,
           accion: 'reintentar',
-        });
-        if (segundos !== null) {
-          this.iniciarEspera(segundos);
-        }
-        return;
+          segundos,
+        };
       }
       case 503:
-        this.error.set({ status, mensaje: MENSAJE_SERVICIO, codigo, accion: 'reintentar' });
-        return;
+        return {
+          status,
+          mensaje: MENSAJE_SERVICIO,
+          codigo,
+          accion: 'reintentar',
+          segundos: null,
+        };
       default:
-        this.error.set({ status, mensaje: MENSAJE_CONEXION, codigo, accion: 'reintentar' });
+        return {
+          status,
+          mensaje: status === 0 ? MENSAJE_CONEXION : MENSAJE_SERVICIO,
+          codigo,
+          accion: 'reintentar',
+          segundos: null,
+        };
     }
   }
 
@@ -417,22 +552,6 @@ export class EmpleadosPage {
     }
     const cuerpo = error.error as PadronError | null;
     return typeof cuerpo?.codigo === 'string' ? cuerpo.codigo : null;
-  }
-
-  /**
-   * Steps back one page when the page on screen no longer exists.
-   *
-   * Terminating the last worker of the last page leaves the requested page past
-   * the end of the list: the answer arrives with no rows and a page number the
-   * pager cannot reconcile. The move is one page back, never to the first one.
-   */
-  private ajustarPaginaVacia(respuesta: PadronResponse): void {
-    const total = respuesta.meta.total_paginas;
-
-    if (total > 0 && respuesta.meta.pagina > total) {
-      this.pagina.set(total);
-      this.solicitudes.next();
-    }
   }
 
   /** Reads the wait out of a `429` body, or `null` when it carries no number. */
@@ -460,13 +579,17 @@ export class EmpleadosPage {
     }, 1000);
   }
 
-  /** Sends the request the wait held back, if there was one. */
+  /** Applies the search the wait held back, if there was one. */
   private liberarDiferida(): void {
-    if (!this.diferida) {
+    const termino = this.busquedaDiferida;
+    if (termino === null) {
       return;
     }
-    this.diferida = false;
-    this.solicitudes.next();
+
+    this.busquedaDiferida = null;
+    if (validarBusqueda(termino) === null) {
+      this.aplicarBusqueda(termino);
+    }
   }
 
   /** Ends the wait without touching the visible message. */
@@ -481,6 +604,50 @@ export class EmpleadosPage {
   private limpiarEspera(): void {
     this.detenerReloj();
     this.espera.set(0);
-    this.diferida = false;
+    this.busquedaDiferida = null;
+  }
+
+  /** Reads `?pagina=` defensively: anything but a positive integer is page 1. */
+  private paginaDeUrl(valor: string | null): number {
+    if (valor === null) {
+      return 1;
+    }
+    const pagina = Number(valor);
+    return Number.isInteger(pagina) && pagina >= 1 ? pagina : 1;
+  }
+
+  /** Reacts to the browser's back/forward and to programmatic URL changes. */
+  private alCambiarUrl(valor: string | null): void {
+    const pagina = this.paginaDeUrl(valor);
+
+    if (pagina === this.store.pagina()) {
+      this.paginaEnUrl = pagina;
+      return;
+    }
+
+    if (this.espera() > 0) {
+      // Navigation stays frozen during a 429 wait, so a history move must not
+      // leave the URL naming a page the screen cannot fetch yet.
+      this.paginaEnUrl = this.store.pagina();
+      void this.sincronizarUrl(this.paginaEnUrl, true);
+      return;
+    }
+
+    this.paginaEnUrl = pagina;
+    this.errorPagina.set(null);
+    this.store.irAPagina(pagina);
+  }
+
+  /**
+   * Writes the page into `?pagina=`. Page 1 removes the param entirely, so the
+   * canonical URL of the screen stays clean.
+   */
+  private sincronizarUrl(pagina: number, reemplazar: boolean): Promise<boolean> {
+    return this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { pagina: pagina === 1 ? null : pagina },
+      queryParamsHandling: 'merge',
+      replaceUrl: reemplazar,
+    });
   }
 }

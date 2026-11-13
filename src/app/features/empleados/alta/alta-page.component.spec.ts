@@ -741,7 +741,7 @@ describe('AltaPage', () => {
 
     // One sentence, the one the backend collapses all of its rules into.
     expect(aviso?.textContent).toContain(
-      'La CURP no es válida. Revisá el formato, la entidad y el dígito verificador.',
+      'La CURP no es válida. Revisa el formato, la entidad y el dígito verificador.',
     );
     // The specific motivo travels in the `title`, never as a second sentence.
     expect(aviso?.getAttribute('title')).toBe(
@@ -872,7 +872,7 @@ describe('AltaPage', () => {
     expect(elemento(fixture, '#area_id')).toBeNull();
     expect(
       elemento<HTMLElement>(fixture, '#error-correo_institucional')?.textContent,
-    ).toContain('Escribí un correo con formato válido.');
+    ).toContain('Escribe un correo con formato válido.');
   });
 
   it('refuses to render the form when the catalogs cannot be read, and retries', async () => {

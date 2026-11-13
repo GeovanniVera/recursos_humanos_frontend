@@ -15,7 +15,7 @@ import { OtpInput } from '../otp-input/otp-input.component';
  * the backend. Every other message is displayed verbatim.
  */
 const MENSAJE_SIN_CONEXION =
-  'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.';
+  'No pudimos conectar con el servidor. Revisa tu conexión e intentá de nuevo.';
 
 /** Seconds the resend link stays disabled after requesting a code. */
 const SEGUNDOS_REENVIO = 30;

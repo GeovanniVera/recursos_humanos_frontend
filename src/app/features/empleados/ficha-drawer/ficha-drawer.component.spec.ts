@@ -463,7 +463,7 @@ describe('FichaDrawer', () => {
     httpMock.expectOne(URL_FICHA).error(new ProgressEvent('error'), { status: 0 });
     await fixture.whenStable();
 
-    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisá tu conexión.');
+    expect(text(fixture)).toContain('No pudimos conectar con el servidor. Revisa tu conexión.');
 
     const retry = host(fixture).querySelector<HTMLButtonElement>('.alert button');
     retry?.click();
