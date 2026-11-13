@@ -1,0 +1,36 @@
+// The host is only the slot of the button in the cell. It stays inline on
+// purpose: the name is text of the row, and a block box would break the flow of
+// the cell and shift every other line of the table.
+:host {
+  display: inline;
+}
+
+// The union of the two recipes the tables used to keep, normalized: text as
+// paint, no padding of its own, the minimum target of the system and a
+// transparent border so the underlined state never moves the word.
+.row-link {
+  min-height: var(--space-8);
+  padding: 0;
+  border: var(--border-width) solid var(--transparent);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: start;
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+// The affordance appears on hover and on keyboard focus, so a pointer user and
+// a keyboard user discover the same thing.
+.row-link:hover,
+.row-link:focus-visible {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.row-link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}

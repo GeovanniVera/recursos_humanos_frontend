@@ -1,0 +1,38 @@
+// The host is only a slot: an inline box with no in-flow content, since the lane
+// is absolute and the sentence is visually hidden. `position: static` is stated
+// on purpose — the host must not become the containing block of the lane, which
+// has to resolve against the cell the table already positioned.
+:host {
+  display: inline;
+  position: static;
+}
+
+// The lane is one spacing step wide: enough to be read as an edge marker, thin
+// enough to stay out of the cell's content.
+.row-flag {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--space-1);
+  pointer-events: none;
+}
+
+.row-flag.is-completo {
+  background: var(--color-semaforo-filter-completo);
+}
+
+.row-flag.is-casi-completo {
+  background: var(--color-semaforo-filter-casi-completo);
+}
+
+.row-flag.is-incompleto {
+  background: var(--color-semaforo-filter-incompleto);
+}
+
+.row-flag.is-activo {
+  background: var(--color-state-success);
+}
+
+.row-flag.is-baja {
+  background: var(--color-state-error);
+}
