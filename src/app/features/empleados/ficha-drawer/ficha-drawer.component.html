@@ -107,6 +107,7 @@
         <span class="clip" aria-hidden="true"></span>
 
         <div
+          #hojaRef
           class="sheet"
           id="ficha-panel"
           role="tabpanel"
@@ -163,8 +164,54 @@
               @for (fila of filas(); track $index) {
                 @if (fila.tipo === 'subtitulo') {
                   <p class="subtitle">{{ fila.etiqueta }}</p>
+                } @else if (fila.tipo === 'faltantes') {
+                  <!--
+                    The list of what the record is missing is also the way to each
+                    box: every field the folder knows is a real button that takes
+                    the reader to the sheet holding it, and a key this screen does
+                    not know stays a word in the sentence — it has nothing to open.
+                  -->
+                  <div class="field is-full">
+                    <span class="label">{{ fila.etiqueta }}</span>
+
+                    @if (faltantesLista().length === 0) {
+                      <span class="value">{{ textoNinguno }}</span>
+                    } @else {
+                      <span class="value is-links">
+                        @for (falta of faltantesLista(); track falta.clave; let ultima = $last) {
+                          @if (falta.tab === null) {
+                            <!--
+                              A key this screen does not know has no box to open:
+                              it keeps its name and gets no door. Both labels sit on
+                              the same line as their tags — literal whitespace around
+                              them would print a space next to the comma.
+                            -->
+                            <span>{{ falta.etiqueta }}</span>
+                          } @else {
+                            <button
+                              type="button"
+                              class="missing-link"
+                              [attr.aria-label]="'Ir al campo ' + falta.etiqueta"
+                              (click)="irAlCampo(falta)"
+                            >{{ falta.etiqueta }}</button>
+                          }
+
+                          @if (!ultima) {
+                            <span aria-hidden="true">, </span>
+                          }
+                        }
+                      </span>
+                    }
+                  </div>
                 } @else {
-                  <div class="field" [class.is-full]="fila.completo" [class.is-missing]="esFaltante(fila)">
+                  <div
+                    class="field"
+                    [class.is-full]="fila.completo"
+                    [class.is-missing]="esFaltante(fila)"
+                    [class.paper-flash]="esDestacado(fila)"
+                    [attr.tabindex]="esFaltante(fila) ? -1 : null"
+                    [attr.data-slot]="esFaltante(fila) ? fila.slot : null"
+                  >
                     <span class="label">{{ fila.etiqueta }}</span>
 
                     <!--

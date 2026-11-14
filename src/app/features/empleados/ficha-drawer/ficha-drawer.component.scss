@@ -369,6 +369,25 @@
   color: var(--color-stamp);
 }
 
+// The row of missing fields is a list of doors, not a value: the sentence is
+// written by the labels themselves, so the row draws no rule of its own.
+.value.is-links {
+  border-bottom: 0;
+}
+
+// A door on paper: the same word the sheet already prints, with a target a
+// thumb can hit. The button is reset whole — a UA button brings its own fill,
+// bevel and padding, and every one of them would read as a control — and then
+// dressed as a line of ink. The 44 px come from the line height, so the label
+// stays centred without a second declaration for it.
+.missing-link {
+  all: unset;
+  display: inline-block;
+  line-height: 44px;
+  border-bottom: 1px dotted var(--color-paper-muted);
+  color: var(--color-paper-muted);
+}
+
 // The seal of the sheet. Absolute at the top right of the paper, turned a few
 // degrees: a stamp is pressed by hand, it does not sit in a grid.
 .stamp {

@@ -271,6 +271,32 @@ function boton(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLButt
   );
 }
 
+/** The doors of the missing-field list of `Estado`, in the order it prints them. */
+function faltantesDe(fixture: ComponentFixture<FichaHost>): HTMLButtonElement[] {
+  return Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('.missing-link'));
+}
+
+/** One door of the list, by the label the user reads on it. */
+function faltante(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLButtonElement {
+  const encontrada = faltantesDe(fixture).find(
+    (elemento) => (elemento.textContent ?? '').trim() === etiqueta,
+  );
+  if (!encontrada) {
+    throw new Error(`No missing-field button labelled ${etiqueta}`);
+  }
+  return encontrada;
+}
+
+/** The row of the sheet that carries the mark of a jump, if there is one. */
+function destacados(fixture: ComponentFixture<FichaHost>): HTMLElement[] {
+  return Array.from(host(fixture).querySelectorAll<HTMLElement>('.paper-flash'));
+}
+
+/** Lets a timer of the component run: the mark of a jump lives on a real one. */
+async function esperar(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /** Presses a key on the strip the way a keyboard does: it bubbles to the list. */
 function pulsar(fixture: ComponentFixture<FichaHost>, key: string): void {
   const activa = host(fixture).querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
@@ -337,8 +363,16 @@ async function abrirFormatoBaja(fixture: ComponentFixture<FichaHost>): Promise<v
 }
 
 describe('FichaDrawer', () => {
+  /**
+   * jsdom ships no `scrollIntoView`, and the jump into a sheet is observed
+   * through this stub. Production code calls the platform API unchanged.
+   */
+  let desplazamiento: ReturnType<typeof vi.fn>;
+
   beforeEach(async () => {
     patchDialogPrototype();
+    desplazamiento = vi.fn();
+    Element.prototype.scrollIntoView = desplazamiento as unknown as Element['scrollIntoView'];
     await TestBed.configureTestingModule({
       imports: [FichaHost],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -347,6 +381,7 @@ describe('FichaDrawer', () => {
   });
 
   afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
     httpMock.verify();
     TestBed.resetTestingModule();
   });
@@ -649,6 +684,107 @@ describe('FichaDrawer', () => {
     expect(badge('Formación')?.textContent?.trim()).toBe('1');
     expect(badge('Plaza')).toBeNull();
     expect(badge('Estado')).toBeNull();
+  });
+
+  it('lists the missing fields of Estado as buttons that read as paper', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+    await irAEstado(fixture);
+
+    // One door per missing field, in the order the backend lists them, and each
+    // one keeps the Spanish label the rest of the screen uses.
+    expect(faltantesDe(fixture).map((elemento) => elemento.textContent?.trim())).toEqual([
+      'CURP',
+      'Entidad de nacimiento',
+    ]);
+    expect(faltante(fixture, 'CURP').getAttribute('aria-label')).toBe('Ir al campo CURP');
+
+    // It is a real button of the sheet, not a value: reachable with Tab,
+    // pressable with Enter and Space, and `type="button"` keeps it out of any
+    // form the folder may one day sit in.
+    expect(faltante(fixture, 'CURP').type).toBe('button');
+
+    // The sentence of the row still reads as one sentence.
+    expect(valueOf(fixture, 'Campos faltantes')).toBe('CURP, Entidad de nacimiento');
+
+    // Nothing is marked until somebody is sent somewhere.
+    expect(destacados(fixture)).toEqual([]);
+  });
+
+  it('takes the missing field to its sheet, marks it and lets the mark go', async () => {
+    const fixture = await abrir();
+    await responder(fixture, {
+      ...FICHA,
+      gestion_interna: {
+        ...FICHA.gestion_interna,
+        estado_expediente: {
+          estado: 'incompleto',
+          total_faltantes: 3,
+          // Two sheets, so the jump is proven on the mapping and not on luck.
+          campos_faltantes: ['curp', 'entidad_nacimiento', 'generacion'],
+        },
+      },
+    });
+    await irAEstado(fixture);
+
+    faltante(fixture, 'CURP').click();
+    await fixture.whenStable();
+
+    // The sheet that owns the box is on screen.
+    expect(tab(fixture, 'Ficha').getAttribute('aria-selected')).toBe('true');
+    expect(fieldOf(fixture, 'CURP')?.classList.contains('is-missing')).toBe(true);
+
+    // The box is marked, and it is the only thing marked.
+    const marcados = destacados(fixture);
+    expect(marcados.length).toBe(1);
+    expect(marcados[0]).toBe(fieldOf(fixture, 'CURP'));
+
+    // The sheet was scrolled to the middle of it, smoothly, and the focus landed
+    // on the same box a sighted reader is looking at.
+    expect(desplazamiento).toHaveBeenCalledTimes(1);
+    expect(desplazamiento).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+    expect(desplazamiento.mock.contexts[0]).toBe(fieldOf(fixture, 'CURP'));
+    expect(document.activeElement).toBe(fieldOf(fixture, 'CURP'));
+
+    // The mark is due to `--motion-flash`; the drawer only keeps the class long
+    // enough for it to play.
+    await esperar(2100);
+    fixture.detectChanges();
+    expect(destacados(fixture)).toEqual([]);
+
+    // A field of another sheet goes the same way, through the same mapping.
+    await irAEstado(fixture);
+    faltante(fixture, 'Generación').click();
+    await fixture.whenStable();
+
+    expect(tab(fixture, 'Formación').getAttribute('aria-selected')).toBe('true');
+    expect(destacados(fixture)).toEqual([fieldOf(fixture, 'Generación')]);
+  });
+
+  it('leaves a missing key with no box as text, without a door', async () => {
+    const fixture = await abrir();
+    await responder(fixture, {
+      ...FICHA,
+      gestion_interna: {
+        ...FICHA.gestion_interna,
+        estado_expediente: {
+          estado: 'incompleto',
+          total_faltantes: 2,
+          campos_faltantes: ['curp', 'desconocido'],
+        },
+      },
+    });
+    await irAEstado(fixture);
+
+    // The unknown key keeps its name in the sentence and gets no button: a door
+    // into a sheet with nothing to show is worse than no door at all.
+    expect(faltantesDe(fixture).map((elemento) => elemento.textContent?.trim())).toEqual(['CURP']);
+    expect(valueOf(fixture, 'Campos faltantes')).toBe('CURP, Desconocido');
+
+    // And nothing was opened or marked behind its back.
+    expect(tab(fixture, 'Estado').getAttribute('aria-selected')).toBe('true');
+    expect(destacados(fixture)).toEqual([]);
+    expect(desplazamiento).not.toHaveBeenCalled();
   });
 
   it('prints a placeholder for a value nobody has filled', async () => {

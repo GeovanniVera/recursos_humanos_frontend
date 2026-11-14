@@ -129,9 +129,28 @@ const CAMPOS_EXPEDIENTE: Readonly<Record<string, CampoExpediente>> = {
   generacion: { slot: 'generacion', tab: 'formacion' },
 };
 
-/** One line of the grid of a sheet: a section subtitle or a filled field. */
+/**
+ * One missing field of `Estado`, ready to be a door into the sheet that holds
+ * it. `tab` and `slot` are `null` for a key this screen does not know: it has
+ * nowhere to go, so it stays text.
+ */
+interface FaltaExpediente {
+  /** Key as the backend spells it, which is what tells two entries apart. */
+  clave: string;
+  /** Spanish label of the field. */
+  etiqueta: string;
+  /** Sheet that owns the box, or `null` when no box does. */
+  tab: TabId | null;
+  /** Box of the sheet the key fills, or `null` when no box does. */
+  slot: CampoSlot | null;
+}
+
+/**
+ * One line of the grid of a sheet: a section subtitle, a filled field, or the
+ * list of what the record is missing.
+ */
 interface FilaFicha {
-  tipo: 'subtitulo' | 'campo';
+  tipo: 'subtitulo' | 'campo' | 'faltantes';
   etiqueta: string;
   valor: string;
   /** `true` when the record carries nothing: the value prints as a placeholder. */
@@ -174,6 +193,16 @@ const SKELETON_LINES = 8;
  * slam a seal that nobody just pressed.
  */
 const SLAM_RESET_MS = 900;
+
+/**
+ * How long a field stays marked after the reader was sent to it, in
+ * milliseconds.
+ *
+ * The animation itself is `--motion-flash`; this is only the bookkeeping, so the
+ * mark is cleared once the swipe certainly faded and never lingers over a field
+ * the reader already reached by hand.
+ */
+const FLASH_RESET_MS = 2000;
 
 /**
  * The full record of one worker, on paper.
@@ -276,6 +305,14 @@ export class FichaDrawer {
   protected readonly golpeSello = signal(false);
 
   /**
+   * Box of the sheet the reader was just sent to, or `null`.
+   *
+   * It is a slot and not a row: the sheet is rebuilt when the tab changes, and
+   * the box has to stay marked across that rebuild.
+   */
+  protected readonly campoDestacado = signal<CampoSlot | null>(null);
+
+  /**
    * Whether the termination can be asked for right now.
    *
    * The same rule the `Estado` sheet reads: a worker who is not active has
@@ -296,6 +333,9 @@ export class FichaDrawer {
   /** What a field the backend listed as missing reads. */
   protected readonly textoFaltante = MISSING_VALUE;
 
+  /** What the list of missing fields reads when there is nothing to list. */
+  protected readonly textoNinguno = NO_MISSING;
+
   /**
    * Every request the panel wants to send.
    *
@@ -306,9 +346,13 @@ export class FichaDrawer {
   private readonly bajaRequests = new Subject<number | null>();
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private selloTimer: ReturnType<typeof setTimeout> | null = null;
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Buttons of the tab strip, for the roving focus of the arrow keys. */
   private readonly tabButtons = viewChildren<ElementRef<HTMLButtonElement>>('tabRef');
+
+  /** The sheet: the scroll container a jump measures and moves. */
+  private readonly hojaRef = viewChild<ElementRef<HTMLElement>>('hojaRef');
 
   /** The annex over the folder: what receives the focus when it opens. */
   private readonly panelRef = viewChild(FichaPanel);
@@ -373,13 +417,34 @@ export class FichaDrawer {
     return conteo;
   });
 
-  /** Missing fields with their Spanish label, as `Estado` lists them. */
-  protected readonly etiquetaFaltantes = computed(() => {
-    const claves = this.clavesFaltantes();
-    if (claves.length === 0) {
-      return NO_MISSING;
+  /**
+   * Missing fields as `Estado` lists them, one entry per box of the sheet.
+   *
+   * The list is also the way into each box, so it is keyed by slot and not by
+   * backend spelling: `estado_civil` and `estado_civil_id` are the same box and
+   * must not become two doors. A key no box fills keeps its name in the sentence
+   * with no door at all.
+   */
+  protected readonly faltantesLista = computed<readonly FaltaExpediente[]>(() => {
+    const vistas = new Set<string>();
+    const faltas: FaltaExpediente[] = [];
+
+    for (const clave of this.clavesFaltantes()) {
+      const campo = CAMPOS_EXPEDIENTE[clave];
+      const llave = campo?.slot ?? clave;
+      if (vistas.has(llave)) {
+        continue;
+      }
+      vistas.add(llave);
+      faltas.push({
+        clave,
+        etiqueta: etiquetaCampoExpediente(clave),
+        tab: campo?.tab ?? null,
+        slot: campo?.slot ?? null,
+      });
     }
-    return claves.map((clave) => etiquetaCampoExpediente(clave)).join(', ');
+
+    return faltas;
   });
 
   /** `Folio 0012`, padded so the numbers of a series line up. */
@@ -422,6 +487,10 @@ export class FichaDrawer {
   /** Whether the backend listed the field of this row as missing. */
   protected readonly esFaltante = (fila: FilaFicha): boolean =>
     fila.slot !== null && this.slotsFaltantes().has(fila.slot);
+
+  /** Whether this row is the box the reader was just sent to. */
+  protected readonly esDestacado = (fila: FilaFicha): boolean =>
+    fila.slot !== null && fila.slot === this.campoDestacado();
 
   /** The sentence under the title of the `Estado` sheet. */
   private readonly selloExpediente = computed<Sello>(() => {
@@ -492,6 +561,10 @@ export class FichaDrawer {
         this.tabActiva.set('ficha');
         this.vistaL2.set(null);
         this.focoOrigen = null;
+        // A mark on a box nobody is looking at is a mark that outlives its
+        // reason: the next visit starts unmarked.
+        this.campoDestacado.set(null);
+        this.clearFlashTimer();
         this.scheduleClearOnClose();
         return;
       }
@@ -564,6 +637,26 @@ export class FichaDrawer {
     }
   }
 
+  /**
+   * Sends the reader from the list of `Estado` to the box that holds the field.
+   *
+   * The sheet changes first and the move happens once it rendered: the box does
+   * not exist yet when the press is handled, so a jump decided now would measure
+   * the sheet the reader is leaving. The focus goes with the scroll, because a
+   * keyboard has to land where a pointer looks.
+   */
+  protected irAlCampo(falta: FaltaExpediente): void {
+    const { tab, slot } = falta;
+    if (tab === null || slot === null) {
+      return;
+    }
+
+    this.tabActiva.set(tab);
+    this.destacar(slot);
+
+    afterNextRender(() => this.centrarEn(slot), { injector: this.injector });
+  }
+
   // -------------------------------------------------------------------------
   // Second level
   // -------------------------------------------------------------------------
@@ -626,6 +719,48 @@ export class FichaDrawer {
       this.selloTimer = null;
       this.golpeSello.set(false);
     }, SLAM_RESET_MS);
+  }
+
+  /**
+   * Marks a box as the place to type, and lets the mark go once it played.
+   *
+   * The mark is the class, the fade is `--motion-flash` in the shared layer, and
+   * this timer only decides when the class leaves.
+   */
+  private destacar(slot: CampoSlot): void {
+    this.campoDestacado.set(slot);
+    this.clearFlashTimer();
+    this.flashTimer = setTimeout(() => {
+      this.flashTimer = null;
+      this.campoDestacado.set(null);
+    }, FLASH_RESET_MS);
+  }
+
+  /** Scrolls a box to the middle of the sheet and gives it the focus. */
+  private centrarEn(slot: CampoSlot): void {
+    const campo = this.campoDe(slot);
+    if (campo === null) {
+      return;
+    }
+
+    if (typeof campo.scrollIntoView === 'function') {
+      // A reader who asked for stillness gets the jump without the travel.
+      const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      try {
+        campo.scrollIntoView({ block: 'center', behavior: quieto ? 'auto' : 'smooth' });
+      } catch {
+        // An engine that does not read the options object takes the bare call.
+        campo.scrollIntoView();
+      }
+    }
+
+    // The focus must not scroll again: it would cut the smooth move short.
+    campo.focus({ preventScroll: true });
+  }
+
+  /** The box of the sheet that fills a slot, or `null` when it is not on screen. */
+  private campoDe(slot: CampoSlot): HTMLElement | null {
+    return this.hojaRef()?.nativeElement.querySelector<HTMLElement>(`[data-slot="${slot}"]`) ?? null;
   }
 
   /**
@@ -776,7 +911,7 @@ export class FichaDrawer {
 
     filas.push(
       this.filaTexto('Estado del expediente', pendientes, null, true),
-      this.filaTexto('Campos faltantes', this.etiquetaFaltantes(), null, true),
+      this.filaFaltantes(),
     );
 
     return filas;
@@ -788,6 +923,23 @@ export class FichaDrawer {
 
   private subtitulo(etiqueta: string): FilaFicha {
     return { tipo: 'subtitulo', etiqueta, valor: '', vacio: false, slot: null, completo: true };
+  }
+
+  /**
+   * The row of the missing fields.
+   *
+   * It carries no value: the list is rendered field by field, because each known
+   * field is a button and each unknown one is only text.
+   */
+  private filaFaltantes(): FilaFicha {
+    return {
+      tipo: 'faltantes',
+      etiqueta: 'Campos faltantes',
+      valor: '',
+      vacio: true,
+      slot: null,
+      completo: true,
+    };
   }
 
   /** A row whose value is text, printed as it arrives. */
@@ -893,9 +1045,17 @@ export class FichaDrawer {
     }
   }
 
+  private clearFlashTimer(): void {
+    if (this.flashTimer !== null) {
+      clearTimeout(this.flashTimer);
+      this.flashTimer = null;
+    }
+  }
+
   private clearTimers(): void {
     this.clearCloseTimer();
     this.clearSelloTimer();
+    this.clearFlashTimer();
   }
 
   private scheduleClearOnClose(): void {
