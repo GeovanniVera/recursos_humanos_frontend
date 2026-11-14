@@ -81,4 +81,10 @@
   .scrim {
     animation: none;
   }
+
+  // Folding the drawer is a width animation of this grid. Reduced motion keeps
+  // the new width but drops the travel between the two.
+  .shell {
+    transition: none;
+  }
 }
