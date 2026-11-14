@@ -1,0 +1,361 @@
+@use '../../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// The form written on the alta's sheet
+//
+// The folder — desk, manila, tab strip and the sheet's frame — is
+// `alta-expediente`, which projects this content into the only scroll container
+// of the panel. What lives here is the form and what it needs to say: sections,
+// fields, notes, failures.
+//
+// The ink of a control is `--color-paper-value` and not `--color-paper-ink`: the
+// sheet is paper in every theme, while `--color-paper-ink` is the ink of the
+// *desk* — gold on guinda (#f1dda0 over #fffef9, 1.2:1) and pale blue on dark
+// (~1.9:1). The desk chrome of the bar still uses it; the form cannot.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// One section of the form
+// ---------------------------------------------------------------------------
+
+// A fieldset carries the grouping for a screen reader; the frame is reset so
+// the sheet stays the only surface. Everything inside sits clear of the ruled
+// margin, the way text does on a printed sheet.
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 var(--paper-indent);
+  border: 0;
+}
+
+.group-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-paper-value);
+}
+
+.group-hint {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// Two fields per row, one below `bp.$bp-sm`: a CURP and an address need the
+// room of a whole line.
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.field.is-wide,
+.grid-note {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// Controls — a line written on the sheet
+// ---------------------------------------------------------------------------
+
+// No box, no fill, no chrome beyond the rule the control sits on. The caret is
+// the affordance; the rule carries the states: muted at rest, ink on hover and
+// focus, the stamp when the value is rejected. `<select>` keeps the platform's
+// own arrow, which is the affordance of a choice and needs no painting.
+.control {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--color-paper-muted);
+  border-radius: var(--radius-none);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.control::placeholder {
+  color: var(--color-paper-empty);
+}
+
+.control:hover:not(:disabled):not(.control-static),
+.control:focus-visible:not(.control-static) {
+  border-bottom-color: var(--color-paper-value);
+}
+
+// The ring is the global one: the paper world has no focus token of its own. It
+// is a halo, so the rule underneath and the darkened label carry the state too —
+// which is what keeps the cue visible where the halo is faint.
+.control:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+// The label darkens with the control, so the ring is not the only cue.
+.field:focus-within .label {
+  color: var(--color-paper-value);
+}
+
+.control-area {
+  min-height: 96px;
+  padding-top: 6px;
+  resize: vertical;
+  // Ruled lines, carried with the text instead of glued to the box.
+  background-attachment: local;
+  background-image: repeating-linear-gradient(
+    var(--transparent) 0 23px,
+    var(--color-paper-line) 23px 24px
+  );
+}
+
+// A value the form derives or reads: it keeps the rule of a control so the row
+// reads evenly, but it is said in muted ink, because there is nothing to type.
+.control-static {
+  min-height: 24px;
+  padding-bottom: 3px;
+  border-bottom: 1px dotted var(--color-paper-line);
+  color: var(--color-paper-muted);
+  font-size: 14px;
+}
+
+.control.control-static:hover,
+.control.control-static:focus-visible {
+  border-bottom-color: var(--color-paper-line);
+}
+
+// A field the form fills by itself and locks: the note underneath is what says
+// so, and the rule stays quiet so it does not invite a click.
+.control:disabled {
+  border-bottom-color: var(--color-paper-line);
+  color: var(--color-paper-muted);
+  cursor: default;
+}
+
+// A value the backend would reject: the rule turns to the stamp, paired with
+// the message underneath, so the state never rests on colour alone.
+.control.is-invalid {
+  border-bottom-color: var(--color-stamp);
+}
+
+// The institutional address is typed without its domain. The rule belongs to the
+// pair, so it is drawn once, by the wrapper, and the input inside keeps only its
+// height and its font.
+.control-group {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-bottom: 2px solid var(--color-paper-muted);
+}
+
+.control-group:hover,
+.control-group:focus-within {
+  border-bottom-color: var(--color-paper-value);
+}
+
+// The wrapper is the box the ring is drawn around, so the control inside it does
+// not draw a second one.
+.control-group:focus-within {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.control-group .control {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  border: 0;
+}
+
+.control-group .control:focus-visible {
+  outline: none;
+}
+
+.control-group.is-invalid {
+  border-bottom-color: var(--color-stamp);
+}
+
+// Fixed part of the address: it travels with every value, so it is announced and
+// never editable.
+.control-suffix {
+  flex: none;
+  padding-inline-end: 2px;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  color: var(--color-paper-muted);
+  white-space: nowrap;
+}
+
+// ---------------------------------------------------------------------------
+// What the form says under a field
+// ---------------------------------------------------------------------------
+
+.field-error {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-stamp);
+}
+
+.field-error::before {
+  content: '✕ ';
+}
+
+.field-hint {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-paper-muted);
+}
+
+.field-hint::before {
+  content: '· ';
+}
+
+// A statement of the form itself, not of a control: the two values a mando medio
+// post fixes. It spans the row, so it reads as a note on the section.
+.note {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--color-paper-muted);
+  border-radius: var(--radius-paper-sm);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// Loading and failure of the sheet
+// ---------------------------------------------------------------------------
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.line {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-paper-xs);
+  background: var(--color-paper-line);
+}
+
+.line.is-short {
+  width: 58%;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: var(--paper-indent);
+}
+
+.state-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-stamp);
+}
+
+.state-text {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// The retry of the catalogue failure. It sits on the sheet, so its ink is the
+// sheet's and not the desk's.
+.action {
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-paper-value);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .action:hover:not(:disabled) {
+    background: var(--color-paper-value);
+    color: var(--color-paper);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
+
+@include bp.down(bp.$bp-sm) {
+  // Two columns of a CURP do not fit a phone: the sheet becomes a single line of
+  // boxes, the way a narrow form breaks.
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
+// High contrast takes colour and fill away, so every state told apart by ink is
+// restated with line and shape.
+@media (forced-colors: active) {
+  .control:focus-visible,
+  .control-group:focus-within {
+    outline: 2px solid;
+  }
+
+  .control.is-invalid,
+  .control-group.is-invalid {
+    border-bottom-style: double;
+  }
+}

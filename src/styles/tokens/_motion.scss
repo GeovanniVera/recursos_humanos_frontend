@@ -10,6 +10,9 @@
   --motion-slow: 900ms;
   --motion-spin: 750ms;
   --motion-shimmer: 1.6s;
+  // How long the marker of a field someone was sent to takes to fade out. The
+  // drawer that applies it keeps the class for the same two seconds.
+  --motion-flash: 2s;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   // The canvas specifies 70-100ms between list items; 80ms is the midpoint.
   --motion-stagger: 80ms;
@@ -116,6 +119,18 @@
   }
 }
 
+// A box the reader was just sent to: a swipe of marker that fades on its own.
+// Only the fill travels — nothing moves and nothing scales, so the sheet under
+// it never shifts.
+@keyframes paper-flash {
+  from {
+    background-color: var(--color-paper-flash);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
 // Entrance utilities. Consumers add the class; the duration still comes
 // from tokens so it stays themeable.
 .enter-rise {
@@ -149,6 +164,21 @@
   }
 }
 
+// Consumers add the class to a box; the drawer that knows when the mark is due
+// is the one that removes it.
+.paper-flash {
+  animation: paper-flash var(--motion-flash) var(--motion-ease) both;
+}
+
+// High contrast takes the fill away, so the mark is restated as a line: the box
+// stays told apart for as long as the flash runs.
+@media (forced-colors: active) {
+  .paper-flash {
+    outline: 2px solid;
+    outline-offset: 2px;
+  }
+}
+
 // Respect reduced motion: AGENTS.md §8: sin desplazamientos ni escalas, solo fundido.
 // Zeroing the movement offsets maintains accessible, calm fades without destroying
 // CSS durations or breaking UI micro-interactions.
@@ -156,6 +186,13 @@
   .skeleton-shimmer::after {
     display: none;
     animation: none;
+  }
+
+  // The mark is information, not decoration: it stays, but it appears still and
+  // leaves when the drawer takes the class away. Nothing moves, nothing scales.
+  .paper-flash {
+    animation: none;
+    background-color: var(--color-paper-flash);
   }
 
   :root {

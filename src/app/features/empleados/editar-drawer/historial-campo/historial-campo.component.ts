@@ -14,10 +14,10 @@ import {
   CampoConHistorial,
   EditarEmpleadoService,
   HistoriaCampo,
-} from '../../../core/empleados/editar.service';
-import { Button } from '../../../shared/ui/button/button.component';
-import { Pagination } from '../../../shared/ui/pagination/pagination.component';
-import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
+} from '../../../../core/empleados/editar.service';
+import { Button } from '../../../../shared/ui/button/button.component';
+import { Pagination } from '../../../../shared/ui/pagination/pagination.component';
+import { AlertBanner } from '../../../../shared/ui/alert-banner/alert-banner.component';
 
 /**
  * Read-only list of the values a field has already had.

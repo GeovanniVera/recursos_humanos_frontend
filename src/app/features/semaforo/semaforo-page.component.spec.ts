@@ -1,14 +1,22 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { routes } from '../../app.routes';
 import { authGuard } from '../../core/auth/auth.guard';
+import { AuthService } from '../../core/auth/auth.service';
+import { FormularioCatalogos } from '../../core/empleados/alta.models';
+import { FichaEmpleado, HistorialBaja } from '../../core/empleados/ficha.models';
 import { EmpleadoSemaforo, SemaforoResponse } from '../../core/semaforo/semaforo.models';
+import { EditarDrawer } from '../empleados/editar-drawer/editar-drawer.component';
+import { FichaDrawer } from '../empleados/ficha-drawer/ficha-drawer.component';
 import { SemaforoPage } from './semaforo-page.component';
 
 const URL = `${environment.apiBaseUrl}/semaforo`;
+const URL_EMPLEADOS = `${environment.apiBaseUrl}/empleados`;
+const URL_FORMULARIO = `${URL_EMPLEADOS}/formulario`;
 // Fixtures belong exclusively to unit tests; runtime always uses HttpClient.
 const ROWS: EmpleadoSemaforo[] = [
   {
@@ -77,6 +85,81 @@ function patchDialog(): void {
   };
 }
 
+/** Record the drawer is asked for. Only the fields the assertions read are real. */
+function fichaDe(id: number, nombre: string): FichaEmpleado {
+  return {
+    id,
+    identificacion: {
+      num_empleado: String(id),
+      nombre,
+      curp: null,
+      fecha_nacimiento: '1990-05-14',
+      sexo: 'M',
+      estado_civil_id: 2,
+      estado_civil: 'Casado',
+      entidad_nacimiento: 'Estado de México',
+    },
+    plaza: {
+      area_id: 1,
+      area: 'Área A',
+      puesto_id: 2,
+      puesto: 'Analista',
+      tipo_puesto: 'Confianza',
+      categoria_cct_id: 1,
+      categoria_cct_clave: 'CCT-01',
+      tipo_personal: 'Sindicalizado',
+      tipo_jornada: 'Completa',
+      fecha_inicio_puesto: '2020-01-15',
+      fecha_ingreso_institucion: '2018-03-01',
+      fecha_ingreso_gobierno: '2015-09-01',
+      antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
+    },
+    contacto: { correo_institucional: 'persona@utn.edu.mx' },
+    estudios: {
+      nivel_estudios_id: 3,
+      nivel_estudios: 'Licenciatura',
+      escuela_procedencia: 'UNAM',
+      generacion: '2012-2016',
+    },
+    experiencia: {
+      exp_publico_anios: 5,
+      exp_privado_anios: 3,
+      trabaja_otro_lugar: 'No',
+      trabaja_otro_donde: null,
+    },
+    gestion_interna: {
+      activo: true,
+      fecha_baja: null,
+      motivo_baja: null,
+      nota_baja: null,
+      observaciones: null,
+      estado_expediente: {
+        estado: 'incompleto',
+        total_faltantes: 4,
+        campos_faltantes: ['curp', 'entidad_nacimiento', 'generacion', 'escuela_procedencia'],
+      },
+    },
+  };
+}
+
+/**
+ * Catalogues the edition folder reads alongside the record.
+ *
+ * The wiring is what this screen tests, so the payload is the smallest one that
+ * lets the sheet render.
+ */
+const CATALOGOS: FormularioCatalogos = {
+  areas: [],
+  puestos: [],
+  categorias_cct: [],
+  niveles_estudios: [],
+  estados_civiles: [],
+  tipos_personal: ['Sindicalizado'],
+  sexos: ['Masculino', 'Femenino'],
+  tipos_jornada: ['Matutina'],
+  trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
+};
+
 describe('SemaforoPage', () => {
   let http: HttpTestingController;
   let fixture: ComponentFixture<SemaforoPage>;
@@ -110,6 +193,54 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
   };
 
+  /** Answers the two streams the record folder opens: the record and its log. */
+  async function responderFicha(
+    id = 7,
+    ficha: FichaEmpleado = fichaDe(id, 'Ana Prueba'),
+    bajas: readonly HistorialBaja[] = [],
+  ): Promise<void> {
+    http.expectOne(`${URL_EMPLEADOS}/${id}`).flush({ data: ficha });
+    http.expectOne(`${URL_EMPLEADOS}/${id}/historial-bajas`).flush({ data: bajas });
+    await fixture.whenStable();
+  }
+
+  /** Opens the record of the first row the way the name button does. */
+  const abrirFicha = async (): Promise<void> => {
+    root().querySelector<HTMLButtonElement>('app-row-link button')?.click();
+    await fixture.whenStable();
+    await responderFicha();
+  };
+
+  /** Moves the record folder to one of its sheets. */
+  const tabDeFicha = async (etiqueta: string): Promise<void> => {
+    Array.from(root().querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+      .find((boton) => (boton.textContent ?? '').includes(etiqueta))
+      ?.click();
+    await fixture.whenStable();
+  };
+
+  /** Value printed under a label inside one block of the record. */
+  const valorEn = (bloque: Element | null, etiqueta: string): string | undefined => {
+    const labels = Array.from(bloque?.querySelectorAll('.label') ?? []);
+    const label = labels.find((elemento) => elemento.textContent?.trim() === etiqueta);
+    return label?.parentElement?.querySelector('.value')?.textContent?.trim();
+  };
+
+  /** Loads a session with one role, the way the shell does on entry. */
+  const conRol = async (rol: string): Promise<void> => {
+    TestBed.inject(AuthService).cargarSesion().subscribe();
+    http
+      .expectOne((candidate) => candidate.url.endsWith('/auth/sesion'))
+      .flush({ usuario_id: 1, empleado_id: 9, nombre: 'Ana Martínez', rol });
+    await fixture.whenStable();
+  };
+
+  const ficha = () =>
+    fixture.debugElement.query(By.directive(FichaDrawer)).componentInstance as FichaDrawer;
+
+  const edicion = () =>
+    fixture.debugElement.query(By.directive(EditarDrawer)).componentInstance as EditarDrawer;
+
   it('replaces the lazy placeholder under the existing authenticated shell', async () => {
     request().flush(page());
     const shell = routes.find((r) => r.path === '');
@@ -141,7 +272,10 @@ describe('SemaforoPage', () => {
     );
     expect(root().querySelector('tbody tr')?.classList.contains('is-clickable')).toBe(true);
     expect(root().textContent).not.toContain('Enviar correo');
-    expect(root().textContent).not.toContain('Editar');
+    // The table offers no edit action of its own: the folders mounted under the
+    // page do carry one (the record's pencil), so the assertion is scoped to the
+    // screen's own surface instead of the whole fixture.
+    expect(root().querySelector('.page')?.textContent).not.toContain('Editar');
   });
   it('uses API counters instead of the three rows and labels all states', async () => {
     await loaded();
@@ -291,46 +425,158 @@ describe('SemaforoPage', () => {
       }
     },
   );
-  it('opens the existing native drawer and fetches only the selected employee', async () => {
+  it('opens the record of the clicked row by its key, and nothing else', async () => {
     await loaded();
+
     root().querySelector<HTMLButtonElement>('app-row-link button')?.click();
     await fixture.whenStable();
-    const req = http.expectOne(`${URL}/7/faltantes`);
-    req.flush({
-      datos: {
-        empleado: { id: 7, num_empleado: '1000', nombre: 'Ana Prueba' },
-        semaforo: {
-          ...ROWS[0].semaforo,
-          detalle_faltantes: [{ campo: 'curp', etiqueta: 'CURP' }],
-        },
-      },
-    });
+
+    // The record endpoint is addressed by the primary key of the row, and the
+    // folder asks for that one worker only: no listing, no detail of the rest.
+    const peticion = http.expectOne(`${URL_EMPLEADOS}/7`);
+    expect(peticion.request.method).toBe('GET');
+    peticion.flush({ data: fichaDe(7, 'Ana Prueba') });
+    http.expectOne(`${URL_EMPLEADOS}/7/historial-bajas`).flush({ data: [] });
     await fixture.whenStable();
+
     expect(root().querySelector('dialog')?.hasAttribute('open')).toBe(true);
-    expect(root().querySelector('dialog')?.textContent).toContain('CURP');
-    expect(root().querySelector('dialog')?.textContent).toContain('78.95');
-    root().querySelector<HTMLButtonElement>('dialog .close')?.click();
+    expect(root().querySelector('.bar-name')?.textContent?.trim()).toBe('Ana Prueba');
+    expect(fixture.componentInstance.empleadoId()).toBe(7);
+  });
+
+  it('closes the record from its own bar', async () => {
+    await loaded();
+    await abrirFicha();
+
+    const cerrar = Array.from(root().querySelectorAll<HTMLButtonElement>('dialog .bar button')).find(
+      (boton) => boton.textContent?.trim() === 'Cerrar',
+    );
+    cerrar?.click();
     await fixture.whenStable();
+
     expect(fixture.componentInstance.drawerOpen()).toBe(false);
   });
-  it('opens the same employee from every cell without duplicate detail requests', async () => {
+
+  it('opens the same employee from every cell without duplicate reads', async () => {
     await loaded();
     const cells = root().querySelectorAll<HTMLTableCellElement>('tbody tr:first-child td');
+
     for (const cell of cells) {
       cell.click();
       await fixture.whenStable();
-      const req = http.expectOne(`${URL}/7/faltantes`);
-      req.flush({
-        datos: {
-          empleado: { id: 7, num_empleado: '1000', nombre: 'Ana Prueba' },
-          semaforo: { ...ROWS[0].semaforo, detalle_faltantes: [] },
-        },
-      });
-      await fixture.whenStable();
+      await responderFicha();
+      expect(fixture.componentInstance.drawerOpen()).toBe(true);
       fixture.componentInstance.drawerOpen.set(false);
       await fixture.whenStable();
     }
+
+    // Every opening was answered above: no request of this worker is still open.
+    expect(http.match((r) => r.url === `${URL_EMPLEADOS}/7`).length).toBe(0);
   });
+
+  it('hands the completeness of the opened row to the record', async () => {
+    await loaded();
+    await abrirFicha();
+    await tabDeFicha('Estado');
+
+    // The figures are the row's own (`78.95 %`, 15 of 19, 4 missing): the
+    // folder prints them without a second request.
+    const bloque = root().querySelector(
+      '[role="group"][aria-label="Completitud del expediente"]',
+    );
+    expect(bloque).not.toBeNull();
+    expect(valorEn(bloque, 'Avance del expediente')).toBe('78.95 % completo');
+    expect(valorEn(bloque, 'Campos completos')).toBe('15');
+    expect(valorEn(bloque, 'Campos faltantes')).toBe('4');
+    expect(valorEn(bloque, 'Total obligatorio')).toBe('19');
+  });
+
+  it('opens the edit folder from the pencil when the role may edit', async () => {
+    await conRol('ADMIN');
+    await loaded();
+    await abrirFicha();
+
+    const lapiz = root().querySelector<HTMLButtonElement>('[aria-label="Editar la ficha"]');
+    expect(lapiz).not.toBeNull();
+    lapiz?.click();
+    await fixture.whenStable();
+
+    // The record leaves for the edition, exactly as it does on the roster.
+    expect(fixture.componentInstance.drawerOpen()).toBe(false);
+    expect(fixture.componentInstance.editarId()).toBe(7);
+    expect(fixture.componentInstance.edicionAbierta()).toBe(true);
+
+    http.expectOne(URL_FORMULARIO).flush(CATALOGOS);
+    http.expectOne(`${URL_EMPLEADOS}/7`).flush({ data: fichaDe(7, 'Ana Prueba') });
+    await fixture.whenStable();
+
+    expect(root().querySelectorAll('dialog')[1]?.hasAttribute('open')).toBe(true);
+  });
+
+  it('hides the pencil for a role that may not edit', async () => {
+    await conRol('SECRETARIA');
+    await loaded();
+    await abrirFicha();
+
+    expect(fixture.componentInstance.puedeEditar()).toBe(false);
+    expect(root().querySelector('[aria-label="Editar la ficha"]')).toBeNull();
+  });
+
+  it('asks the semáforo again after a termination so the figures stay true', async () => {
+    await loaded();
+
+    // The folder reports the act; the page owns the reload, and it has to force
+    // it because the query did not change.
+    ficha().bajaRegistrada.emit();
+    await fixture.whenStable();
+
+    const recarga = request();
+    expect(recarga.request.params.get('pagina')).toBe('1');
+    expect(recarga.request.params.get('por_pagina')).toBe('25');
+    recarga.flush(page([ROWS[1], ROWS[2]]));
+    await fixture.whenStable();
+
+    expect(root().textContent).not.toContain('Ana Prueba');
+  });
+
+  it('asks the semáforo again after an edit so the figures stay true', async () => {
+    await loaded();
+
+    edicion().actualizado.emit(fichaDe(7, 'Ana Prueba'));
+    await fixture.whenStable();
+
+    const recarga = request();
+    expect(recarga.request.params.get('ordenar_por')).toBe('num_empleado');
+    recarga.flush(page());
+    await fixture.whenStable();
+  });
+
+  it.each([403, 500])(
+    'explains a %s of the record inside the folder without leaking the body',
+    async (status) => {
+      await loaded();
+
+      root().querySelector<HTMLButtonElement>('app-row-link button')?.click();
+      await fixture.whenStable();
+
+      http
+        .expectOne(`${URL_EMPLEADOS}/7`)
+        .flush({ message: 'SQL SECRET TRACE' }, { status, statusText: 'Error' });
+      http.expectOne(`${URL_EMPLEADOS}/7/historial-bajas`).flush({ data: [] });
+      await fixture.whenStable();
+
+      const alerta = root().querySelector('dialog [role="alert"]');
+      expect(alerta?.textContent).toContain(
+        status === 403
+          ? 'No tienes permisos para ver esta ficha.'
+          : 'No pudimos conectar con el servidor. Revisa tu conexión.',
+      );
+      expect(root().textContent).not.toContain('SQL SECRET');
+      // The failure belongs to the folder: the listing behind it keeps its own
+      // state, and a failing record is not a failing consultation.
+      expect(fixture.componentInstance.error()).toBeNull();
+    },
+  );
   it('keeps the initial selector in sync with the requested page size', async () => {
     await loaded();
     expect(root().querySelector<HTMLSelectElement>('.page-size-select')?.value).toBe('25');

@@ -1,280 +1,457 @@
 @use '../../../../styles/breakpoints' as bp;
 
-// The drawer's own body is the only scroll container and the header and footer
-// are pinned by the component, so this file only lays out the record. Nothing
-// here sets a height: a long file scrolls, the title and the `Cerrar` stay put.
+// ---------------------------------------------------------------------------
+// The expediente
 //
-// The record reads as a document: a masthead that names its subject, then six
-// sheets. Every measurement stays fluid — the panel is 760px on a desktop and
-// as narrow as the phone allows — so there is no media query in this file.
-//
-// --- Footer actions ---------------------------------------------------------
-// The two pending actions sit on the left, the way out on the right. The drawer
-// footer is a flex row justified to the end, so the auto margin on this group is
-// what separates the two sides.
-.actions-left {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-3);
-  margin-inline-end: auto;
-}
+// A desk, a manila folder, a sheet. Geometry here is deliberately in pixels:
+// this is the one surface whose proportions carry the metaphor, and `--space-*`
+// would round a 46 px ruled margin into a card. Radii, shadows, colours and
+// motion still come from tokens — the style contract polices those, not lengths.
+// ---------------------------------------------------------------------------
 
-.icon-action {
-  display: grid;
-  place-items: center;
-  width: var(--space-8);
-  height: var(--space-8);
-  padding: 0;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-ghost);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition:
-    color var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease);
-}
-
-.icon-action:hover,
-.icon-action:focus-visible {
-  border-color: var(--color-accent);
-  color: var(--color-text-primary);
-}
-
-.icon-action svg {
-  width: var(--space-5);
-  height: var(--space-5);
+// The host is a child of the page, not of the panel: the drawer lives in its
+// template and renders a fixed <dialog>, so the host must contribute no box at
+// all. `display: block` with a height made it reserve a full viewport of empty
+// space even while closed, which grew the page and gave it a scrollbar. With
+// `display: contents` the folder takes its height from the drawer's own body.
+:host {
+  display: contents;
 }
 
 .ficha {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  height: 100%;
+  min-height: 0;
+  // The frame of the panel: 14 px of desk between the folder and the page.
+  padding: 14px;
+  background: var(--color-desk);
 }
+
+// The second level of the record slides over the folder from its own right
+// edge, so the folder is the containing block: the annex is absolutely
+// positioned against this box.
+.ficha.is-l2 .bar,
+.ficha.is-l2 .folder {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 
 // ---------------------------------------------------------------------------
-// Masthead
+// Bar — who the folder is about
 // ---------------------------------------------------------------------------
 
-.document-head {
+.bar {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  // The rule closes the head and separates it from the first sheet.
-  padding-block-end: var(--space-4);
-  border-bottom: var(--border-width) solid var(--color-border-default);
-}
-
-// The name of the worker is the title of the document, so it takes the title
-// role of the scale — the panel's own chrome title sits one step below it.
-.document-name {
-  margin: 0;
-  font: var(--text-title);
-  color: var(--color-text-primary);
-}
-
-// The number and the area are the identity of the file under the name.
-.document-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin: 0;
-  font: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-secondary);
-}
-
-// The number is a code, so it gets the monospace; the area is a name and keeps
-// the sans of the line it sits in.
-.document-number {
-  font-family: var(--font-mono);
-}
-
-.document-states {
-  display: flex;
-  flex-wrap: wrap;
+  flex: none;
   align-items: center;
-  gap: var(--space-2);
+  gap: 12px;
+  padding: 2px 2px 10px;
 }
 
-// ---------------------------------------------------------------------------
-// Sheets
-// ---------------------------------------------------------------------------
-
-.block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
-  interpolate-size: allow-keywords;
-}
-
-.block::details-content {
-  block-size: 0;
-  opacity: 0;
+.bar-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   overflow: hidden;
-  transition:
-    block-size var(--motion-fast) var(--motion-ease),
-    opacity var(--motion-fast) var(--motion-ease),
-    content-visibility var(--motion-fast) var(--motion-ease) allow-discrete;
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-paper-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.block[open]::details-content {
-  block-size: auto;
-  opacity: 1;
-}
-
-// The index and the heading share one row: the number is what makes the six
-// sheets read as numbered sections of a single document.
-.block-head {
+.bar-actions {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding-block-end: var(--space-2);
-  border-bottom: var(--border-width) solid var(--color-border-default);
+  flex: none;
+  align-items: center;
+  gap: 8px;
 }
 
-// Native accordion: `summary` is the control, so the keyboard, the screen reader
-// and the open/closed state come from the platform instead of a click handler.
-// Every section opens independently: two of them can be open at once.
-.block > summary {
+// Paper control: a 44 px target, a hairline of ink and no fill of its own, so
+// it sits on the desk instead of floating over it.
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-paper-ink);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  list-style: none;
 }
 
-// The UA marker is a triangle that does not follow the type scale; the chevron
-// below replaces it.
-.block > summary::-webkit-details-marker {
+.action svg {
+  width: 18px;
+  height: 18px;
+}
+
+// The one primary action of the panel, when the file can be edited, and the
+// solid action at the foot of `Estado`.
+.action.is-icon,
+.action.is-solid {
+  border-color: var(--color-paper-action);
+  background: var(--color-paper-action);
+  color: var(--color-paper-action-ink);
+}
+
+.action.is-danger {
+  border-color: var(--color-stamp);
+  color: var(--color-stamp);
+}
+
+@media (hover: hover) {
+  .action:hover {
+    background: var(--color-paper-ink);
+    color: var(--color-desk);
+  }
+
+  .action.is-danger:hover {
+    background: var(--color-stamp);
+    color: var(--color-paper);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Folder — the tab strip and the cover
+// ---------------------------------------------------------------------------
+
+.folder {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 3px;
+  margin-bottom: -1px;
+  padding: 0 6px;
+  overflow-x: auto;
+  // Four tabs and no more: a scrollbar under the manila would be furniture.
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
   display: none;
 }
 
-.block > summary:hover .block-title {
-  color: var(--color-accent);
-}
-
-.block-chevron {
-  flex: none;
-  align-self: center;
-  width: var(--space-4);
-  height: var(--space-4);
-  margin-inline-start: auto;
-  color: var(--color-text-secondary);
-  transition: transform var(--motion-fast) var(--motion-ease);
-}
-
-.block[open] .block-chevron {
-  transform: rotate(180deg);
-}
-
-// Decorative: `01` is a position on the page, and reading it aloud before every
-// heading would be noise. The order of the headings already says where we are.
-.block-index {
-  flex: none;
-  font: var(--text-overline);
-  font-family: var(--font-mono);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-overline);
-}
-
-.block-title {
+// A file tab: rounded on top, glued to the cover on the bottom (hence no bottom
+// border and the negative margin of the strip). The four of them share the full
+// width of the folder: each keeps its own width and absorbs an equal share of
+// what is left over, so the strip never ends in dead manila.
+.tab {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
-  font: var(--text-nav-branch);
-  color: var(--color-text-primary);
+  min-height: 44px;
+  // Unselected tabs sit a step lower than the selected one.
+  margin-top: 6px;
+  padding: 9px 14px 7px;
+  border: 1px solid var(--color-manila-edge);
+  border-bottom: 0;
+  border-radius: var(--radius-paper-lg) var(--radius-paper-lg) 0 0;
+  background: var(--color-manila-dark);
+  color: var(--color-manila-ink);
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: margin-top var(--motion-fast) var(--motion-ease);
+}
+
+// The selected tab rises out of the strip and becomes the cover itself.
+.tab.is-active {
+  z-index: 1;
+  margin-top: 0;
+  padding-top: 13px;
+  background: var(--color-manila);
+}
+
+@media (hover: hover) {
+  .tab:hover:not(.is-active) {
+    margin-top: 3px;
+  }
+}
+
+// Badge of missing fields: the stamp's red, so it reads as a mark on paper.
+.nb {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-paper-lg);
+  background: var(--color-stamp);
+  color: var(--color-stamp-on);
+  font-family: var(--font-paper-mono);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.cover {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 14px 14px;
+  border: 1px solid var(--color-manila-edge);
+  // Square where the tab strip begins, round on the other three corners.
+  border-radius: var(--radius-none) var(--radius-paper-md) var(--radius-paper-md)
+    var(--radius-paper-md);
+  background: var(--color-manila);
+  box-shadow: var(--shadow-paper-cover);
+}
+
+// The grain of the manila, painted over the flat fill so the cover does not
+// read as a plastic card.
+.cover::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  // The same corners as the cover: `inherit` is not a token, so the shape is
+  // restated instead of borrowed.
+  border-radius: var(--radius-none) var(--radius-paper-md) var(--radius-paper-md)
+    var(--radius-paper-md);
+  background-image: var(--paper-cover-texture);
+  pointer-events: none;
+}
+
+// The reference lifts the clip 10 px above the sheet; the 16 px top padding of
+// the cover is the strip it rises into, which is why the offset is measured
+// from the cover (16 - 10).
+.clip {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 68px;
+  width: 18px;
+  height: 46px;
+  border: 3px solid var(--color-paper-muted);
+  border-bottom-color: transparent;
+  border-radius: var(--radius-paper-lg);
+  box-shadow: var(--shadow-paper-clip);
+  pointer-events: none;
 }
 
 // ---------------------------------------------------------------------------
-// Rows
+// Sheet
 // ---------------------------------------------------------------------------
 
-// A `dl` may group each `dt` with its `dd` in a `div`, which is what gives the
-// row its own box to stripe and to indent.
-.pairs {
+// The only scroll container of the panel: the bar and the tab strip stay put
+// however long the record is.
+.sheet {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 26px 24px 28px;
+  overflow-y: auto;
+  background: var(--color-paper);
+  // The printed margin rule of a ruled sheet, one pixel wide, 46 px in.
+  background-image: linear-gradient(
+    90deg,
+    transparent var(--paper-gutter),
+    var(--color-stamp-soft) var(--paper-gutter) calc(var(--paper-gutter) + 1px),
+    transparent calc(var(--paper-gutter) + 1px)
+  );
+  box-shadow: var(--shadow-paper-sheet);
+  color: var(--color-paper-text);
+}
+
+.head {
+  // The clip hangs over the top-left corner of the sheet, so the head starts
+  // under it instead of printing the name across it.
+  padding-top: 12px;
+  padding-left: var(--paper-indent);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-paper-line);
+}
+
+.head-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-paper-value);
+}
+
+.head-meta {
+  margin: 4px 0 0;
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+  margin-top: 14px;
+  padding-left: var(--paper-indent);
+}
+
+.field {
   display: flex;
   flex-direction: column;
-  margin: 0;
-}
-
-// Label on the leading edge, value taking the rest and wrapping there: at 380px
-// a CURP has no spaces to break on, so the value column is allowed to shrink.
-.pair {
-  display: grid;
-  grid-template-columns: minmax(0, 42%) 1fr;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-}
-
-// Zebra, not hairlines: a long record is read row by row, and alternating fills
-// survive a wrapped value where a rule between rows would break in two.
-.pair:nth-child(even) {
-  background: var(--color-surface-glass);
-}
-
-.pair-label {
+  gap: 3px;
   min-width: 0;
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
 }
 
-.pair-value {
-  min-width: 0;
-  margin: 0;
-  font: var(--text-body);
-  color: var(--color-text-primary);
-  // A CURP or an email has no spaces to break on.
+.field.is-full {
+  grid-column: 1 / -1;
+}
+
+.subtitle {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-paper-value);
+}
+
+.label {
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+.value {
+  min-height: 23px;
+  padding-bottom: 3px;
   overflow-wrap: anywhere;
+  border-bottom: 1px dotted var(--color-paper-line);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--color-paper-value);
 }
 
-// The two rows that decide what the record means, not just what it contains.
-// The lane is a border and the padding gives back exactly what the border took,
-// so the value starts on the same vertical line as every other row.
-.pair.is-emphasis {
-  padding-inline-start: calc(var(--space-3) - var(--border-width) * 3);
-  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
+// A field nobody has filled: present, but said softly.
+.value.is-empty {
+  font-style: italic;
+  color: var(--color-paper-empty);
 }
 
-.pair.is-emphasis .pair-value {
-  font: var(--text-nav-branch);
+// A field the backend reported as missing: a task with a red mark beside it.
+.field.is-missing .label {
+  color: var(--color-stamp);
+}
+
+.field.is-missing .label::before {
+  content: '● ';
+}
+
+.field.is-missing .value {
+  border-bottom: 2px dotted var(--color-stamp);
+  font-style: italic;
+  color: var(--color-stamp);
+}
+
+// The row of missing fields is a list of doors, not a value: the sentence is
+// written by the labels themselves, so the row draws no rule of its own.
+.value.is-links {
+  border-bottom: 0;
+}
+
+// A door on paper: the same word the sheet already prints, with a target a
+// thumb can hit. The button is reset whole — a UA button brings its own fill,
+// bevel and padding, and every one of them would read as a control — and then
+// dressed as a line of ink. The 44 px come from the line height, so the label
+// stays centred without a second declaration for it.
+.missing-link {
+  all: unset;
+  display: inline-block;
+  line-height: 44px;
+  border-bottom: 1px dotted var(--color-paper-muted);
+  color: var(--color-paper-muted);
+}
+
+// The seal of the sheet. Absolute at the top right of the paper, turned a few
+// degrees: a stamp is pressed by hand, it does not sit in a grid.
+.stamp {
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  padding: 3px 10px;
+  transform: rotate(-9deg);
+  border: 3px double currentColor;
+  border-radius: var(--radius-paper-xs);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.82;
+}
+
+.stamp.is-ok {
+  color: var(--color-stamp-ok);
+}
+
+.stamp.is-bad {
+  color: var(--color-stamp);
+}
+
+// A termination just landed: the seal is pressed onto the sheet again. Under
+// `prefers-reduced-motion` it simply appears, already in place.
+.stamp.is-slam {
+  animation: slam var(--motion-fast) var(--motion-ease);
+}
+
+@keyframes slam {
+  from {
+    opacity: 0;
+    transform: rotate(-9deg) scale(1.3);
+  }
+}
+
+.foot {
+  margin: 22px 0 0;
+  padding-left: var(--paper-indent);
+  font-family: var(--font-paper-mono);
+  font-size: 12px;
+  color: var(--color-paper-muted);
 }
 
 // ---------------------------------------------------------------------------
-// Missing fields
+// Foot actions — the doors into the second level
 // ---------------------------------------------------------------------------
 
-// The sentence counts, the chips name. Both wrap freely: the list of missing
-// fields is as long as the backend says it is.
-.missing {
+.foot-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-block-start: var(--space-2);
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-left: var(--paper-indent);
 }
 
-.missing-count {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-.chip {
-  display: inline-flex;
-  padding: var(--space-1) var(--space-2);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-pill);
-  font: var(--text-label);
-  letter-spacing: normal;
-  color: var(--color-text-secondary);
+// A single door reads as a closing act of the sheet, not as a toolbar pushed
+// to the right edge.
+.foot-actions.is-single {
+  justify-content: flex-start;
+  margin-top: 22px;
 }
 
 // ---------------------------------------------------------------------------
@@ -284,125 +461,122 @@
 .skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 12px;
+  padding-left: var(--paper-indent);
 }
 
-.skeleton--compact {
-  gap: var(--space-2);
-}
-
-.skeleton-line {
+.line {
   display: block;
-  height: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-border-default);
+  height: 14px;
+  border-radius: var(--radius-paper-xs);
+  background: var(--color-paper-line);
 }
 
-.skeleton-line.is-short {
+.line.is-short {
   width: 58%;
 }
 
-// ---------------------------------------------------------------------------
-// Block 07 — Absence & termination history
-// ---------------------------------------------------------------------------
-
-.block-counter {
-  padding: 0 var(--space-2);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-pill);
-  font: var(--text-label);
-  color: var(--color-text-secondary);
-}
-
-.bajas-body {
+.state {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 12px;
+  padding-left: var(--paper-indent);
 }
 
-.bajas-empty {
+.state-title {
   margin: 0;
-  padding: var(--space-2) var(--space-3);
-  font: var(--text-body);
-  color: var(--color-text-secondary);
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-stamp);
 }
 
-.bajas-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+.state-text {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  color: var(--color-paper-muted);
 }
 
-.baja-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
+.state .action {
+  align-self: flex-start;
 }
 
-.baja-item.is-vigente {
-  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
-}
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
 
-.baja-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.baja-heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.baja-tipo {
-  font: var(--text-nav-branch);
-  color: var(--color-text-primary);
-}
-
-.baja-periodo {
-  font: var(--text-label);
-  color: var(--color-text-secondary);
-}
-
-// A glass card with a coloured disc, the same failure treatment the screens use:
-// a filled red panel would repaint anything sitting inside it.
 @include bp.down(bp.$bp-sm) {
-  .pair {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-1);
+  // Two columns of a CURP do not fit a phone: the sheet becomes a single line
+  // of boxes, the way a narrow form breaks.
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  // The seal leaves its corner: at this width it would sit on the name.
+  .stamp {
+    position: static;
+    display: inline-block;
+    margin-bottom: 14px;
+  }
+
+  .sheet {
+    padding: 22px 16px 24px;
   }
 }
 
-@include bp.down(bp.$bp-xs) {
-  .ficha {
-    gap: var(--space-3);
-    padding: var(--space-2);
-  }
-
-  .block {
-    padding: var(--space-3);
-  }
-}
-
+// No rotation and no lift when the reader asked for stillness: the seal prints
+// straight and the tabs do not travel.
 @media (prefers-reduced-motion: reduce) {
-  .block::details-content {
-    transition:
-      opacity var(--motion-fast) var(--motion-ease),
-      content-visibility var(--motion-fast) var(--motion-ease) allow-discrete;
+  .stamp {
+    transform: none;
   }
 
-  .block-chevron {
+  .stamp.is-slam {
+    animation: none;
+  }
+
+  .tab {
     transition: none;
   }
 }
 
+// High contrast: colour and fill are taken away, so the three states that are
+// told apart by ink are restated with line, shape and decoration.
+@media (forced-colors: active) {
+  .stamp {
+    opacity: 1;
+  }
+
+  .nb {
+    border: 1px solid;
+  }
+
+  .tab.is-active {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  // The two actions of the foot lose their ink in high contrast — one is a
+  // stroke, the other a fill — so they keep their rank with a line: what acts is
+  // outlined, what only closes is not.
+  .action.is-danger,
+  .action.is-solid {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  .field.is-missing .label {
+    text-decoration: underline;
+  }
+
+  .field.is-missing .value {
+    border-bottom-style: solid;
+  }
+
+  .clip,
+  .cover::before {
+    display: none;
+  }
+}

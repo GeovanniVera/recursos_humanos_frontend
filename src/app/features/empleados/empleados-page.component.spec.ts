@@ -5,15 +5,38 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { FormularioCatalogos } from '../../core/empleados/alta.models';
 import { FichaEmpleado } from '../../core/empleados/ficha.models';
 import { EmpleadoPadron, PadronResponse } from '../../core/padron/padron.models';
+import { ToastService } from '../../shared/ui/toast/toast.service';
+import { AltaDrawer } from './alta-drawer/alta-drawer.component';
 import { EmpleadosPage } from './empleados-page.component';
+import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
 
 const URL_PADRON = `${environment.apiBaseUrl}/padron`;
 const URL_FICHA = `${environment.apiBaseUrl}/empleados`;
-const URL_MOTIVOS = `${environment.apiBaseUrl}/catalogos/motivos-baja`;
+const URL_FORMULARIO = `${environment.apiBaseUrl}/empleados/formulario`;
+
+/**
+ * Catalogues the registration folder reads when it opens.
+ *
+ * The wiring is what this screen tests, so the payload is the smallest one that
+ * lets the identity sheet render with a real control on it.
+ */
+const CATALOGOS: FormularioCatalogos = {
+  areas: [],
+  puestos: [],
+  categorias_cct: [],
+  niveles_estudios: [],
+  estados_civiles: [],
+  tipos_personal: ['Sindicalizado'],
+  sexos: ['Masculino', 'Femenino'],
+  tipos_jornada: ['Matutina'],
+  trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
+};
 
 /**
  * jsdom ships `HTMLDialogElement` without `showModal` / `close`. Opening the
@@ -293,16 +316,31 @@ describe('EmpleadosPage', () => {
     expect(cuerpo[1]).toEqual(['12346', 'Luis Ramírez', '—']);
   });
 
-  it('leads to the registration of a new employee from the header', async () => {
+  it('opens the registration folder from the header instead of leaving the roster', async () => {
     const fixture = await render();
     peticiones()[0].flush(respuesta([ANA]));
     await fixture.whenStable();
 
-    // A real link, so the alta is reachable with the middle click, the context
-    // menu and the keyboard.
-    const alta = host(fixture).querySelector<HTMLAnchorElement>('a.new-employee');
-    expect(alta?.getAttribute('href')).toBe('/empleados/alta');
+    // A real button: the alta is no longer a destination, it is a layer over
+    // this same list.
+    const alta = host(fixture).querySelector<HTMLButtonElement>('button.new-employee');
+    expect(alta?.tagName.toLowerCase()).toBe('button');
     expect(alta?.textContent?.trim()).toBe('Nuevo empleado');
+
+    alta?.click();
+    await fixture.whenStable();
+
+    // The folder asks for its catalogues the first time it opens.
+    httpMock.expectOne(`${URL_FORMULARIO}`).flush(CATALOGOS);
+    await fixture.whenStable();
+
+    // The second panel of the screen: the record's is mounted first, the edit
+    // folder's comes after the registration one.
+    const paneles = host(fixture).querySelectorAll('dialog');
+    expect(paneles.length).toBe(3);
+    expect(paneles[1].hasAttribute('open')).toBe(true);
+    expect(paneles[1].querySelector('.bar-name')?.textContent?.trim()).toBe('Nuevo empleado');
+    expect(paneles[1].querySelector('#num_empleado')).not.toBeNull();
   });
 
   it('shows the placeholder for a missing area and the state as a leading flag', async () => {
@@ -315,9 +353,9 @@ describe('EmpleadosPage', () => {
 
     // The flag is the first thing in the number cell, and the table is asked for
     // the positioned cell that lets it anchor there instead of the viewport.
-    expect(host(fixture).querySelector('.table')?.classList.contains('has-leading-decoration')).toBe(
-      true,
-    );
+    expect(
+      host(fixture).querySelector('.table')?.classList.contains('has-leading-decoration'),
+    ).toBe(true);
     expect(cuerpo[0].querySelector('td')?.firstElementChild?.tagName.toLowerCase()).toBe(
       'app-row-flag',
     );
@@ -826,8 +864,10 @@ describe('EmpleadosPage', () => {
 
     // The panel is the one mounted by the screen, with the row's record inside.
     expect(host(fixture).querySelector('dialog')?.hasAttribute('open')).toBe(true);
-    expect(texto(fixture)).toContain('Ficha del trabajador');
-    expect(texto(fixture)).toContain('Luis Ramírez');
+    expect(host(fixture).querySelector('.bar-name')?.textContent?.trim()).toBe('Luis Ramírez');
+    expect(host(fixture).querySelector('.head-meta')?.textContent?.trim()).toBe(
+      'No. de empleado 2',
+    );
   });
 
   it('opens the same record from the name button without firing the row click twice', async () => {
@@ -854,91 +894,56 @@ describe('EmpleadosPage', () => {
     httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/historial-bajas`).flush({ data: [] });
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('Luis Ramírez');
+    expect(host(fixture).querySelector('.bar-name')?.textContent?.trim()).toBe('Luis Ramírez');
   });
 
   it('asks the roster again after a termination so the worker disappears', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
-    // Open the record of the second row: only a loaded record offers the baja.
-    host(fixture)
-      .querySelectorAll('tbody tr')[1]
-      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // The panel reports the act and the page owns the refresh: the endpoint
+    // filters inactive workers out, so the row has to disappear.
+    const panel = fixture.debugElement.query(By.directive(FichaDrawer))
+      .componentInstance as FichaDrawer;
+    panel.bajaRegistrada.emit();
     await fixture.whenStable();
 
-    httpMock.expectOne(`${URL_FICHA}/${LUIS.id}`).flush({ data: fichaDe(LUIS.id, LUIS.nombre) });
-    httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/historial-bajas`).flush({ data: [] });
+    const recarga = peticiones();
+    expect(recarga.length).toBe(1);
+    expect(recarga[0].request.params.get('pagina')).toBe('1');
+    expect(recarga[0].request.params.get('por_pagina')).toBe('100');
+    recarga[0].flush(respuesta([ANA], 1));
     await fixture.whenStable();
 
-    const baja = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => (button.textContent ?? '').includes('Dar de baja'),
-    );
-    expect(baja?.disabled).toBe(false);
-    baja?.click();
+    expect(filas(fixture).length).toBe(1);
+    expect(texto(fixture)).not.toContain('Luis Ramírez');
+  });
+
+  it('toasts the number and asks the roster again after a registration', async () => {
+    const fixture = await render();
+    await responder(fixture, respuesta([ANA]));
+
+    const toast = TestBed.inject(ToastService);
+    // The folder reports the act; the page owns the announcement and the reload,
+    // exactly as it owns the refresh after a termination.
+    const alta = fixture.debugElement.query(By.directive(AltaDrawer))
+      .componentInstance as AltaDrawer;
+
+    alta.registrado.emit({ id: 42, num_empleado: '12345', nombre: 'Ana Martínez' });
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_MOTIVOS).flush({
-      data: [{ id: 4, clave: 'BAJA_TEMPORAL', descripcion: 'Baja temporal' }],
-    });
+    const avisos = toast.toasts();
+    expect(avisos.length).toBe(1);
+    expect(avisos[0].type).toBe('success');
+    expect(avisos[0].title).toBe('Empleado registrado.');
+    expect(avisos[0].message).toBe('Número de empleado 12345.');
+
+    const recarga = peticiones();
+    expect(recarga.length).toBe(1);
+    expect(recarga[0].request.params.get('pagina')).toBe('1');
+    recarga[0].flush(respuesta([ANA]));
     await fixture.whenStable();
 
-    const motivo = host(fixture).querySelector<HTMLSelectElement>('app-baja-modal #baja-motivo');
-    expect(motivo).not.toBeNull();
-    motivo!.value = '4';
-    motivo!.dispatchEvent(new Event('change'));
-
-    const nota = host(fixture).querySelector<HTMLTextAreaElement>('app-baja-modal #baja-nota');
-    expect(nota).not.toBeNull();
-    nota!.value = 'Licencia por incapacidad ';
-    nota!.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-
-    vi.useFakeTimers();
-    try {
-      const confirmar = Array.from(
-        host(fixture).querySelectorAll<HTMLButtonElement>('app-baja-modal button'),
-      ).find((button) => (button.textContent ?? '').includes('Dar de baja'));
-      confirmar?.click();
-      fixture.detectChanges();
-
-      const peticion = httpMock.expectOne(`${URL_FICHA}/${LUIS.id}/baja`);
-      // The note travels trimmed, and nothing else travels with it.
-      expect(peticion.request.body).toEqual({ motivo_id: 4, nota: 'Licencia por incapacidad' });
-      peticion.flush({
-        mensaje: 'Baja procesada exitosamente.',
-        empleado: {
-          id: LUIS.id,
-          num_empleado: LUIS.num_empleado,
-          nombre: LUIS.nombre,
-          activo: false,
-          fecha_baja: '2026-11-11',
-          motivo_baja: 'Baja temporal',
-          nota_baja: 'Licencia por incapacidad',
-          baja_por: 1,
-        },
-      });
-      fixture.detectChanges();
-
-      // The drawer left, and the page asked the roster for the block on screen:
-      // the endpoint filters inactive workers out, so the row is gone by now.
-      expect(host(fixture).querySelector('app-ficha-drawer dialog')?.hasAttribute('open')).toBe(
-        false,
-      );
-
-      const recarga = peticiones();
-      expect(recarga.length).toBe(1);
-      expect(recarga[0].request.params.get('pagina')).toBe('1');
-      expect(recarga[0].request.params.get('por_pagina')).toBe('100');
-      recarga[0].flush(respuesta([ANA], 1));
-      fixture.detectChanges();
-      vi.advanceTimersByTime(300);
-      fixture.detectChanges();
-
-      expect(filas(fixture).length).toBe(1);
-      expect(texto(fixture)).not.toContain('Luis Ramírez');
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(filas(fixture).length).toBe(1);
   });
 });

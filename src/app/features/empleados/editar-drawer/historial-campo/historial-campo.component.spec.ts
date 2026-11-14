@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HistorialCampo } from './historial-campo.component';
-import { environment } from '../../../../environments/environment';
+import { environment } from '../../../../../environments/environment';
 
 const URL = `${environment.apiBaseUrl}/empleados/17/informacion-historial`;
 const respuesta = (total = 1) => ({

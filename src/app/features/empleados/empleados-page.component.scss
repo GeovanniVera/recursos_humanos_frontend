@@ -34,8 +34,9 @@
 }
 
 // Painted like the primary button of the design system, because it is one: the
-// alta is the single primary action of this view. It is an anchor so the route
-// keeps the platform's own link behaviour.
+// alta is the single primary action of this view. It is a real `<button>`, so
+// the platform gives it keyboard activation and an announced role; it no longer
+// leads to a route, it opens the folder of a new file over this roster.
 .new-employee {
   display: inline-flex;
   align-items: center;
@@ -47,7 +48,7 @@
   background: var(--color-action-primary);
   color: var(--color-action-on-primary);
   font: var(--text-nav-branch);
-  text-decoration: none;
+  cursor: pointer;
   transition:
     transform var(--motion-fast) var(--motion-ease),
     box-shadow var(--motion-fast) var(--motion-ease);

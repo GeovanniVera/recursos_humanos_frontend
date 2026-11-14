@@ -1,0 +1,464 @@
+@use '../../../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// Second level of the record
+//
+// A second sheet of paper that slides over the folder, inside the drawer. It is
+// a separate component from the folder because the level's styles do not fit in
+// the folder's 7 kB budget — and because it is a different surface: an annex of
+// the record, with its own bar and its own way back.
+//
+// Geometry is in pixels on purpose, as in the folder: this is the one world of
+// the system whose proportions carry the metaphor. Colours, radii, shadows and
+// motion still come from tokens.
+//
+// A component style is scoped, so the paper vocabulary of the folder (sheet,
+// head, foot, action, states) is restated here instead of imported. It is the
+// same vocabulary, by value.
+// ---------------------------------------------------------------------------
+
+// The host is a child of the folder's box, not a box of its own: the panel is
+// absolutely positioned against `.ficha`, exactly as if it lived there.
+:host {
+  display: contents;
+}
+
+.panel {
+  position: absolute;
+  // Pinned to the right edge, full height of the folder.
+  inset: 0 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 92%;
+  padding: 14px;
+  border-radius: var(--radius-paper-xl) var(--radius-none) var(--radius-none) var(--radius-none);
+  background: var(--color-desk);
+  box-shadow: var(--shadow-paper-panel);
+  // Out of the folder while closed: the box exists so the slide can happen.
+  transform: translateX(105%);
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.panel.is-open {
+  transform: none;
+}
+
+// ---------------------------------------------------------------------------
+// Bar — the way back and the name of the annex
+// ---------------------------------------------------------------------------
+
+.l2bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.l2-titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ---------------------------------------------------------------------------
+// Discard banner — the only place where losing a note is decided
+// ---------------------------------------------------------------------------
+
+.discard {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 2px solid var(--color-stamp);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-paper);
+  color: var(--color-paper-text);
+  font-family: var(--font-paper);
+  font-size: 14px;
+}
+
+.discard-texto {
+  flex: 1 1 auto;
+}
+
+// ---------------------------------------------------------------------------
+// Paper control — the same 44 px target and hairline as the folder's actions
+// ---------------------------------------------------------------------------
+
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-paper-ink);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action.is-danger {
+  border-color: var(--color-stamp);
+  color: var(--color-stamp);
+}
+
+// The one primary action of an annex, and the one that is only announced.
+.action.is-solid {
+  border-color: var(--color-paper-action);
+  background: var(--color-paper-action);
+  color: var(--color-paper-action-ink);
+}
+
+@media (hover: hover) {
+  .action:hover:not(:disabled) {
+    background: var(--color-paper-ink);
+    color: var(--color-desk);
+  }
+
+  .action.is-danger:hover:not(:disabled) {
+    background: var(--color-stamp);
+    color: var(--color-paper);
+  }
+
+  .action.is-solid:hover:not(:disabled) {
+    background: var(--color-paper-action-ink);
+    color: var(--color-paper-action);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sheet — the annex is printed on the same paper as the record
+// ---------------------------------------------------------------------------
+
+.sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 26px 24px 28px;
+  overflow-y: auto;
+  background: var(--color-paper);
+  // The printed margin rule of a ruled sheet, one pixel wide, 46 px in.
+  background-image: linear-gradient(
+    90deg,
+    transparent var(--paper-gutter),
+    var(--color-stamp-soft) var(--paper-gutter) calc(var(--paper-gutter) + 1px),
+    transparent calc(var(--paper-gutter) + 1px)
+  );
+  box-shadow: var(--shadow-paper-sheet);
+  color: var(--color-paper-text);
+}
+
+.head {
+  padding-bottom: 8px;
+  padding-left: var(--paper-indent);
+  border-bottom: 2px solid var(--color-paper-line);
+}
+
+.head-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-paper-value);
+}
+
+.head-meta {
+  margin: 4px 0 0;
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+.label {
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+.foot {
+  margin: 22px 0 0;
+  padding-left: var(--paper-indent);
+  font-family: var(--font-paper-mono);
+  font-size: 12px;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// Absence log — a timeline ruled by the same line the sheet is ruled with
+// ---------------------------------------------------------------------------
+
+.timeline {
+  margin: 14px 0 0;
+  padding: 0 0 0 var(--paper-indent);
+  list-style: none;
+}
+
+.evento {
+  position: relative;
+  padding: 0 0 20px 18px;
+  border-left: 2px solid var(--color-paper-line);
+}
+
+.evento:last-child {
+  padding-bottom: 0;
+}
+
+// The mark of a period: a closed termination is stamped, the one in force is
+// green — and the word `(vigente)` says the same thing in ink.
+.dot {
+  position: absolute;
+  top: 3px;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-paper-lg);
+  background: var(--color-stamp);
+}
+
+.evento.is-ok .dot {
+  background: var(--color-stamp-ok);
+}
+
+.tipo {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-paper-value);
+}
+
+.linea {
+  margin: 2px 0 0;
+  font-family: var(--font-paper-mono);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// Forms — a warning, two fields and the pair of actions
+// ---------------------------------------------------------------------------
+
+.form {
+  display: grid;
+  gap: 4px;
+  padding-left: var(--paper-indent);
+  margin-top: 14px;
+}
+
+.aviso {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-stamp);
+}
+
+.quien {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-paper-value);
+}
+
+// A value the operator reads but cannot change, in the reactivation form.
+.dato {
+  margin: 0;
+  padding-bottom: 3px;
+  border-bottom: 1px dotted var(--color-paper-line);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  color: var(--color-paper-value);
+}
+
+// No box: the field is a line written on the sheet.
+.control {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid var(--color-paper-ink);
+  border-radius: var(--radius-none);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--color-paper-ink);
+  outline-offset: 2px;
+}
+
+// Typed on ruled lines: the rules are the background, so they travel with the
+// text instead of staying glued to the box.
+.area {
+  min-height: 120px;
+  resize: vertical;
+  background-attachment: local;
+  background-image: repeating-linear-gradient(
+    transparent 0 23px,
+    var(--color-paper-line) 23px 24px
+  );
+}
+
+.control.is-invalid {
+  border-bottom-color: var(--color-stamp);
+}
+
+.nota-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-paper);
+  font-size: 12px;
+  color: var(--color-paper-muted);
+}
+
+.error {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  color: var(--color-stamp);
+}
+
+.error::before {
+  content: '✕ ';
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+// A destination that has no endpoint yet says so instead of showing a list.
+.pendiente {
+  margin: 14px 0 0;
+  padding-left: var(--paper-indent);
+  font-family: var(--font-paper-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// Loading and failure of the absence log
+// ---------------------------------------------------------------------------
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.line {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-paper-xs);
+  background: var(--color-paper-line);
+}
+
+.line.is-short {
+  width: 58%;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.state-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-stamp);
+}
+
+.state-text {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  color: var(--color-paper-muted);
+}
+
+.state .action {
+  align-self: flex-start;
+}
+
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
+
+@include bp.down(bp.$bp-sm) {
+  // A phone has no room for a second edge: the annex is the whole folder.
+  .panel {
+    width: 100%;
+    border-radius: var(--radius-none);
+  }
+
+  .sheet {
+    padding: 22px 16px 24px;
+  }
+}
+
+// No travel when the reader asked for stillness: the annex appears in place.
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transform: none;
+    transition: none;
+    visibility: hidden;
+  }
+
+  .panel.is-open {
+    visibility: visible;
+  }
+}
+
+// High contrast: the fill of the two form actions disappears, so the one that
+// commits and the one that only announces itself are restated with a line; the
+// mark of the timeline keeps its own ink, which is what tells the periods apart.
+@media (forced-colors: active) {
+  .action.is-danger,
+  .action.is-solid {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  .discard {
+    border-style: dashed;
+  }
+
+  .dot {
+    forced-color-adjust: none;
+  }
+}

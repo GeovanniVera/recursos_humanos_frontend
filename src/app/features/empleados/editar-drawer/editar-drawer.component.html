@@ -1,0 +1,450 @@
+<!--
+  Editing is a file being corrected, not a card: the same manila folder over the
+  desk the record and the alta already use. That is why the shell is bare — the
+  drawer contributes the top layer, the focus trap and the way out, and the
+  folder paints its own surface.
+-->
+<app-drawer title="Editar empleado" [bare]="true" side="right" size="lg" [(open)]="open">
+  <!--
+    The folder owns the bar, the strip and the frame of the sheet; everything
+    projected here lands inside the only scroll container of the panel.
+  -->
+  <app-alta-expediente
+    [titulo]="titulo()"
+    [tabs]="tabs"
+    [activo]="indiceActivo()"
+    [errores]="erroresPorTab()"
+    [ocupado]="cargando()"
+    etiquetaTabs="Secciones de la edición"
+    (seleccionar)="seleccionarIndice($event)"
+    (cerrar)="cerrar()"
+  >
+    @if (fallo(); as problema) {
+      <!--
+        Without a record there is nothing to correct: the sheet explains what
+        happened instead of painting an empty form that would then save over
+        nobody. Only a failure that can change by asking again offers the retry.
+      -->
+      <div class="state" role="alert">
+        <p class="state-title">{{ problema.mensaje }}</p>
+
+        @if (problema.detalle) {
+          <p class="state-text">{{ problema.detalle }}</p>
+        }
+
+        @if (problema.accion === 'reintentar') {
+          <button type="button" class="action" [disabled]="cargando()" (click)="reintentar()">
+            Reintentar
+          </button>
+        }
+      </div>
+    } @else if (registroActual(); as registro) {
+      @if (mensaje() !== null || erroresSueltos().length > 0) {
+        <!--
+          The general sentence of the failure, plus the messages that belong to no
+          sheet. Per-field messages are printed next to their own control; a
+          prohibited field has no control and would otherwise be lost.
+        -->
+        <div class="state" role="alert">
+          @if (mensaje(); as texto) {
+            <p class="state-title">{{ texto }}</p>
+          }
+          @for (suelto of erroresSueltos(); track suelto) {
+            <p class="state-text">{{ suelto }}</p>
+          }
+        </div>
+      }
+
+      @switch (tabActiva()) {
+        @case ('identificacion') {
+          <fieldset class="group">
+            <legend class="group-title">Identificación</legend>
+            <p class="group-hint">
+              Estos datos vienen de la ficha y son de solo lectura. En esta sección solo puedes
+              cambiar el estado civil.
+            </p>
+
+            <div class="grid">
+              @let numero = valorDe('num_empleado');
+              <div class="field">
+                <span class="label">Número de empleado</span>
+                <span class="value" [class.is-empty]="numero.vacio">{{ numero.valor }}</span>
+              </div>
+
+              @let nombre = valorDe('nombre');
+              <div class="field is-wide">
+                <span class="label">Nombre completo</span>
+                <span class="value" [class.is-empty]="nombre.vacio">{{ nombre.valor }}</span>
+              </div>
+
+              @let curp = valorDe('curp');
+              <div class="field">
+                <span class="label">CURP</span>
+                <span class="value" [class.is-empty]="curp.vacio">{{ curp.valor }}</span>
+              </div>
+
+              @let nacimiento = valorDe('fecha_nacimiento');
+              <div class="field">
+                <span class="label">Fecha de nacimiento</span>
+                <span class="value" [class.is-empty]="nacimiento.vacio">{{
+                  nacimiento.valor
+                }}</span>
+              </div>
+
+              @let sexo = valorDe('sexo');
+              <div class="field">
+                <span class="label">Sexo</span>
+                <span class="value" [class.is-empty]="sexo.vacio">{{ sexo.valor }}</span>
+              </div>
+
+              <div class="field">
+                <label class="label" for="estado_civil_id">Estado civil</label>
+                <!--
+                  The one field of this sheet: every `<select>` expresses its
+                  selection on the options instead of binding `[value]` on the
+                  select, so a sheet created again by a tab change still shows the
+                  answer the draft holds.
+                -->
+                <select
+                  id="estado_civil_id"
+                  name="estado_civil_id"
+                  class="control"
+                  (change)="elegirNumero('estado_civil_id', $event)"
+                  (blur)="tocar('estado_civil_id')"
+                  [class.is-invalid]="errorDe('estado_civil_id') !== null"
+                  [attr.aria-invalid]="errorDe('estado_civil_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('estado_civil_id')"
+                >
+                  <option value="" [selected]="modelo().estado_civil_id === null">
+                    Elige una opción
+                  </option>
+                  @for (estado of estadosCiviles(); track estado.id) {
+                    <option [value]="estado.id" [selected]="modelo().estado_civil_id === estado.id">
+                      {{ estado.descripcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('estado_civil_id'); as error) {
+                  <p class="field-error" id="error-estado_civil_id" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              @let entidad = valorDe('entidad_nacimiento');
+              <div class="field">
+                <span class="label">Entidad de nacimiento</span>
+                <span class="value" [class.is-empty]="entidad.vacio">{{ entidad.valor }}</span>
+              </div>
+
+              @let correo = valorDe('correo_institucional');
+              <div class="field is-wide">
+                <span class="label">Correo institucional</span>
+                <span class="value" [class.is-empty]="correo.vacio">{{ correo.valor }}</span>
+              </div>
+            </div>
+          </fieldset>
+        }
+
+        @case ('plaza') {
+          <fieldset class="group">
+            <legend class="group-title">Plaza</legend>
+            <p class="group-hint">
+              El área, el puesto y las fechas los administra la institución: en esta ficha se leen,
+              no se corrigen.
+            </p>
+
+            <div class="grid">
+              @let area = valorDe('area');
+              <div class="field is-wide">
+                <span class="label">Área</span>
+                <span class="value" [class.is-empty]="area.vacio">{{ area.valor }}</span>
+              </div>
+
+              @let puesto = valorDe('puesto');
+              <div class="field">
+                <span class="label">Puesto</span>
+                <span class="value" [class.is-empty]="puesto.vacio">{{ puesto.valor }}</span>
+              </div>
+
+              @let categoria = valorDe('categoria_cct');
+              <div class="field">
+                <span class="label">Categoría CCT</span>
+                <span class="value" [class.is-empty]="categoria.vacio">{{ categoria.valor }}</span>
+              </div>
+
+              @let personal = valorDe('tipo_personal');
+              <div class="field">
+                <span class="label">Tipo de personal</span>
+                <span class="value" [class.is-empty]="personal.vacio">{{ personal.valor }}</span>
+              </div>
+
+              @let jornada = valorDe('tipo_jornada');
+              <div class="field">
+                <span class="label">Tipo de jornada</span>
+                <span class="value" [class.is-empty]="jornada.vacio">{{ jornada.valor }}</span>
+              </div>
+
+              @let inicioPuesto = valorDe('fecha_inicio_puesto');
+              <div class="field">
+                <span class="label">Fecha de inicio en el puesto</span>
+                <span class="value" [class.is-empty]="inicioPuesto.vacio">{{
+                  inicioPuesto.valor
+                }}</span>
+              </div>
+
+              @let ingresoGobierno = valorDe('fecha_ingreso_gobierno');
+              <div class="field">
+                <span class="label">Fecha de ingreso al gobierno</span>
+                <span class="value" [class.is-empty]="ingresoGobierno.vacio">{{
+                  ingresoGobierno.valor
+                }}</span>
+              </div>
+            </div>
+          </fieldset>
+        }
+
+        @default {
+          <fieldset class="group">
+            <legend class="group-title">Formación</legend>
+            <p class="group-hint">
+              Estos son los datos que puedes actualizar. El nivel de estudios deja historial: los
+              niveles ya registrados se consultan bajo el campo.
+            </p>
+
+            <div class="grid">
+              <div class="field is-wide">
+                <label class="label" for="nivel_estudios_id">Nivel de estudios</label>
+                <select
+                  id="nivel_estudios_id"
+                  name="nivel_estudios_id"
+                  class="control"
+                  (change)="elegirNumero('nivel_estudios_id', $event)"
+                  (blur)="tocar('nivel_estudios_id')"
+                  [class.is-invalid]="errorDe('nivel_estudios_id') !== null"
+                  [attr.aria-invalid]="errorDe('nivel_estudios_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('nivel_estudios_id')"
+                >
+                  <option value="" [selected]="modelo().nivel_estudios_id === null">
+                    Elige una opción
+                  </option>
+                  @for (nivel of niveles(); track nivel.id) {
+                    <option [value]="nivel.id" [selected]="modelo().nivel_estudios_id === nivel.id">
+                      {{ nivel.descripcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('nivel_estudios_id'); as error) {
+                  <p class="field-error" id="error-nivel_estudios_id" role="alert">{{ error }}</p>
+                }
+
+                <!--
+                  The study level is the one field of this edition with a history,
+                  and the panel reads it only when it is expanded. The revision
+                  tells it a save just landed, which is the same signal the edit
+                  page uses.
+                -->
+                @if (empleadoId(); as id) {
+                  <app-historial-campo
+                    [empleadoId]="id"
+                    campo="nivel_estudios_id"
+                    etiqueta="Nivel de estudios"
+                    [revision]="historialRevision()"
+                  />
+                }
+              </div>
+
+              <div class="field is-wide">
+                <label class="label" for="escuela_procedencia">Escuela de procedencia</label>
+                <input
+                  id="escuela_procedencia"
+                  name="escuela_procedencia"
+                  class="control"
+                  type="text"
+                  maxlength="100"
+                  [ngModel]="modelo().escuela_procedencia"
+                  (ngModelChange)="guardar('escuela_procedencia', $event)"
+                  (blur)="tocar('escuela_procedencia')"
+                  [class.is-invalid]="errorDe('escuela_procedencia') !== null"
+                  [attr.aria-invalid]="errorDe('escuela_procedencia') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('escuela_procedencia')"
+                />
+                @if (errorDe('escuela_procedencia'); as error) {
+                  <p class="field-error" id="error-escuela_procedencia" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="generacion">Generación</label>
+                <input
+                  id="generacion"
+                  name="generacion"
+                  class="control"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="9"
+                  placeholder="2018-2022"
+                  [ngModel]="modelo().generacion"
+                  (ngModelChange)="guardar('generacion', $event)"
+                  (blur)="tocar('generacion')"
+                  [class.is-invalid]="errorDe('generacion') !== null"
+                  [attr.aria-invalid]="errorDe('generacion') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('generacion')"
+                />
+                @if (errorDe('generacion'); as error) {
+                  <p class="field-error" id="error-generacion" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="exp_publico_anios">Experiencia pública (años)</label>
+                <input
+                  id="exp_publico_anios"
+                  name="exp_publico_anios"
+                  class="control"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="100"
+                  step="1"
+                  [ngModel]="modelo().exp_publico_anios"
+                  (ngModelChange)="guardar('exp_publico_anios', $event)"
+                  (blur)="tocar('exp_publico_anios')"
+                  [class.is-invalid]="errorDe('exp_publico_anios') !== null"
+                  [attr.aria-invalid]="errorDe('exp_publico_anios') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('exp_publico_anios')"
+                />
+                @if (errorDe('exp_publico_anios'); as error) {
+                  <p class="field-error" id="error-exp_publico_anios" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="exp_privado_anios">Experiencia privada (años)</label>
+                <input
+                  id="exp_privado_anios"
+                  name="exp_privado_anios"
+                  class="control"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="100"
+                  step="1"
+                  [ngModel]="modelo().exp_privado_anios"
+                  (ngModelChange)="guardar('exp_privado_anios', $event)"
+                  (blur)="tocar('exp_privado_anios')"
+                  [class.is-invalid]="errorDe('exp_privado_anios') !== null"
+                  [attr.aria-invalid]="errorDe('exp_privado_anios') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('exp_privado_anios')"
+                />
+                @if (errorDe('exp_privado_anios'); as error) {
+                  <p class="field-error" id="error-exp_privado_anios" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="trabaja_otro_lugar">¿Trabaja en otro lugar?</label>
+                <select
+                  id="trabaja_otro_lugar"
+                  name="trabaja_otro_lugar"
+                  class="control"
+                  (change)="cambiarOtroLugar($event)"
+                  (blur)="tocar('trabaja_otro_lugar')"
+                  [class.is-invalid]="errorDe('trabaja_otro_lugar') !== null"
+                  [attr.aria-invalid]="errorDe('trabaja_otro_lugar') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('trabaja_otro_lugar')"
+                >
+                  @for (opcion of opcionesOtroLugar(); track opcion) {
+                    <option [value]="opcion" [selected]="modelo().trabaja_otro_lugar === opcion">
+                      {{ opcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('trabaja_otro_lugar'); as error) {
+                  <p class="field-error" id="error-trabaja_otro_lugar" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="trabaja_otro_donde">¿Dónde trabaja?</label>
+                <!--
+                  The backend prohibits this detail when the answer is `No`, so it
+                  is locked in that case: it stays a control — it is one of the
+                  nine — but it does not invite a value the server would reject.
+                -->
+                <input
+                  id="trabaja_otro_donde"
+                  name="trabaja_otro_donde"
+                  class="control"
+                  type="text"
+                  maxlength="255"
+                  [readOnly]="!pideOtroLugar()"
+                  [ngModel]="modelo().trabaja_otro_donde"
+                  (ngModelChange)="guardar('trabaja_otro_donde', $event)"
+                  (blur)="tocar('trabaja_otro_donde')"
+                  [class.is-invalid]="errorDe('trabaja_otro_donde') !== null"
+                  [attr.aria-invalid]="errorDe('trabaja_otro_donde') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('trabaja_otro_donde')"
+                />
+                @if (errorDe('trabaja_otro_donde'); as error) {
+                  <p class="field-error" id="error-trabaja_otro_donde" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field is-wide">
+                <label class="label" for="observaciones">Observaciones</label>
+                <textarea
+                  id="observaciones"
+                  name="observaciones"
+                  class="control control-area"
+                  rows="4"
+                  maxlength="2000"
+                  [ngModel]="modelo().observaciones"
+                  (ngModelChange)="guardar('observaciones', $event)"
+                  (blur)="tocar('observaciones')"
+                  [class.is-invalid]="errorDe('observaciones') !== null"
+                  [attr.aria-invalid]="errorDe('observaciones') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('observaciones')"
+                ></textarea>
+                @if (errorDe('observaciones'); as error) {
+                  <p class="field-error" id="error-observaciones" role="alert">{{ error }}</p>
+                }
+              </div>
+            </div>
+          </fieldset>
+        }
+      }
+
+      <!--
+        The two acts of the sheet, pinned to the bottom of the only scroll
+        container: the bar is reachable from every tab, and the primary action is
+        the single one of this layer. `Guardar` is never disabled by the draft —
+        pressing it is how the user learns what is missing — only by a request in
+        flight.
+      -->
+      <div class="acciones">
+        <button type="button" class="action" [disabled]="enviando()" (click)="cerrar()">
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="action is-primary"
+          [disabled]="!puedeGuardar()"
+          [attr.aria-busy]="enviando() ? 'true' : null"
+          (click)="guardarCambios()"
+        >
+          {{ enviando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    } @else {
+      <!-- Hidden from assistive tech: `aria-busy` already announces the wait. -->
+      <div class="skeleton" aria-hidden="true">
+        @for (linea of esqueletos; track linea) {
+          <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+        }
+      </div>
+      <p class="visually-hidden" role="status">Cargando la ficha del trabajador…</p>
+    }
+  </app-alta-expediente>
+</app-drawer>

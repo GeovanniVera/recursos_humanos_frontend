@@ -201,7 +201,9 @@ avisar temprano, no para autorizar. Un cliente puede enviar cualquier cosa.
 
 ## 7. Comportamiento del frontend
 
-Implementado en `src/app/features/empleados/alta/alta-page.component`:
+Implementado en el drawer de edición
+(`src/app/features/empleados/editar-drawer/editar-drawer.component`) y en el de alta
+(`src/app/features/empleados/alta-drawer/alta-drawer.component`):
 
 - El campo se muestra como `<input readonly>`, nunca editable. Se usa `readonly` y no
   `disabled` porque un control deshabilitado queda fuera del recorrido de teclado y no lo

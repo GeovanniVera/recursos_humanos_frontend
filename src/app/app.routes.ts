@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { editarEmpleadoGuard } from './core/auth/editar-empleado.guard';
 import { environment } from '../environments/environment';
 import { authGuard, guestGuard } from './core/auth/auth.guard';
 import { AppShell } from './layout/app-shell/app-shell.component';
@@ -69,18 +68,20 @@ export const routes: Routes = [
           },
           {
             path: ':id/editar',
-            canActivate: [editarEmpleadoGuard],
-            data: { breadcrumb: 'Editar empleado' },
-            loadComponent: () =>
-              import('./features/empleados/alta/alta-page.component').then((m) => m.AltaPage),
+            // The edition left the route tree too: the pencil of the roster
+            // opens the drawer. The path stays as a redirect so an old bookmark
+            // — or a link from a document — lands on the list instead of a 404.
+            pathMatch: 'full',
+            redirectTo: 'activos',
           },
           {
             path: 'alta',
-            // A child of the branch, not a top level screen: the alta belongs to
-            // the roster it feeds, and the trail reads `Empleados › Alta`.
-            data: { breadcrumb: 'Alta de empleado' },
-            loadComponent: () =>
-              import('./features/empleados/alta/alta-page.component').then((m) => m.AltaPage),
+            // The alta left the route tree: it is the drawer of the roster now,
+            // opened from its own header. The path stays as a redirect so an old
+            // bookmark — or a link from a document — lands on the list instead of
+            // a 404. `pathMatch: 'full'` keeps it from swallowing `/empleados/alta/x`.
+            pathMatch: 'full',
+            redirectTo: 'activos',
           },
           {
             path: 'baja',
