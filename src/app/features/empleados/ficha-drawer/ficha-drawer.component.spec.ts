@@ -4,7 +4,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { MotivoBaja } from '../../../core/empleados/baja.models';
-import { FichaEmpleado, HistorialBaja } from '../../../core/empleados/ficha.models';
+import { FichaEmpleado, HistorialBaja, ResumenCompletitud } from '../../../core/empleados/ficha.models';
 import { FichaDrawer } from './ficha-drawer.component';
 
 const EMPLEADO_ID = 12;
@@ -197,6 +197,7 @@ function patchDialogPrototype(): void {
   imports: [FichaDrawer],
   template: `<app-ficha-drawer
     [empleadoId]="empleadoId()"
+    [completitud]="completitud()"
     [puedeEditar]="puedeEditar()"
     [(open)]="open"
     (editarSolicitado)="editado.push($event)"
@@ -205,6 +206,7 @@ function patchDialogPrototype(): void {
 })
 class FichaHost {
   readonly empleadoId = signal<number | null>(EMPLEADO_ID);
+  readonly completitud = signal<ResumenCompletitud | null>(null);
   readonly puedeEditar = signal(false);
   readonly open = signal(false);
   readonly editado: number[] = [];
@@ -247,6 +249,20 @@ function fieldOf(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLEl
 
 function stamp(fixture: ComponentFixture<FichaHost>): HTMLElement | null {
   return host(fixture).querySelector<HTMLElement>('.stamp');
+}
+
+/** The completeness block the page may hand to the folder, when it is there. */
+function completitudDe(fixture: ComponentFixture<FichaHost>): HTMLElement | null {
+  return host(fixture).querySelector<HTMLElement>(
+    '[role="group"][aria-label="Completitud del expediente"]',
+  );
+}
+
+/** Value printed under a label inside one block, found by the label. */
+function valorEn(bloque: HTMLElement | null, etiqueta: string): string | undefined {
+  const etiquetas = Array.from(bloque?.querySelectorAll('.label') ?? []);
+  const encontrada = etiquetas.find((elemento) => elemento.textContent?.trim() === etiqueta);
+  return encontrada?.parentElement?.querySelector('.value')?.textContent?.trim();
 }
 
 function boton(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLButtonElement | undefined {
@@ -562,6 +578,47 @@ describe('FichaDrawer', () => {
     expect(valueOf(fixture, 'Nota')).toBe('Licencia por incapacidad temporal');
     // A file with nothing missing lists nothing missing.
     expect(valueOf(fixture, 'Campos faltantes')).toBe('Ninguno');
+  });
+
+  it('prints the completeness the page hands in, on the Estado sheet only', async () => {
+    const fixture = await abrir();
+    // The figures the semáforo list carries in the row it opened.
+    fixture.componentInstance.completitud.set({
+      porcentaje: 78.95,
+      total_campos: 19,
+      campos_completos: 15,
+      campos_faltantes: 4,
+    });
+    await responder(fixture);
+
+    // The block belongs to `Estado`: the first sheet does not carry it.
+    expect(text(fixture)).not.toContain('Completitud');
+
+    await irAEstado(fixture);
+
+    const bloque = completitudDe(fixture);
+    expect(bloque).not.toBeNull();
+    expect(valorEn(bloque, 'Avance del expediente')).toBe('78.95 % completo');
+    expect(valorEn(bloque, 'Campos completos')).toBe('15');
+    expect(valorEn(bloque, 'Campos faltantes')).toBe('4');
+    expect(valorEn(bloque, 'Total obligatorio')).toBe('19');
+
+    // The record's own rows stay: the block adds information, it does not
+    // replace what `estado_expediente` says.
+    expect(valueOf(fixture, 'Estado del expediente')).toBe('Casi completo · faltan 2 campos');
+    expect(valueOf(fixture, 'Campos faltantes')).toBe('CURP, Entidad de nacimiento');
+  });
+
+  it('leaves the Estado sheet as it is when the page hands nothing in', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+    await irAEstado(fixture);
+
+    // The roster mounts the same folder without figures: nothing is invented.
+    expect(fixture.componentInstance.completitud()).toBeNull();
+    expect(completitudDe(fixture)).toBeNull();
+    expect(text(fixture)).not.toContain('Completitud');
+    expect(valueOf(fixture, 'Estado del expediente')).toBe('Casi completo · faltan 2 campos');
   });
 
   it('marks a missing field and counts the ones each tab owns', async () => {

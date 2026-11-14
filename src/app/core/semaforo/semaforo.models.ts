@@ -39,11 +39,3 @@ export interface SemaforoResponse {
   meta: PadronMeta;
   enlaces: PadronEnlaces;
 }
-export interface FaltantesResponse {
-  datos: {
-    empleado: Pick<EmpleadoSemaforo, 'id' | 'num_empleado' | 'nombre'>;
-    semaforo: ResumenSemaforo & {
-      detalle_faltantes: { campo: string; etiqueta: string }[];
-    };
-  };
-}

@@ -54,12 +54,6 @@ describe('SemaforoService', () => {
     expect(req.request.params.keys()).toEqual([]);
     req.flush({});
   });
-  it('addresses detail by internal ID', () => {
-    api.faltantes(42).subscribe();
-    const req = http.expectOne(`${URL}/42/faltantes`);
-    expect(req.request.method).toBe('GET');
-    req.flush({});
-  });
   it('lets failures reach the view without manufacturing data', () => {
     const fail = vi.fn();
     api.consultar().subscribe({ error: fail });

@@ -132,4 +132,25 @@
     />
   }
 </section>
-<app-faltantes-drawer [empleadoId]="empleadoId()" [(open)]="drawerOpen" />
+
+<!--
+  The record folder of the roster, mounted here because both screens show the
+  same worker and a worker has one record. The completeness figures of the row
+  travel with it — this list is where they come from — so the `Estado` sheet can
+  print them without a second request. The pencil is gated by the same role rule
+  the roster uses, and the edit folder is mounted beside it exactly as there.
+-->
+<app-ficha-drawer
+  [empleadoId]="empleadoId()"
+  [completitud]="completitud()"
+  [puedeEditar]="puedeEditar()"
+  [(open)]="drawerOpen"
+  (editarSolicitado)="editarEmpleado($event)"
+  (bajaRegistrada)="alRegistrarBaja()"
+/>
+
+<app-editar-drawer
+  [empleadoId]="editarId()"
+  [(open)]="edicionAbierta"
+  (actualizado)="alActualizarEmpleado($event)"
+/>

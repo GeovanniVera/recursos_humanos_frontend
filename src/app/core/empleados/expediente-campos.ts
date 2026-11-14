@@ -1,8 +1,8 @@
 /**
  * Human-readable Spanish labels for mandatory employee dossier fields.
  *
- * Mirrors `Empleado::CAMPOS_EXPEDIENTE` in the backend so missing-field chips in
- * `FichaDrawer` and fallbacks in `FaltantesDrawer` present identical copy.
+ * Mirrors `Empleado::CAMPOS_EXPEDIENTE` in the backend so missing-field labels in
+ * `FichaDrawer` present the same copy the server's keys stand for.
  */
 export const ETIQUETAS_CAMPO_EXPEDIENTE: Readonly<Record<string, string>> = {
   curp: 'CURP',

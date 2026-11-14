@@ -183,6 +183,41 @@
             </div>
 
             <!--
+              The completeness figures, when the page that mounts the folder
+              already has them: the semáforo list carries the percentage and the
+              counts of every row and hands them in with the record. They are
+              additional to `Estado del expediente` — the state and the names of
+              the missing fields keep coming from the record — and the folder
+              never asks the API for them. `role="group"` names the set, so the
+              two `Campos faltantes` of the sheet stay two different things.
+            -->
+            @if (tabActiva() === 'estado' && completitud(); as avance) {
+              <div class="grid" role="group" aria-label="Completitud del expediente">
+                <p class="subtitle">Completitud</p>
+
+                <div class="field is-full">
+                  <span class="label">Avance del expediente</span>
+                  <span class="value">{{ avance.porcentaje }} % completo</span>
+                </div>
+
+                <div class="field">
+                  <span class="label">Campos completos</span>
+                  <span class="value">{{ avance.campos_completos }}</span>
+                </div>
+
+                <div class="field">
+                  <span class="label">Campos faltantes</span>
+                  <span class="value">{{ avance.campos_faltantes }}</span>
+                </div>
+
+                <div class="field">
+                  <span class="label">Total obligatorio</span>
+                  <span class="value">{{ avance.total_campos }}</span>
+                </div>
+              </div>
+            }
+
+            <!--
               The way into the second level of the record. `Plaza` has one door
               (its history); `Estado` has the act itself plus the log, and the
               act depends on whether there is something to terminate or to

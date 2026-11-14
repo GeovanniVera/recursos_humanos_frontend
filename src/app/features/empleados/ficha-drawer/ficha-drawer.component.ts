@@ -23,6 +23,7 @@ import {
   FichaEmpleado,
   FichaError,
   HistorialBaja,
+  ResumenCompletitud,
 } from '../../../core/empleados/ficha.models';
 import { FichaService } from '../../../core/empleados/ficha.service';
 import { Drawer } from '../../../shared/ui/drawer/drawer.component';
@@ -203,6 +204,18 @@ export class FichaDrawer {
 
   /** Whether inline editing is enabled by a backing contract/workflow. */
   readonly puedeEditar = input(false);
+
+  /**
+   * Completeness of the file, when the page that mounts the folder already has
+   * it.
+   *
+   * The semáforo list computes the percentage and the counts of every row, so
+   * the same folder can print them there without a second request. From the
+   * roster the input stays `null` and the `Estado` sheet shows exactly what the
+   * record says — the block is additional information, never a replacement of
+   * `Estado del expediente`.
+   */
+  readonly completitud = input<ResumenCompletitud | null>(null);
 
   /** Emits the loaded worker id when edition is triggered and available. */
   readonly editarSolicitado = output<number>();

@@ -103,6 +103,25 @@ export interface FichaEstadoExpediente {
   campos_faltantes: string[];
 }
 
+/**
+ * Completeness figures a page may hand to the record drawer.
+ *
+ * The record only carries the state of the file and the names of the missing
+ * fields; the percentage and the counts are computed by the semáforo list and
+ * travel with its rows. A page that already knows them passes them in, so the
+ * sheet prints them without asking again: the drawer never fetches these.
+ *
+ * Declared here and not in `core/semaforo`: that module already imports
+ * `EstadoExpediente` from this one, and the reverse import would close a cycle.
+ * A `ResumenSemaforo` row satisfies this shape as it is.
+ */
+export interface ResumenCompletitud {
+  porcentaje: number;
+  total_campos: number;
+  campos_completos: number;
+  campos_faltantes: number;
+}
+
 /** Employment status inside the system. */
 export interface FichaGestionInterna {
   activo: boolean;

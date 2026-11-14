@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ConsultaSemaforo, FaltantesResponse, SemaforoResponse } from './semaforo.models';
+import { ConsultaSemaforo, SemaforoResponse } from './semaforo.models';
 
 /** Only the wire contract. Authentication belongs to the existing interceptor. */
 @Injectable({ providedIn: 'root' })
@@ -19,9 +19,5 @@ export class SemaforoService {
       params = params.set(key, normalized);
     }
     return this.http.get<SemaforoResponse>(this.url, { params });
-  }
-
-  faltantes(id: number): Observable<FaltantesResponse> {
-    return this.http.get<FaltantesResponse>(`${this.url}/${id}/faltantes`);
   }
 }
