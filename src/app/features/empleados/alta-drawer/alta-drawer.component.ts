@@ -172,7 +172,7 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  * The same four sections the wizard had, now four tabs of an expediente: the
  * language of the record drawer, because a new employee is a file being written
  * and not a separate screen. Nothing of the shape of the request changed — the
- * fields, their order, their ids and their copy are the ones of `AltaPage`, and
+ * fields, their order, their ids and their copy are the ones the wizard had, and
  * every rule behind them lives in `core/empleados/borrador-alta.ts`, so the two
  * surfaces cannot drift apart.
  *

@@ -6,6 +6,7 @@ import { Subject, debounceTime } from 'rxjs';
 import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmpleadoRegistrado } from '../../core/empleados/alta.models';
+import { FichaEmpleado } from '../../core/empleados/ficha.models';
 import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
 import { PadronError } from '../../core/padron/padron.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
@@ -17,6 +18,7 @@ import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { AltaDrawer } from './alta-drawer/alta-drawer.component';
+import { EditarDrawer } from './editar-drawer/editar-drawer.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
 
 /**
@@ -85,7 +87,17 @@ interface FallaPadron {
  */
 @Component({
   selector: 'app-empleados-page',
-  imports: [AlertBanner, AltaDrawer, Button, DataTable, FichaDrawer, Pagination, RowFlag, RowLink],
+  imports: [
+    AlertBanner,
+    AltaDrawer,
+    Button,
+    DataTable,
+    EditarDrawer,
+    FichaDrawer,
+    Pagination,
+    RowFlag,
+    RowLink,
+  ],
   templateUrl: './empleados-page.component.html',
   styleUrl: './empleados-page.component.scss',
   // One buffer per visit: filter, page and cached blocks are not shared with a
@@ -97,10 +109,20 @@ export class EmpleadosPage {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
+
+  /**
+   * Opens the edit folder on the row's worker.
+   *
+   * Temporary wiring for review: the pencil of the record used to navigate to
+   * `/empleados/:id/editar`, and that route still exists. The third drawer takes
+   * the id and emits, so this screen only has to say which worker it is about.
+   */
   editarEmpleado(id: number): void {
     this.fichaAbierta.set(false);
-    void this.router.navigate(['/empleados', id, 'editar']);
+    this.editarId.set(id);
+    this.edicionAbierta.set(true);
   }
+
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -152,6 +174,17 @@ export class EmpleadosPage {
 
   /** Whether the registration folder is open. Two-way bound to it. */
   readonly altaAbierta = signal(false);
+
+  /**
+   * Internal key of the worker whose edit folder is open, or `null`.
+   *
+   * The folder is mounted once and gains its id from the pencil of the record:
+   * one panel for the whole screen, the same way the record itself is mounted.
+   */
+  readonly editarId = signal<number | null>(null);
+
+  /** Whether the edit folder is open. Two-way bound to it. */
+  readonly edicionAbierta = signal(false);
 
   /** One formatter for every count, so the figures group digits alike. */
   private readonly formato = new Intl.NumberFormat('es-MX');
@@ -484,6 +517,24 @@ export class EmpleadosPage {
       type: 'success',
       title: 'Empleado registrado.',
       message: `Número de empleado ${empleado.num_empleado}.`,
+    });
+
+    this.errorPagina.set(null);
+    this.store.recargar();
+  }
+
+  /**
+   * An edit just landed.
+   *
+   * The drawer says the act happened and closes; the toast names the worker and
+   * the roster asks again, because the row of this screen prints the name and the
+   * area the edit may have changed.
+   */
+  alActualizarEmpleado(empleado: FichaEmpleado): void {
+    this.toast.show({
+      type: 'success',
+      title: 'Empleado actualizado correctamente.',
+      message: `Número de empleado ${empleado.identificacion.num_empleado}.`,
     });
 
     this.errorPagina.set(null);

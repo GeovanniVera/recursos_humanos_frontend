@@ -334,9 +334,10 @@ describe('EmpleadosPage', () => {
     httpMock.expectOne(`${URL_FORMULARIO}`).flush(CATALOGOS);
     await fixture.whenStable();
 
-    // The second panel of the screen: the record's is mounted first.
+    // The second panel of the screen: the record's is mounted first, the edit
+    // folder's comes after the registration one.
     const paneles = host(fixture).querySelectorAll('dialog');
-    expect(paneles.length).toBe(2);
+    expect(paneles.length).toBe(3);
     expect(paneles[1].hasAttribute('open')).toBe(true);
     expect(paneles[1].querySelector('.bar-name')?.textContent?.trim()).toBe('Nuevo empleado');
     expect(paneles[1].querySelector('#num_empleado')).not.toBeNull();

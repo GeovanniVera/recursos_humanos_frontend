@@ -19,7 +19,7 @@
       travels in a badge, so the operator sees how much is left without being
       kept out.
     -->
-    <div class="tabs" role="tablist" aria-label="Secciones del alta" (keydown)="alTeclear($event)">
+    <div class="tabs" role="tablist" [attr.aria-label]="etiquetaTabs()" (keydown)="alTeclear($event)">
       @for (tab of tabs(); track tab.etiqueta; let indice = $index) {
         <button
           #tabRef

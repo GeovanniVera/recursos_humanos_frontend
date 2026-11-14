@@ -41,6 +41,15 @@ export class AltaExpediente {
   /** `true` while the sheet has nothing to show yet: assistive tech is told. */
   readonly ocupado = input(false);
 
+  /**
+   * Accessible name of the tab strip.
+   *
+   * The alta is not the only document this folder holds — the edition of a
+   * record uses the same shell — so the label is an input whose default keeps
+   * the alta reading exactly as it did before.
+   */
+  readonly etiquetaTabs = input('Secciones del alta');
+
   /** A tab was chosen. The index is the one the strip was built with. */
   readonly seleccionar = output<number>();
 

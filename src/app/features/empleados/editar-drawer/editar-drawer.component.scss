@@ -1,0 +1,315 @@
+@use '../../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// The form written on the edit sheet
+//
+// The folder — desk, manila, tab strip and the sheet's frame — is
+// `alta-expediente`, which projects this content into the only scroll container
+// of the panel. What lives here is the form and what it needs to say: sections,
+// the nine controls of the allowlist, the values that only inform, and the two
+// acts of the bar.
+//
+// Read-only rows reuse the record drawer's grammar — a label and a dotted rule —
+// because this sheet is a copy of a document that already exists, not a blank
+// form. Ink is `--color-paper-value` and not `--color-paper-ink`: the sheet is
+// paper in every theme, while `--color-paper-ink` is the ink of the *desk*.
+// ---------------------------------------------------------------------------
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 var(--paper-indent);
+  border: 0;
+}
+
+.group-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-paper-value);
+}
+
+.group-hint {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// Two fields per row, one below `bp.$bp-sm`: a CURP and an address need the room
+// of a whole line.
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-paper-muted);
+}
+
+// A value the record holds: it sits on the same rule a control would, but in
+// muted ink, because there is nothing to type.
+.value {
+  min-height: 23px;
+  padding-bottom: 3px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px dotted var(--color-paper-line);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--color-paper-value);
+}
+
+// A field the record does not carry: present, but said softly.
+.value.is-empty {
+  font-style: italic;
+  color: var(--color-paper-empty);
+}
+
+// ---------------------------------------------------------------------------
+// Controls — a line written on the sheet
+// ---------------------------------------------------------------------------
+
+// No box, no fill, no chrome beyond the rule the control sits on. The caret is
+// the affordance; the rule carries the states: muted at rest, ink on hover and
+// focus, the stamp when the value is rejected.
+.control {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--color-paper-muted);
+  border-radius: var(--radius-none);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.control::placeholder {
+  color: var(--color-paper-empty);
+}
+
+.control:hover:not(:disabled),
+.control:focus-visible {
+  border-bottom-color: var(--color-paper-value);
+}
+
+// The ring is the global one: the paper world has no focus token of its own. It
+// is a halo, so the rule underneath and the darkened label carry the state too.
+.control:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+// The label darkens with the control, so the ring is not the only cue.
+.field:focus-within .label {
+  color: var(--color-paper-value);
+}
+
+.control-area {
+  min-height: 96px;
+  padding-top: 6px;
+  resize: vertical;
+  // Ruled lines, carried with the text instead of glued to the box.
+  background-attachment: local;
+  background-image: repeating-linear-gradient(
+    var(--transparent) 0 23px,
+    var(--color-paper-line) 23px 24px
+  );
+}
+
+// A value the backend would reject: the rule turns to the stamp, paired with the
+// message underneath, so the state never rests on colour alone.
+.control.is-invalid {
+  border-bottom-color: var(--color-stamp);
+}
+
+// ---------------------------------------------------------------------------
+// What the form says under a field
+// ---------------------------------------------------------------------------
+
+.field-error {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-stamp);
+}
+
+.field-error::before {
+  content: '✕ ';
+}
+
+// ---------------------------------------------------------------------------
+// The bar — the two acts of the sheet
+// ---------------------------------------------------------------------------
+
+// Pinned to the bottom of the scroll container, so the way to save is reachable
+// from any sheet however long the form is.
+.acciones {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 12px 0 0 var(--paper-indent);
+  border-top: 1px solid var(--color-paper-line);
+  background: var(--color-paper);
+}
+
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-paper-value);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+// The one primary action of this layer.
+.action.is-primary {
+  border-color: var(--color-paper-action);
+  background: var(--color-paper-action);
+  color: var(--color-paper-action-ink);
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .action:hover:not(:disabled) {
+    background: var(--color-paper-value);
+    color: var(--color-paper);
+  }
+
+  .action.is-primary:hover:not(:disabled) {
+    background: var(--color-paper-value);
+    color: var(--color-paper);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Loading and failure of the sheet
+// ---------------------------------------------------------------------------
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.line {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-paper-xs);
+  background: var(--color-paper-line);
+}
+
+.line.is-short {
+  width: 58%;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: var(--paper-indent);
+}
+
+.state-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-stamp);
+}
+
+.state-text {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// The retry of the failure block sits on the sheet, so its ink is the sheet's.
+.state .action {
+  align-self: flex-start;
+}
+
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
+
+@include bp.down(bp.$bp-sm) {
+  // Two columns of a CURP do not fit a phone: the sheet becomes a single line of
+  // boxes, the way a narrow form breaks.
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
+// High contrast takes colour away, so every state told apart by ink is restated
+// with line and shape.
+@media (forced-colors: active) {
+  .control:focus-visible {
+    outline: 2px solid;
+  }
+
+  .control.is-invalid {
+    border-bottom-style: double;
+  }
+
+  .value.is-empty {
+    font-style: normal;
+    border-bottom-style: dashed;
+  }
+
+  .action.is-primary {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+}

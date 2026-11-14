@@ -183,12 +183,13 @@
 </section>
 
 <!--
-  Two panels for the whole screen, each mounted once and driven by its own pair
+  Three panels for the whole screen, each mounted once and driven by its own pair
   of signals: the row click and the name button both end in the record, the
-  header action ends in the registration folder. A termination reported by the
-  record sends the roster back to the server, because the endpoint filters the
-  inactive workers out and the row has to disappear; a registration does the
-  same, because the new employee belongs in this list and nowhere else.
+  header action ends in the registration folder, and the pencil of the record
+  ends in the edit folder. A termination reported by the record sends the roster
+  back to the server, because the endpoint filters the inactive workers out and
+  the row has to disappear; a registration and an edit do the same, because the
+  row on this list is what they change.
 -->
 <app-ficha-drawer
   [puedeEditar]="puedeEditar()"
@@ -199,3 +200,14 @@
 />
 
 <app-alta-drawer [(open)]="altaAbierta" (registrado)="alRegistrarEmpleado($event)" />
+
+<!--
+  The third panel of the screen: the edit folder, mounted once like the other
+  two. It is addressed by the key of the worker and it never navigates — the
+  screen only decides who is being corrected and what to say once it lands.
+-->
+<app-editar-drawer
+  [empleadoId]="editarId()"
+  [(open)]="edicionAbierta"
+  (actualizado)="alActualizarEmpleado($event)"
+/>
