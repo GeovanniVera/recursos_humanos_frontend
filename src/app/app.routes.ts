@@ -76,11 +76,12 @@ export const routes: Routes = [
           },
           {
             path: 'alta',
-            // A child of the branch, not a top level screen: the alta belongs to
-            // the roster it feeds, and the trail reads `Empleados › Alta`.
-            data: { breadcrumb: 'Alta de empleado' },
-            loadComponent: () =>
-              import('./features/empleados/alta/alta-page.component').then((m) => m.AltaPage),
+            // The alta left the route tree: it is the drawer of the roster now,
+            // opened from its own header. The path stays as a redirect so an old
+            // bookmark — or a link from a document — lands on the list instead of
+            // a 404. `pathMatch: 'full'` keeps it from swallowing `/empleados/alta/x`.
+            pathMatch: 'full',
+            redirectTo: 'activos',
           },
           {
             path: 'baja',

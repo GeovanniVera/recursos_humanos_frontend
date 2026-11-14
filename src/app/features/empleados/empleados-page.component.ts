@@ -1,10 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
 import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { AuthService } from '../../core/auth/auth.service';
+import { EmpleadoRegistrado } from '../../core/empleados/alta.models';
 import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
 import { PadronError } from '../../core/padron/padron.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
@@ -14,6 +15,8 @@ import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/dat
 import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
+import { ToastService } from '../../shared/ui/toast/toast.service';
+import { AltaDrawer } from './alta-drawer/alta-drawer.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
 
 /**
@@ -82,7 +85,7 @@ interface FallaPadron {
  */
 @Component({
   selector: 'app-empleados-page',
-  imports: [AlertBanner, Button, DataTable, FichaDrawer, Pagination, RouterLink, RowFlag, RowLink],
+  imports: [AlertBanner, AltaDrawer, Button, DataTable, FichaDrawer, Pagination, RowFlag, RowLink],
   templateUrl: './empleados-page.component.html',
   styleUrl: './empleados-page.component.scss',
   // One buffer per visit: filter, page and cached blocks are not shared with a
@@ -92,6 +95,7 @@ interface FallaPadron {
 export class EmpleadosPage {
   private readonly store = inject(PadronBufferStore);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
   editarEmpleado(id: number): void {
     this.fichaAbierta.set(false);
@@ -145,6 +149,9 @@ export class EmpleadosPage {
 
   /** Whether the record panel is open. Two-way bound to it. */
   readonly fichaAbierta = signal(false);
+
+  /** Whether the registration folder is open. Two-way bound to it. */
+  readonly altaAbierta = signal(false);
 
   /** One formatter for every count, so the figures group digits alike. */
   private readonly formato = new Intl.NumberFormat('es-MX');
@@ -455,6 +462,30 @@ export class EmpleadosPage {
    * rows while the new block travels.
    */
   alRegistrarBaja(): void {
+    this.errorPagina.set(null);
+    this.store.recargar();
+  }
+
+  /** Opens the folder where a new file is written, over the roster it feeds. */
+  abrirAlta(): void {
+    this.altaAbierta.set(true);
+  }
+
+  /**
+   * A new employee just landed.
+   *
+   * The drawer says the act happened and nothing else: the toast names the
+   * number the system assigned, which is the one datum the operator needs, and
+   * the roster asks again because the new row belongs to this list — it is the
+   * first page of it when the order is by number.
+   */
+  alRegistrarEmpleado(empleado: EmpleadoRegistrado): void {
+    this.toast.show({
+      type: 'success',
+      title: 'Empleado registrado.',
+      message: `Número de empleado ${empleado.num_empleado}.`,
+    });
+
     this.errorPagina.set(null);
     this.store.recargar();
   }

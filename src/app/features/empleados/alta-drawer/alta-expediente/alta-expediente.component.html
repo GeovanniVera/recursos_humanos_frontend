@@ -1,0 +1,66 @@
+<!--
+  A record is a manila folder over a desk, and a sheet inside. The folder owns
+  the bar, the tab strip and the sheet's frame; the sheet is the only scroll
+  container, and the form is projected into it by the drawer.
+-->
+<div class="ficha">
+  <div class="bar">
+    <p class="bar-name">{{ titulo() }}</p>
+
+    <div class="bar-actions">
+      <button type="button" class="action" (click)="cerrar.emit()">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="folder">
+    <!--
+      One tab per sheet, arrows move through them, and no tab is ever blocked: a
+      section with errors opens like any other. The count of its fields to fix
+      travels in a badge, so the operator sees how much is left without being
+      kept out.
+    -->
+    <div class="tabs" role="tablist" aria-label="Secciones del alta" (keydown)="alTeclear($event)">
+      @for (tab of tabs(); track tab.etiqueta; let indice = $index) {
+        <button
+          #tabRef
+          type="button"
+          role="tab"
+          class="tab"
+          [id]="tabIdDe(indice)"
+          [class.is-active]="activo() === indice"
+          [attr.aria-selected]="activo() === indice"
+          [attr.aria-controls]="panelId"
+          [attr.tabindex]="activo() === indice ? 0 : -1"
+          (click)="seleccionar.emit(indice)"
+        >
+          {{ tab.etiqueta }}
+
+          @if (errores()[indice] > 0) {
+            <!--
+              Labelled as a whole, so the tab reads `Plaza 2 campos con error`
+              instead of announcing a naked number.
+            -->
+            <span class="nb" role="img" [attr.aria-label]="etiquetaErrores(errores()[indice])">{{
+              errores()[indice]
+            }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <div class="cover">
+      <!-- The clip of the folder: it holds the sheet to the manila. -->
+      <span class="clip" aria-hidden="true"></span>
+
+      <div
+        class="sheet"
+        [id]="panelId"
+        role="tabpanel"
+        [attr.aria-labelledby]="tabIdDe(activo())"
+        [attr.aria-busy]="ocupado() ? 'true' : null"
+      >
+        <ng-content />
+      </div>
+    </div>
+  </div>
+</div>

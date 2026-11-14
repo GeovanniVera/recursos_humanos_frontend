@@ -30,32 +30,37 @@ import {
   PuestoCatalogo,
 } from '../../../core/empleados/alta.models';
 import { AltaService } from '../../../core/empleados/alta.service';
+import {
+  BORRADOR_ALTA,
+  BorradorAlta,
+  CampoSelectNumero,
+  CampoSelectTexto,
+  ContextoBorrador,
+  OTRO_LUGAR_NO,
+  PERSONAL_MANDO_MEDIO,
+  SECCION_DE_CAMPO,
+  categoriaDePuesto,
+  claveDeEntidad,
+  construirCuerpoAlta,
+  derivarBorrador,
+  esMandoMedioDe,
+  evaluarBorrador,
+  tipoJornadaDe,
+  tipoPersonalDe,
+} from '../../../core/empleados/borrador-alta';
 import { ENTIDADES_FEDERATIVAS } from '../../../core/empleados/entidades-federativas';
 import {
   DOMINIO_INSTITUCIONAL,
   EXPLICACION_CURP,
   LARGO_MAXIMO_LOCAL,
-  MENSAJE_CURP_INVALIDA,
   MotivoCurp,
   correoConDominio,
   curpClaveEntidad,
-  curpFechaNacimiento,
-  curpSexo,
   hoyLocal,
-  normalizarCorreo,
   normalizarMayusculas,
   normalizarNombre,
   parteLocalCorreo,
-  trabajaOtroDondeRequerido,
-  validarAniosExperiencia,
-  validarCorreo,
   validarCurp,
-  validarFecha,
-  validarGeneracion,
-  validarInicioPuesto,
-  validarLargo,
-  validarNombre,
-  validarNumEmpleado,
 } from '../../../core/empleados/validacion';
 import { AlertBanner } from '../../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../../shared/ui/button/button.component';
@@ -89,37 +94,6 @@ const PASO_CONFIRMACION = PASOS.length - 1;
 /** Two non-breaking spaces per level of the chart, so a `<select>` can show depth. */
 const SANGRIA = '\u00A0\u00A0';
 
-/** Values the backend fixes for a `mando_medio_superior` post. They are the only accepted ones. */
-const PERSONAL_MANDO_MEDIO = 'No Aplica';
-const JORNADA_MANDO_MEDIO = 'Mixta';
-
-/** Category type whose posts carry neither a personal type nor a shift to choose. */
-const MANDO_MEDIO_SUPERIOR = 'mando_medio_superior';
-
-/** `trabaja_otro_lugar` values that turn `trabaja_otro_donde` on. */
-const OTRO_LUGAR_NO = 'No';
-
-/**
- * Sentence of an empty control that carries a typed value, not a choice.
- *
- * The message is the signal of the state, not the colour: every one of them
- * names what to do next.
- */
-const MENSAJE_REQUERIDO_TEXTO = 'Completa este dato.';
-
-/** Sentence of a required `<select>` still sitting on its placeholder. */
-const MENSAJE_REQUERIDO_OPCION = 'Elige una opción.';
-
-/**
- * Sentence of the plaza when the chosen post points at no category.
- *
- * The category is derived from the post and the user cannot change it, so the
- * message sits under the post: that is the control that has to be fixed, and it
- * is fixed in `Catálogos`, not here.
- */
-const MENSAJE_PUESTO_SIN_CATEGORIA =
-  'El puesto elegido no tiene categoría asignada. Asignale una desde Catálogos.';
-
 /** Read-only value of the category while no post is chosen. */
 const CATEGORIA_SIN_PUESTO = 'Se asigna al elegir el puesto.';
 
@@ -134,104 +108,16 @@ const CATEGORIA_SIN_ASIGNAR = 'Sin categoría asignada.';
  * first render, with or without a document already typed: the user only writes
  * the CURP, and the backend resolves the three values from it, so there is no
  * state in which one of them is the user's to fill.
+ *
+ * `core/empleados/borrador-alta.ts` lists which field the *rules* derive; this set
+ * is the presentation counterpart: the fields whose note and `aria-describedby`
+ * the template emits, and the reason none of them is ever scolded for being empty.
  */
 const CAMPOS_DERIVADOS: ReadonlySet<string> = new Set([
   'fecha_nacimiento',
   'sexo',
   'entidad_nacimiento',
 ]);
-
-/**
- * Step that owns each field of the request.
- *
- * A `422` names the fields that failed; the wizard uses this table to jump to
- * the card that holds the first one instead of leaving the user staring at a
- * summary while the message sits on another screen.
- */
-const PASO_DE_CAMPO: Readonly<Record<string, number>> = {
-  num_empleado: 0,
-  nombre: 0,
-  curp: 0,
-  fecha_nacimiento: 0,
-  sexo: 0,
-  estado_civil_id: 0,
-  entidad_nacimiento: 0,
-  correo_institucional: 0,
-  area_id: 1,
-  puesto_id: 1,
-  tipo_personal: 1,
-  tipo_jornada: 1,
-  fecha_inicio_puesto: 1,
-  fecha_ingreso_gobierno: 1,
-  nivel_estudios_id: 2,
-  escuela_procedencia: 2,
-  generacion: 2,
-  exp_publico_anios: 2,
-  exp_privado_anios: 2,
-  trabaja_otro_lugar: 2,
-  trabaja_otro_donde: 2,
-  observaciones: 2,
-};
-
-/**
- * What the user has typed so far.
- *
- * Every field exists from the start and holds its empty value (`''` or `null`),
- * because the draft is the single source of truth of the form: a field that is
- * not on screen still keeps its value, and a `422` never resets it.
- */
-interface BorradorAlta {
-  num_empleado: string;
-  nombre: string;
-  curp: string;
-  fecha_nacimiento: string;
-  sexo: string;
-  estado_civil_id: number | null;
-  entidad_nacimiento: string;
-  correo_institucional: string;
-  area_id: number | null;
-  puesto_id: number | null;
-  tipo_personal: string;
-  tipo_jornada: string;
-  fecha_inicio_puesto: string;
-  fecha_ingreso_gobierno: string;
-  nivel_estudios_id: number | null;
-  escuela_procedencia: string;
-  generacion: string;
-  exp_publico_anios: number | null;
-  exp_privado_anios: number | null;
-  trabaja_otro_lugar: string;
-  trabaja_otro_donde: string;
-  observaciones: string;
-}
-
-/** Optional text fields of the request, all `string | undefined` on the wire. */
-type CampoTexto =
-  | 'curp'
-  | 'fecha_nacimiento'
-  | 'fecha_ingreso_gobierno'
-  | 'escuela_procedencia'
-  | 'generacion'
-  | 'sexo'
-  | 'observaciones';
-
-/**
- * Text fields the form fills by itself: they have no control to type into.
- *
- * `entidad_nacimiento` travels as the two-character key read from the CURP, so it
- * is never one of the editable ones above and never a `<select>` value.
- */
-type CampoDerivadoTexto = 'entidad_nacimiento';
-
-/** Optional numeric fields of the request. */
-type CampoNumero =
-  'exp_publico_anios' | 'exp_privado_anios' | 'nivel_estudios_id' | 'estado_civil_id';
-
-/** Fields chosen with a `<select>` that carries a foreign key. */
-type CampoSelectNumero = 'area_id' | 'puesto_id' | 'estado_civil_id' | 'nivel_estudios_id';
-
-/** Fields chosen with a `<select>` that carries the literal value. */
-type CampoSelectTexto = 'sexo' | 'tipo_personal' | 'tipo_jornada' | 'trabaja_otro_lugar';
 
 /** One option of the area `<select>`, already flattened and indented. */
 interface AreaOpcion {
@@ -253,32 +139,6 @@ interface GrupoResumen {
   readonly titulo: string;
   readonly filas: readonly FilaResumen[];
 }
-
-/** Empty draft. `trabaja_otro_lugar` starts on the backend default, `No`. */
-const BORRADOR: BorradorAlta = {
-  num_empleado: '',
-  nombre: '',
-  curp: '',
-  fecha_nacimiento: '',
-  sexo: '',
-  estado_civil_id: null,
-  entidad_nacimiento: '',
-  correo_institucional: '',
-  area_id: null,
-  puesto_id: null,
-  tipo_personal: '',
-  tipo_jornada: '',
-  fecha_inicio_puesto: '',
-  fecha_ingreso_gobierno: '',
-  nivel_estudios_id: null,
-  escuela_procedencia: '',
-  generacion: '',
-  exp_publico_anios: null,
-  exp_privado_anios: null,
-  trabaja_otro_lugar: OTRO_LUGAR_NO,
-  trabaja_otro_donde: '',
-  observaciones: '',
-};
 
 /**
  * `clave · descripcion` of a category, the way every screen prints it.
@@ -389,7 +249,7 @@ export class AltaPage {
   readonly paso = signal(0);
 
   /** Draft of the request, as typed. Nothing here is trimmed until it is sent. */
-  readonly modelo = signal<BorradorAlta>({ ...BORRADOR });
+  readonly modelo = signal<BorradorAlta>({ ...BORRADOR_ALTA });
 
   /** Last catalog answer, or `null` until the first one arrives. */
   readonly catalogos = signal<FormularioCatalogos | null>(null);
@@ -432,13 +292,47 @@ export class AltaPage {
   readonly hoy = hoyLocal();
 
   /**
+   * The catalogue slices the draft rules read.
+   *
+   * Built from the whole payload, not from the computeds the template binds: the
+   * rules resolve `puesto_id` against every post of the catalogue, because a post
+   * the current area does not offer still has — or lacks — a category, and a
+   * filtered list would turn that answer into "unknown post" and silence the
+   * message that names it. `entidades` is the merged list the entity of birth is
+   * validated against.
+   */
+  private readonly contexto = computed<ContextoBorrador>(() => ({
+    puestos: this.catalogos()?.puestos ?? [],
+    categorias: this.catalogos()?.categorias_cct ?? [],
+    entidades: this.entidades(),
+  }));
+
+  /**
+   * Fields this route protects, and whose local rules therefore never speak.
+   *
+   * In edition the allowlist decides what may be written; a legacy value outside
+   * it cannot be fixed on this screen, so a sentence about it would point at a
+   * control that does not exist and would block a save it has nothing to do with.
+   * In the alta route the list is empty: every field is the user's.
+   */
+  private readonly camposProtegidos = computed<readonly string[]>(() =>
+    this.editando
+      ? Object.keys(BORRADOR_ALTA).filter(
+          (campo) => !(CAMPOS_EDITABLES as readonly string[]).includes(campo),
+        )
+      : [],
+  );
+
+  /**
    * Every local failure of the draft, keyed by field.
    *
    * Also the gate of the steps and of the submit: a field that fails here would
    * come back as a `422`, so the screen refuses to ask.
    */
   private readonly erroresDelBorrador = computed<Record<string, string>>(() =>
-    this.evaluar(this.modelo()),
+    evaluarBorrador(this.modelo(), this.contexto(), {
+      camposProtegidos: this.camposProtegidos(),
+    }),
   );
 
   /**
@@ -583,7 +477,7 @@ export class AltaPage {
    * and the server derives it from `puesto_id`, so the screen only reads it.
    */
   readonly categoriaElegida = computed<CategoriaCctCatalogo | null>(() =>
-    this.categoriaDePuesto(this.puestoElegido()),
+    categoriaDePuesto(this.puestoElegido(), this.contexto()),
   );
 
   /** Read-only text of that category: what the server will store for the post. */
@@ -608,8 +502,11 @@ export class AltaPage {
    *
    * It decides three things: the two fixed values that travel in the body, the
    * two controls that are hidden, and whether the step 2 gate asks for them.
+   * The rule itself lives in `core/empleados/borrador-alta.ts`: the evaluator
+   * reads it from there, and a second copy here could hide the two controls
+   * while the gate still asked for them.
    */
-  readonly esMandoMedio = computed(() => this.categoriaElegida()?.tipo === MANDO_MEDIO_SUPERIOR);
+  readonly esMandoMedio = computed(() => esMandoMedioDe(this.modelo(), this.contexto()));
 
   /** Schooling levels. */
   readonly niveles = computed(() => this.catalogos()?.niveles_estudios ?? []);
@@ -646,15 +543,17 @@ export class AltaPage {
    *
    * A `mando_medio_superior` category hides the control and sends the only value
    * the server accepts for it; administrative and teaching categories send what
-   * the user chose.
+   * the user chose. In edition nothing is re-derived: the record already holds
+   * the value and the allowlist decides what may be written. Both rules live in
+   * `core/empleados/borrador-alta.ts`, where the drawer reads them too.
    */
   readonly tipoPersonal = computed(() =>
-    !this.editando && this.esMandoMedio() ? PERSONAL_MANDO_MEDIO : this.modelo().tipo_personal,
+    this.editando ? this.modelo().tipo_personal : tipoPersonalDe(this.modelo(), this.contexto()),
   );
 
   /** `tipo_jornada` that will travel in the body, for the same reason. */
   readonly tipoJornada = computed(() =>
-    !this.editando && this.esMandoMedio() ? JORNADA_MANDO_MEDIO : this.modelo().tipo_jornada,
+    this.editando ? this.modelo().tipo_jornada : tipoJornadaDe(this.modelo(), this.contexto()),
   );
 
   /**
@@ -761,7 +660,7 @@ export class AltaPage {
   private precargar(f: FichaEmpleado): void {
     this.registroActual.set(f);
     this.modelo.set({
-      ...BORRADOR,
+      ...BORRADOR_ALTA,
       ...f.identificacion,
       correo_institucional: f.contacto.correo_institucional ?? '',
       area_id: f.plaza.area_id,
@@ -777,7 +676,10 @@ export class AltaPage {
       // that is what travels and what the backend compares against the CURP. It
       // is derived from the CURP for the same reason the alta form derives it:
       // the document is the only authority on which entity the person is from.
-      entidad_nacimiento: this.claveDeEntidad(curpClaveEntidad(f.identificacion.curp ?? '')),
+      entidad_nacimiento: claveDeEntidad(
+        curpClaveEntidad(f.identificacion.curp ?? ''),
+        this.entidades(),
+      ),
       nivel_estudios_id: f.estudios.nivel_estudios_id,
       escuela_procedencia: f.estudios.escuela_procedencia ?? '',
       generacion: f.estudios.generacion ?? '',
@@ -838,13 +740,13 @@ export class AltaPage {
     if (this.soloLectura(campo)) return;
     const siguiente = { ...this.modelo(), [campo]: valor } as BorradorAlta;
 
-    // A complete CURP carries the birth date and the sex: the backend resolves
-    // both from it, so the screen fills them instead of asking twice.
-    if (campo === 'curp' && typeof valor === 'string') {
-      this.derivarDeCurp(siguiente, valor);
-    }
-
-    this.modelo.set(siguiente);
+    // A complete CURP carries the birth date, the sex and the entity: the backend
+    // resolves all three from it, so the screen fills them instead of asking.
+    this.modelo.set(
+      campo === 'curp' && typeof valor === 'string'
+        ? derivarBorrador(siguiente, valor, this.contexto())
+        : siguiente,
+    );
     this.olvidarErrorDeServidor(campo);
     this.refrescarErrores();
   }
@@ -1097,104 +999,6 @@ export class AltaPage {
     return indice < this.paso();
   }
 
-  /**
-   * Every local failure of the draft, keyed by field, in the order the steps
-   * ask for them.
-   *
-   * One pass instead of one rule per control: several checks compare two fields
-   * (`fecha_inicio_puesto` against `fecha_ingreso_gobierno`), so a map built
-   * from the whole draft is the only way to keep them coherent. The insertion
-   * order is the order of the wizard, which is what lets the submit carry the
-   * user to the first thing that has to be fixed.
-   */
-  private evaluar(datos: BorradorAlta): Record<string, string> {
-    const errores: Record<string, string> = {};
-    const poner = (campo: string, mensaje: string | null): void => {
-      if (mensaje !== null && !this.soloLectura(campo)) {
-        errores[campo] = mensaje;
-      }
-    };
-
-    // --- Step 1: identification -------------------------------------------
-    poner('num_empleado', validarNumEmpleado(datos.num_empleado));
-    poner('nombre', validarNombre(datos.nombre));
-    poner('correo_institucional', validarCorreo(datos.correo_institucional));
-    poner('curp', validarCurp(datos.curp).valida ? null : MENSAJE_CURP_INVALIDA);
-
-    // A derived date comes from a CURP that already passed every rule.
-    if (!this.derivaFecha(datos.curp)) {
-      poner('fecha_nacimiento', validarFecha(datos.fecha_nacimiento, { noFutura: true }));
-    }
-
-    // --- Step 2: plaza -----------------------------------------------------
-    poner('area_id', datos.area_id === null ? MENSAJE_REQUERIDO_OPCION : null);
-    poner('puesto_id', this.mensajeDePuesto(datos));
-    poner('fecha_inicio_puesto', this.mensajeDeInicio(datos));
-    poner('fecha_ingreso_gobierno', validarFecha(datos.fecha_ingreso_gobierno, { noFutura: true }));
-
-    // A mando medio post has no personal type nor shift to choose.
-    if (!this.esMandoMedioDe(datos)) {
-      poner('tipo_personal', datos.tipo_personal.trim() === '' ? MENSAJE_REQUERIDO_OPCION : null);
-      poner('tipo_jornada', datos.tipo_jornada.trim() === '' ? MENSAJE_REQUERIDO_OPCION : null);
-    }
-
-    // --- Step 3: studies and experience ------------------------------------
-    poner('escuela_procedencia', validarLargo(datos.escuela_procedencia, 100));
-    poner('generacion', validarGeneracion(datos.generacion));
-    poner('exp_publico_anios', validarAniosExperiencia(datos.exp_publico_anios));
-    poner('exp_privado_anios', validarAniosExperiencia(datos.exp_privado_anios));
-    poner('trabaja_otro_donde', this.mensajeDeOtroDonde(datos));
-    poner('observaciones', validarLargo(datos.observaciones, 2000));
-
-    return errores;
-  }
-
-  /**
-   * Message of the post: it must be chosen, and it must carry a category.
-   *
-   * The category is not a control the user can fix here, so a post the catalogue
-   * has no category for is named under the post itself: the server would derive
-   * nothing from it, and the step cannot leave.
-   */
-  private mensajeDePuesto(datos: BorradorAlta): string | null {
-    if (datos.puesto_id === null) {
-      return MENSAJE_REQUERIDO_OPCION;
-    }
-
-    const puesto = this.puestoDe(datos.puesto_id);
-    if (puesto === null) {
-      return null;
-    }
-
-    return this.categoriaDePuesto(puesto) === null ? MENSAJE_PUESTO_SIN_CATEGORIA : null;
-  }
-
-  /** Message of the start of the post: present, real, not future, not early. */
-  private mensajeDeInicio(datos: BorradorAlta): string | null {
-    const inicio = datos.fecha_inicio_puesto.trim();
-    if (inicio === '') {
-      return MENSAJE_REQUERIDO_TEXTO;
-    }
-
-    return (
-      validarFecha(inicio, { noFutura: true }) ??
-      validarInicioPuesto(inicio, datos.fecha_ingreso_gobierno)
-    );
-  }
-
-  /** Message of the "where else" detail: required, and bounded to 255. */
-  private mensajeDeOtroDonde(datos: BorradorAlta): string | null {
-    if (trabajaOtroDondeRequerido(datos.trabaja_otro_lugar) !== 'requerido') {
-      return null;
-    }
-
-    const donde = datos.trabaja_otro_donde.trim();
-    if (donde === '') {
-      return MENSAJE_REQUERIDO_TEXTO;
-    }
-    return validarLargo(donde, 255);
-  }
-
   /** Rebuilds the visible messages from the draft and the visited controls. */
   private refrescarErrores(): void {
     const visibles: Record<string, string> = {};
@@ -1249,58 +1053,6 @@ export class AltaPage {
     this.refrescarErrores();
   }
 
-  /**
-   * Copies what a CURP already carries: the birth date, the sex and the entity.
-   *
-   * All three are written on every pass, `''` included. They are locked, so a
-   * value left behind by a CURP that no longer exists could never be corrected
-   * by hand, and it would still travel in the request claiming to be a fact of
-   * the document. An empty field is honest; a survivor is a lie the user cannot
-   * fix. The entity is read from the shape alone, before the completeness check,
-   * which is what lets it fill while the CURP is still being typed.
-   */
-  private derivarDeCurp(destino: BorradorAlta, curp: string): void {
-    destino.entidad_nacimiento = this.claveDeEntidad(curpClaveEntidad(curp));
-
-    if (!validarCurp(curp).valida) {
-      destino.fecha_nacimiento = '';
-      destino.sexo = '';
-      return;
-    }
-
-    destino.fecha_nacimiento = curpFechaNacimiento(curp) ?? '';
-    // `X` means "not specified": the field stays empty instead of guessing.
-    destino.sexo = curpSexo(curp) ?? '';
-  }
-
-  /** `true` when the CURP can fill the birth date of the draft. */
-  private derivaFecha(curp: string): boolean {
-    return validarCurp(curp).valida && curpFechaNacimiento(curp) !== null;
-  }
-
-  /** Post of the draft, or `null` while none is chosen. */
-  private puestoDe(id: number | null): PuestoCatalogo | null {
-    if (id === null) {
-      return null;
-    }
-    return (this.catalogos()?.puestos ?? []).find((puesto) => puesto.id === id) ?? null;
-  }
-
-  /** Category a post points at, or `null` when the catalogue does not carry it. */
-  private categoriaDePuesto(puesto: PuestoCatalogo | null): CategoriaCctCatalogo | null {
-    if (puesto === null) {
-      return null;
-    }
-
-    const categorias = this.catalogos()?.categorias_cct ?? [];
-    return categorias.find((categoria) => categoria.id === puesto.categoria_cct_id) ?? null;
-  }
-
-  /** `true` when the post of the draft is held by a `mando_medio_superior` category. */
-  private esMandoMedioDe(datos: BorradorAlta): boolean {
-    return this.categoriaDePuesto(this.puestoDe(datos.puesto_id))?.tipo === MANDO_MEDIO_SUPERIOR;
-  }
-
   /** Forgets the `422` message of one field, after the value behind it changed. */
   private olvidarErrorDeServidor(campo: string): void {
     const actuales = this.erroresServidor();
@@ -1313,91 +1065,25 @@ export class AltaPage {
     this.erroresServidor.set(resto);
   }
 
-  /** Step that holds a field, or `null` when no card shows it. */
+  /** Section that holds a field, or `null` when no card shows it. */
   private pasoDelCampo(campo: string): number | null {
-    const paso: number | undefined = PASO_DE_CAMPO[campo];
+    const paso: number | undefined = SECCION_DE_CAMPO[campo];
     return paso ?? null;
   }
 
-  /** Body of the request: only the fields the user filled, plus the required ones. */
+  /**
+   * Body of the request, with the two values the server derives from the post.
+   *
+   * `tipo_personal` and `tipo_jornada` are resolved here because they depend on
+   * the route: the alta fills them from the category of the post, and the edition
+   * sends what the record already holds. The draft itself keeps what the user —
+   * or the record — put there.
+   */
   private construirCuerpo(): AltaEmpleadoRequest {
-    const datos = this.modelo();
-
-    const cuerpo: AltaEmpleadoRequest = {
-      num_empleado: datos.num_empleado.trim(),
-      // The name and the address are cleaned the way they are stored: the blanks
-      // of the first one collapse, and the second goes out lower-cased and with
-      // the institutional domain, which the field never asked the user for.
-      nombre: normalizarNombre(datos.nombre),
-      correo_institucional: normalizarCorreo(datos.correo_institucional),
-      // The gate of step 2 keeps these two from being empty; if a bug ever
-      // let them through, the `null` would leave and the API would answer the
-      // `422` that names the field, which is better than a guess made here.
-      area_id: datos.area_id as number,
-      puesto_id: datos.puesto_id as number,
-      fecha_inicio_puesto: datos.fecha_inicio_puesto,
-    };
-
-    // A mando medio post sends the two values the server fixes for it; any other
-    // post sends what the user chose.
-    const personal = this.tipoPersonal();
-    if (personal !== '') {
-      cuerpo.tipo_personal = personal;
-    }
-    const jornada = this.tipoJornada();
-    if (jornada !== '') {
-      cuerpo.tipo_jornada = jornada;
-    }
-
-    this.agregarTexto(cuerpo, 'curp', datos.curp);
-    this.agregarTexto(cuerpo, 'fecha_nacimiento', datos.fecha_nacimiento);
-    this.agregarTexto(cuerpo, 'fecha_ingreso_gobierno', datos.fecha_ingreso_gobierno);
-    this.agregarTexto(cuerpo, 'escuela_procedencia', datos.escuela_procedencia);
-    this.agregarTexto(cuerpo, 'generacion', datos.generacion);
-    this.agregarTexto(cuerpo, 'entidad_nacimiento', datos.entidad_nacimiento);
-    this.agregarTexto(cuerpo, 'sexo', datos.sexo);
-    this.agregarTexto(cuerpo, 'observaciones', datos.observaciones);
-
-    this.agregarNumero(cuerpo, 'exp_publico_anios', datos.exp_publico_anios);
-    this.agregarNumero(cuerpo, 'exp_privado_anios', datos.exp_privado_anios);
-    this.agregarNumero(cuerpo, 'nivel_estudios_id', datos.nivel_estudios_id);
-    this.agregarNumero(cuerpo, 'estado_civil_id', datos.estado_civil_id);
-
-    const otroLugar = datos.trabaja_otro_lugar.trim();
-    if (otroLugar !== '') {
-      cuerpo.trabaja_otro_lugar = otroLugar;
-    }
-    // Prohibited when the answer is `No`: the field is not sent at all, not sent
-    // empty.
-    const otroDonde = datos.trabaja_otro_donde.trim();
-    if (otroLugar !== OTRO_LUGAR_NO && otroDonde !== '') {
-      cuerpo.trabaja_otro_donde = otroDonde;
-    }
-
-    return cuerpo;
-  }
-
-  /** Adds an optional text only when it carries something. */
-  private agregarTexto(
-    cuerpo: AltaEmpleadoRequest,
-    campo: CampoTexto | CampoDerivadoTexto,
-    valor: string,
-  ): void {
-    const limpio = valor.trim();
-    if (limpio !== '') {
-      cuerpo[campo] = limpio;
-    }
-  }
-
-  /** Adds an optional number. `0` is a real answer, so only `null` is skipped. */
-  private agregarNumero(
-    cuerpo: AltaEmpleadoRequest,
-    campo: CampoNumero,
-    valor: number | null,
-  ): void {
-    if (valor !== null) {
-      cuerpo[campo] = valor;
-    }
+    return construirCuerpoAlta(this.modelo(), this.contexto(), {
+      tipoPersonal: this.tipoPersonal(),
+      tipoJornada: this.tipoJornada(),
+    });
   }
 
   /** Toast with the created number, then the roster the new employee joined. */
@@ -1563,20 +1249,6 @@ export class AltaPage {
       return SIN_DATO;
     }
     return this.catalogos()?.areas.find((area) => area.id === id)?.nombre ?? SIN_DATO;
-  }
-
-  /**
-   * Key of the entity that may travel: the one the merged list knows, or `''`.
-   *
-   * A key RENAPO does not issue would come back as a `422`, and the field exists
-   * to inform: an empty one says "the CURP does not give a known entity", which is
-   * the truth the screen can stand behind.
-   */
-  private claveDeEntidad(clave: string | null): string {
-    if (clave === null) {
-      return '';
-    }
-    return this.entidades().some((entidad) => entidad.clave === clave) ? clave : '';
   }
 
   /** Name of an entity of the merged list, or `''` when it does not carry the key. */

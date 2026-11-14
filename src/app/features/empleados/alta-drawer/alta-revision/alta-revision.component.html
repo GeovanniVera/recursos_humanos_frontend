@@ -1,0 +1,46 @@
+<!--
+  The closing sheet of the folder: what the draft says, and the one act that
+  sends it. Every value the user left empty reads as a placeholder — that is
+  what the request will not carry, and hiding it would leave the recap claiming
+  a completeness it does not have.
+-->
+<div class="revision">
+  <h2 class="titulo">Confirmación</h2>
+
+  <div class="summary">
+    @for (grupo of resumen(); track grupo.titulo) {
+      <section class="summary-group">
+        <h3 class="summary-title">{{ grupo.titulo }}</h3>
+        <dl class="summary-list">
+          @for (fila of grupo.filas; track fila.etiqueta) {
+            <div class="summary-row">
+              <dt class="summary-label">{{ fila.etiqueta }}</dt>
+              <dd class="summary-value">{{ fila.valor }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+    }
+  </div>
+
+  <p class="hint">Al registrar, el alta se envía al sistema y el empleado pasa al padrón activo.</p>
+
+  <!--
+    The one primary action of the drawer. It is never gated by the draft: the
+    submit is what reveals what is missing, so a button that waited for a clean
+    draft would keep the user from ever learning why it is not clean. It is
+    disabled only while the request it started is in flight, and it keeps its
+    label then, because the sentence is what says what is happening.
+  -->
+  <div class="acciones">
+    <button
+      type="button"
+      class="action is-solid"
+      [disabled]="enviando()"
+      [attr.aria-busy]="enviando() ? 'true' : null"
+      (click)="registrar.emit()"
+    >
+      Registrar empleado
+    </button>
+  </div>
+</div>

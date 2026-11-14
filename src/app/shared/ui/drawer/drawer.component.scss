@@ -70,6 +70,35 @@
   transform: translateX(var(--enter-drawer-x-left));
 }
 
+// Bare panel: the projected content is the panel.
+//
+// Declared after `.is-right` / `.is-left` on purpose: the specificity is equal,
+// so the order is what lets this rule win the radius and the fill. The caller
+// paints its own surface edge to edge (the expediente paints a desk, a folder
+// and a sheet), so the glass, the hairline and the blur step aside. The shadow
+// stays: it is what tells the panel apart from the page behind it.
+.dialog.is-bare {
+  background: var(--color-surface-ghost);
+  border: none;
+  border-radius: var(--radius-none);
+  backdrop-filter: none;
+}
+
+// The panel does not scroll, the content does: the record pins its own bar and
+// its own tab strip, and only the sheet inside scrolls.
+//
+// Column, explicitly: the panel projects one child and that child must take the
+// full width of the drawer. A row would size it to its content and leave the
+// record narrower than the panel it lives in.
+.dialog.is-bare .body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 .dialog[open].is-right,
 .dialog[open].is-left {
   transform: translateX(0);
@@ -100,6 +129,12 @@
 
 .dialog[open]::backdrop {
   opacity: 1;
+}
+
+// A bare panel brings its own world: the scrim of the expediente is the warm
+// one of the desk, not the guinda of the application chrome.
+.dialog.is-bare::backdrop {
+  background: var(--color-paper-scrim);
 }
 
 @starting-style {

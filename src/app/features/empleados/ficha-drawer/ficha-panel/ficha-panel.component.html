@@ -1,0 +1,237 @@
+<!--
+  Second level of the record: a sheet that slides over the folder.
+
+  It is always rendered — a transition needs the box to exist before it moves —
+  but it is `inert` and hidden from assistive tech while closed, and the folder
+  behind it is dimmed and made `inert` by the parent while it is open.
+-->
+<div
+  #panelRef
+  class="panel"
+  role="group"
+  tabindex="-1"
+  aria-labelledby="panel-titulo"
+  [class.is-open]="abierta()"
+  [attr.inert]="abierta() ? null : ''"
+  [attr.aria-hidden]="abierta() ? null : 'true'"
+>
+  <div class="l2bar">
+    <button type="button" class="action" (click)="intentarVolver()">← Volver</button>
+    <p class="l2-titulo">{{ titulo() }}</p>
+  </div>
+
+  <!--
+    The way out of a form that holds a typed note. It is an `alert` because it
+    appears as an answer to the operator's own click, and it is only shown when
+    leaving would actually lose something.
+  -->
+  @if (descartable()) {
+    <div class="discard" role="alert">
+      <span class="discard-texto">Hay datos sin guardar.</span>
+      <button type="button" class="action" (click)="descartar()">Descartar</button>
+      <button type="button" class="action" (click)="seguirEditando()">Seguir editando</button>
+    </div>
+  }
+
+  <div class="sheet">
+    <!-- The head of an annex names the worker and then the document it is. -->
+    <header class="head">
+      <h2 class="head-title" id="panel-titulo">{{ nombre() }}</h2>
+      <p class="head-meta">{{ titulo() }}</p>
+    </header>
+
+    @switch (vista()) {
+      @case ('historial-bajas') {
+        @if (cargandoHistorial()) {
+          <!-- Hidden from assistive tech: the folder already announces the wait. -->
+          <div class="skeleton" aria-hidden="true">
+            @for (linea of esqueletos; track linea) {
+              <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+            }
+          </div>
+        } @else if (errorHistorial(); as fallo) {
+          <div class="state" role="alert">
+            <p class="state-title">{{ fallo }}</p>
+            <button type="button" class="action" (click)="reintentarHistorial.emit()">
+              Reintentar
+            </button>
+          </div>
+        } @else if (historial().length === 0) {
+          <div class="state">
+            <p class="state-text">Sin registros.</p>
+          </div>
+        } @else {
+          <ol class="timeline">
+            @for (entrada of historial(); track entrada.id) {
+              <li class="evento" [class.is-ok]="entrada.vigente">
+                <!-- A closed period and the one in force differ by ink and by word. -->
+                <span class="dot" aria-hidden="true"></span>
+
+                <p class="tipo">{{ entrada.tipo }}</p>
+                <p class="linea">
+                  Desde {{ entrada.desde }}@if (entrada.hasta) { · reingreso {{ entrada.hasta }} }
+                </p>
+
+                @if (entrada.nota) {
+                  <p class="linea">{{ entrada.nota }}</p>
+                }
+
+                @if (entrada.reactivacion) {
+                  <p class="linea">Reactivación: {{ entrada.reactivacion }}</p>
+                }
+              </li>
+            }
+          </ol>
+        }
+      }
+
+      @case ('baja') {
+        <div class="form">
+          <p class="aviso">
+            Esta baja no se puede deshacer desde esta pantalla: el trabajador deja de aparecer en
+            el padrón de activos.
+          </p>
+
+          <p class="quien">{{ quien() }}</p>
+
+          <label class="label" for="panel-motivo">Motivo</label>
+          <!--
+            The selection lives on the options (`[selected]`), not on the select:
+            the catalog arrives after the control exists, and a `[value]` binding
+            would leave the placeholder in place once the options appear.
+          -->
+          <select
+            id="panel-motivo"
+            name="motivo_id"
+            class="control"
+            [disabled]="cargandoMotivos()"
+            [class.is-invalid]="errorDe('motivo_id') !== null"
+            [attr.aria-describedby]="idDeError('motivo_id')"
+            (change)="elegirMotivo($event)"
+          >
+            <option value="" [selected]="motivoId() === null">Elige un motivo</option>
+            @for (motivo of opciones(); track motivo.id) {
+              <option [value]="motivo.id" [selected]="motivoId() === motivo.id">
+                {{ motivo.descripcion }}
+              </option>
+            }
+          </select>
+
+          @if (errorDe('motivo_id'); as error) {
+            <p class="error" id="error-motivo_id" role="alert">{{ error }}</p>
+          }
+
+          <label class="label" for="panel-nota">Nota</label>
+          <textarea
+            id="panel-nota"
+            name="nota"
+            class="control area"
+            rows="4"
+            [attr.maxlength]="maxNota"
+            [class.is-invalid]="errorDe('nota') !== null"
+            [attr.aria-describedby]="descripcionNota()"
+            [value]="nota()"
+            (input)="escribirNota($event)"
+          ></textarea>
+
+          <div class="nota-meta">
+            <!-- The date is the server's: the contract forbids sending it. -->
+            <span>La fecha de baja la fija el servidor al confirmar.</span>
+            <!-- The counter states the same limit `maxlength` enforces. -->
+            <span id="panel-nota-contador">{{ nota().length }} / {{ maxNota }}</span>
+          </div>
+
+          @if (errorDe('nota'); as error) {
+            <p class="error" id="error-nota" role="alert">{{ error }}</p>
+          }
+
+          @if (errorGeneral(); as fallo) {
+            <p class="error" role="alert">{{ fallo }}</p>
+          }
+
+          <div class="acciones">
+            <button type="button" class="action" (click)="intentarVolver()">
+              {{ etiquetaSecundaria() }}
+            </button>
+
+            <!--
+              After a `409` the worker is already terminated: the submit
+              disappears so the only move left is the way out.
+            -->
+            @if (!conflicto()) {
+              <button
+                type="button"
+                class="action is-danger"
+                [disabled]="!puedeEnviar()"
+                (click)="darDeBaja()"
+              >
+                Dar de baja
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @case ('reactivacion') {
+        <div class="form">
+          <p class="aviso">{{ avisoReactivacion() }}</p>
+
+          <p class="quien">{{ quien() }}</p>
+
+          <span class="label">Motivo</span>
+          <p class="dato">{{ motivoActual() }}</p>
+
+          <span class="label">Fecha de baja</span>
+          <p class="dato">desde {{ fechaBaja() }}</p>
+
+          <label class="label" for="panel-nota">Nota</label>
+          <textarea
+            id="panel-nota"
+            name="nota"
+            class="control area"
+            rows="4"
+            [attr.maxlength]="maxNota"
+            [attr.aria-describedby]="'panel-nota-contador'"
+            [value]="nota()"
+            (input)="escribirNota($event)"
+          ></textarea>
+
+          <div class="nota-meta">
+            <span>La fecha de reingreso la fija el servidor al confirmar.</span>
+            <span id="panel-nota-contador">{{ nota().length }} / {{ maxNota }}</span>
+          </div>
+
+          <div class="acciones">
+            <button type="button" class="action" (click)="intentarVolver()">Cancelar</button>
+            <!--
+              The endpoint does not exist yet, so the button is honest: it is
+              there, it is disabled, and the sentence below says why. Nothing is
+              faked and no local state is mutated to look like a success.
+            -->
+            <button
+              type="button"
+              class="action is-solid"
+              disabled
+              aria-describedby="reactivacion-pendiente"
+            >
+              Reactivar
+            </button>
+          </div>
+
+          <p class="pendiente" id="reactivacion-pendiente">
+            La reactivación todavía no está disponible: el endpoint aún no existe.
+          </p>
+        </div>
+      }
+
+      @case ('adscripciones') {
+        <!-- No rows: this history has no endpoint, and inventing one would be a lie. -->
+        <p class="pendiente">
+          El historial de adscripciones todavía no está conectado: el endpoint aún no existe.
+        </p>
+      }
+    }
+
+    <p class="foot">Anexo al folio {{ folio() }}</p>
+  </div>
+</div>

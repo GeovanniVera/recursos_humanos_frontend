@@ -15,12 +15,12 @@
       refresh is secondary. Both sit together at the top right, where the canvas
       places the action of a listing.
 
-      The alta is an `<a>`, not an `app-button`: its destination is a route, so
-      the platform has to provide the link (middle click, context menu, announced
-      as a link). The pill is painted from the same tokens the button uses.
+      The alta is a `<button>`, not a link: it no longer leads to a route, it
+      opens the folder of a new file over this same roster. The pill is painted
+      from the same tokens the primary button uses.
     -->
     <div class="head-actions">
-      <a class="new-employee" routerLink="/empleados/alta">Nuevo empleado</a>
+      <button type="button" class="new-employee" (click)="abrirAlta()">Nuevo empleado</button>
 
       <app-button variant="secondary" [disabled]="controlesDeshabilitados()" (click)="solicitar()">
         Actualizar
@@ -183,10 +183,12 @@
 </section>
 
 <!--
-  One panel for the whole screen, mounted once and driven by the two signals
-  above: the row click and the name button both end here. A termination reported
-  by the panel sends the roster back to the server, because the endpoint filters
-  the inactive workers out and the row has to disappear.
+  Two panels for the whole screen, each mounted once and driven by its own pair
+  of signals: the row click and the name button both end in the record, the
+  header action ends in the registration folder. A termination reported by the
+  record sends the roster back to the server, because the endpoint filters the
+  inactive workers out and the row has to disappear; a registration does the
+  same, because the new employee belongs in this list and nowhere else.
 -->
 <app-ficha-drawer
   [puedeEditar]="puedeEditar()"
@@ -195,3 +197,5 @@
   [(open)]="fichaAbierta"
   (bajaRegistrada)="alRegistrarBaja()"
 />
+
+<app-alta-drawer [(open)]="altaAbierta" (registrado)="alRegistrarEmpleado($event)" />

@@ -1,476 +1,254 @@
-<app-drawer title="Ficha del trabajador" side="right" size="lg" [(open)]="open">
+<!--
+  A record is not a card: it is a manila folder over the desk, and a sheet
+  inside. That is why the shell is bare — the drawer contributes the top layer,
+  the focus trap and the way out, and the record paints its own surface.
+-->
+<app-drawer title="Ficha del trabajador" [bare]="true" side="right" size="lg" [(open)]="open">
   <!--
     The busy flag sits on the container of the record: while it is true the
     skeleton is the only thing inside, so assistive tech is told that the panel
     is working instead of reading an empty document.
   -->
-  <div class="ficha" [attr.aria-busy]="loading() ? 'true' : null">
-    @if (loading()) {
-      <!--
-        Discreet GPU-composited shimmer disabled automatically under `prefers-reduced-motion`.
-        Hidden from assistive tech while `aria-busy` announces loading on the container.
-      -->
-      <div class="skeleton" aria-hidden="true">
-        @for (line of skeletons; track line) {
-          <span class="skeleton-line skeleton-shimmer" [class.is-short]="line % 3 === 1"></span>
-        }
-      </div>
-    } @else if (error(); as failure) {
-      <!-- `role="alert"` announces the failure as soon as it renders. -->
-      <app-alert-banner
-        variant="error"
-        [message]="failure.mensaje"
-        [detail]="failure.detalle"
-      >
-        @if (failure.accion === 'reintentar') {
-          <app-button alert-actions variant="secondary" (click)="reintentar()">Reintentar</app-button>
-        }
-      </app-alert-banner>
-    } @else if (ficha(); as record) {
-      <!--
-        Masthead of the document. It states the subject before any section does:
-        the name and the number also appear under `Identificación`, and that
-        repetition is the point — a document names who it is about at the top,
-        and the reader does not have to hunt for it once the sheets scroll.
-      -->
-      <div class="document-head">
-        <h2 class="document-name">{{ texto(record.identificacion.nombre) }}</h2>
+  <div
+    class="ficha"
+    [class.is-l2]="vistaL2() !== null"
+    [attr.aria-busy]="loading() ? 'true' : null"
+  >
+    <!--
+      While the annex is open the folder stays on screen — the reader never
+      loses the record the annex belongs to — but it steps back: dimmed, inert
+      and hidden from assistive tech, so nothing behind the panel is reachable.
+    -->
+    <div
+      class="bar"
+      [attr.inert]="vistaL2() !== null ? '' : null"
+      [attr.aria-hidden]="vistaL2() !== null ? 'true' : null"
+    >
+      <p class="bar-name">{{ nombre() }}</p>
 
-        <p class="document-meta">
-          <!-- `N.º` is copy, not a field: the number stays the backend's string. -->
-          <span class="document-number">N.º {{ texto(record.identificacion.num_empleado) }}</span>
-          <span class="document-dot" aria-hidden="true">·</span>
-          <span class="document-area">{{ texto(record.plaza.area) }}</span>
-        </p>
-
-        <div class="document-states">
-          <!--
-            Employment state, not the file's: it is the fact that decides whether
-            the rest of the record is history. Same pill as the file state beside
-            it, its own two tones.
-          -->
-          <app-status-pill [estado]="record.gestion_interna.activo ? 'activo' : 'baja'">
-            {{ record.gestion_interna.activo ? 'Activo' : 'Baja' }}
-          </app-status-pill>
-
-          <!--
-            The traffic light of the contract: one tone per state *plus* the word,
-            so the state survives a grayscale screen and a colour-blind reader.
-          -->
-          <app-status-pill [estado]="record.gestion_interna.estado_expediente.estado">
-            {{ etiquetaExpediente(record.gestion_interna.estado_expediente.estado) }}
-          </app-status-pill>
-        </div>
-      </div>
-
-      <details class="block" open>
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">01</span>
-          <h3 class="block-title">Identificación</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Número de empleado</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.num_empleado) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Nombre</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.nombre) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">CURP</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.curp) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Fecha de nacimiento</dt>
-            <dd class="pair-value">{{ fecha(record.identificacion.fecha_nacimiento) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Sexo</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.sexo) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Estado civil</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.estado_civil) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Entidad de nacimiento</dt>
-            <dd class="pair-value">{{ texto(record.identificacion.entidad_nacimiento) }}</dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">02</span>
-          <h3 class="block-title">Plaza</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Área</dt>
-            <dd class="pair-value">{{ texto(record.plaza.area) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Puesto</dt>
-            <dd class="pair-value">{{ texto(record.plaza.puesto) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Tipo de puesto</dt>
-            <dd class="pair-value">{{ texto(record.plaza.tipo_puesto) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Categoría</dt>
-            <dd class="pair-value">{{ texto(record.plaza.categoria_cct_clave) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Tipo de personal</dt>
-            <dd class="pair-value">{{ texto(record.plaza.tipo_personal) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Tipo de jornada</dt>
-            <dd class="pair-value">{{ texto(record.plaza.tipo_jornada) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Inicio en el puesto</dt>
-            <dd class="pair-value">{{ fecha(record.plaza.fecha_inicio_puesto) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Ingreso a la institución</dt>
-            <dd class="pair-value">{{ fecha(record.plaza.fecha_ingreso_institucion) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Ingreso al gobierno</dt>
-            <dd class="pair-value">{{ fecha(record.plaza.fecha_ingreso_gobierno) }}</dd>
-          </div>
-
-          <!--
-            The backend already built the sentence (`7 años, 4 meses`, or `Sin
-            fecha de inicio registrada`), so it is shown as it arrives instead of
-            being recomposed from the three numbers. It is the age of the
-            relationship, which is why it gets emphasis.
-          -->
-          <div class="pair is-emphasis">
-            <dt class="pair-label">Antigüedad</dt>
-            <dd class="pair-value">{{ texto(record.plaza.antiguedad.texto) }}</dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">03</span>
-          <h3 class="block-title">Contacto</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Correo institucional</dt>
-            <dd class="pair-value">{{ texto(record.contacto.correo_institucional) }}</dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">04</span>
-          <h3 class="block-title">Estudios</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Nivel de estudios</dt>
-            <dd class="pair-value">{{ texto(record.estudios.nivel_estudios) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Escuela de procedencia</dt>
-            <dd class="pair-value">{{ texto(record.estudios.escuela_procedencia) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Generación</dt>
-            <dd class="pair-value">{{ texto(record.estudios.generacion) }}</dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">05</span>
-          <h3 class="block-title">Experiencia</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Años en el sector público</dt>
-            <dd class="pair-value">{{ numero(record.experiencia.exp_publico_anios) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Años en el sector privado</dt>
-            <dd class="pair-value">{{ numero(record.experiencia.exp_privado_anios) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">¿Trabaja en otro lugar?</dt>
-            <dd class="pair-value">{{ texto(record.experiencia.trabaja_otro_lugar) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Dónde</dt>
-            <dd class="pair-value">{{ texto(record.experiencia.trabaja_otro_donde) }}</dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">06</span>
-          <h3 class="block-title">Gestión interna</h3>
-          <svg class="block-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-
-        <dl class="pairs">
-          <div class="pair">
-            <dt class="pair-label">Estado</dt>
-            <dd class="pair-value">{{ record.gestion_interna.activo ? 'Activo' : 'Baja' }}</dd>
-          </div>
-
-          <!--
-            The three fields of a baja are on screen for every worker, so the
-            record has the same shape whoever it belongs to: for an active one
-            they read `—` and the `Estado` row above already says `Activo`.
-          -->
-          <div class="pair">
-            <dt class="pair-label">Fecha de baja</dt>
-            <dd class="pair-value">{{ fecha(record.gestion_interna.fecha_baja) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Motivo de baja</dt>
-            <dd class="pair-value">{{ texto(record.gestion_interna.motivo_baja) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Nota de baja</dt>
-            <dd class="pair-value">{{ texto(record.gestion_interna.nota_baja) }}</dd>
-          </div>
-
-          <div class="pair">
-            <dt class="pair-label">Observaciones</dt>
-            <dd class="pair-value">{{ texto(record.gestion_interna.observaciones) }}</dd>
-          </div>
-
-          <!--
-            The state of the file is the second thing that decides what can be
-            done with this worker, so it gets emphasis too. The pill in the
-            masthead is a badge; here the same state sits next to its own
-            reason — the word, then the fields that are missing.
-          -->
-          <div class="pair is-emphasis">
-            <dt class="pair-label">Estado del expediente</dt>
-            <dd class="pair-value">
-              {{ etiquetaExpediente(record.gestion_interna.estado_expediente.estado) }}
-
-              @if (record.gestion_interna.estado_expediente.total_faltantes > 0) {
-                <span class="missing">
-                  <span class="missing-count">
-                    {{ faltantes(record.gestion_interna.estado_expediente) }}
-                  </span>
-
-                  @for (
-                    campo of camposFaltantes(record.gestion_interna.estado_expediente);
-                    track campo
-                  ) {
-                    <span class="chip">{{ etiquetaCampo(campo) }}</span>
-                  }
-                </span>
-              }
-            </dd>
-          </div>
-        </dl>
-      </details>
-
-      <details class="block" [open]="!record.gestion_interna.activo">
-        <summary class="block-head">
-          <span class="block-index" aria-hidden="true">07</span>
-          <h3 class="block-title">Historial de bajas</h3>
-          @if (!loadingBajas() && errorBajas() === null) {
-            <span class="block-counter">{{ bajas().length }}</span>
-          }
-          <svg class="block-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M4 6l4 4 4-4"
+      <div class="bar-actions">
+        <!--
+          The pencil is offered only when the workflow says the file can be
+          edited and there is a record to edit: a button that can only fail is
+          a trap.
+        -->
+        @if (puedeEditar() && ficha() !== null) {
+          <button
+            type="button"
+            class="action is-icon"
+            aria-label="Editar la ficha"
+            title="Editar la ficha"
+            (click)="solicitarEdicion()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
               stroke="currentColor"
               stroke-width="1.5"
               stroke-linecap="round"
               stroke-linejoin="round"
-            />
-          </svg>
-        </summary>
-
-        <div class="bajas-body" [attr.aria-busy]="loadingBajas() ? 'true' : null">
-          @if (loadingBajas()) {
-            <div class="skeleton skeleton--compact" aria-hidden="true">
-              @for (line of bajaSkeletons; track line) {
-                <span class="skeleton-line skeleton-shimmer" [class.is-short]="line === 1"></span>
-              }
-            </div>
-          } @else if (errorBajas(); as bajaFailure) {
-            <app-alert-banner
-              variant="error"
-              [message]="bajaFailure.mensaje"
-              [detail]="bajaFailure.detalle"
+              aria-hidden="true"
             >
-              @if (bajaFailure.accion === 'reintentar') {
-                <app-button alert-actions variant="secondary" (click)="reintentarBajas()">
-                  Reintentar
-                </app-button>
-              }
-            </app-alert-banner>
-          } @else if (bajas().length === 0) {
-            <p class="bajas-empty">Este trabajador no tiene bajas registradas.</p>
-          } @else {
-            <ol class="bajas-list">
-              @for (baja of bajas(); track baja.id) {
-                <li class="baja-item" [class.is-vigente]="baja.vigente">
-                  <div class="baja-head">
-                    <div class="baja-heading">
-                      <span class="baja-tipo">{{ etiquetaTipoBaja(baja.tipo) }}</span>
-                      <span class="baja-periodo">{{ periodoBaja(baja) }}</span>
-                    </div>
-                    <app-status-pill [estado]="estadoPillBaja(baja)">
-                      {{ etiquetaVigenciaBaja(baja) }}
-                    </app-status-pill>
-                  </div>
+              <path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z" />
+              <path d="M13.5 6.5l4 4" />
+            </svg>
+          </button>
+        }
 
-                  <dl class="pairs">
-                    <div class="pair">
-                      <dt class="pair-label">Motivo</dt>
-                      <dd class="pair-value">{{ texto(baja.motivo) }}</dd>
-                    </div>
-
-                    <div class="pair">
-                      <dt class="pair-label">Registrada por</dt>
-                      <dd class="pair-value">{{ texto(baja.registrado_por) }}</dd>
-                    </div>
-
-                    <div class="pair">
-                      <dt class="pair-label">Nota</dt>
-                      <dd class="pair-value">{{ texto(baja.nota) }}</dd>
-                    </div>
-
-                    @if (baja.reactivado_por || baja.nota_reactivacion) {
-                      <div class="pair">
-                        <dt class="pair-label">Reactivada por</dt>
-                        <dd class="pair-value">{{ texto(baja.reactivado_por) }}</dd>
-                      </div>
-                      <div class="pair">
-                        <dt class="pair-label">Nota de reactivación</dt>
-                        <dd class="pair-value">{{ texto(baja.nota_reactivacion) }}</dd>
-                      </div>
-                    }
-                  </dl>
-                </li>
-              }
-            </ol>
-          }
-        </div>
-      </details>
-    }
-  </div>
-
-  <ng-template #actions>
-    <!--
-      The termination sits on the left, next to the pending edition; the way out
-      on the right. The act is irreversible, so the button says when it cannot be
-      pressed instead of only looking disabled: for an inactive worker it reads
-      `Ya está dado de baja`.
-    -->
-    <div class="actions-left">
-      @if (puedeEditar() && ficha() !== null) {
-        <button
-          type="button"
-          class="icon-action"
-          aria-label="Editar la ficha"
-          title="Editar la ficha"
-          (click)="solicitarEdicion()"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z" />
-            <path d="M13.5 6.5l4 4" />
-          </svg>
-        </button>
-      }
-
-      <app-button
-        variant="danger"
-        [disabled]="bajaBloqueada()"
-        [attr.title]="tituloBaja()"
-        (click)="abrirBaja()"
-      >
-        {{ etiquetaBaja() }}
-      </app-button>
+        <button type="button" class="action" (click)="cerrar()">Cerrar</button>
+      </div>
     </div>
 
-    <app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button>
-  </ng-template>
-</app-drawer>
+    <div
+      class="folder"
+      [attr.inert]="vistaL2() !== null ? '' : null"
+      [attr.aria-hidden]="vistaL2() !== null ? 'true' : null"
+    >
+      <!--
+        One tab per sheet, arrows move through them. Every tab points at the one
+        panel: the sheet is a single element whose content changes, so the ids of
+        the tabs stay stable and the panel is labelled by whichever is selected.
+      -->
+      <div class="tabs" role="tablist" aria-label="Secciones de la ficha" (keydown)="alTeclear($event)">
+        @for (tab of tabs; track tab.id) {
+          <button
+            #tabRef
+            type="button"
+            role="tab"
+            class="tab"
+            [id]="'ficha-tab-' + tab.id"
+            [class.is-active]="tabActiva() === tab.id"
+            [attr.aria-selected]="tabActiva() === tab.id"
+            aria-controls="ficha-panel"
+            [attr.tabindex]="tabActiva() === tab.id ? 0 : -1"
+            (click)="seleccionar(tab.id)"
+          >
+            {{ tab.etiqueta }}
 
-<!--
-  Sibling of the panel, never a child: two nested `<dialog>` elements compete for
-  the top layer and for the focus trap, and the inner one wins by accident.
--->
-<app-baja-modal
-  [empleadoId]="empleadoId()"
-  [empleadoEtiqueta]="etiquetaEmpleado()"
-  [(open)]="bajaAbierta"
-  (bajaRegistrada)="alRegistrarBaja()"
-/>
+            @if (faltantesPorTab()[tab.id] > 0) {
+              <!--
+                The count of missing fields this sheet owns. It is labelled as a
+                whole, so the tab reads `Ficha 2 campos faltantes` instead of
+                announcing a naked number.
+              -->
+              <span
+                class="nb"
+                role="img"
+                [attr.aria-label]="faltantesPorTab()[tab.id] + ' campos faltantes'"
+                >{{ faltantesPorTab()[tab.id] }}</span
+              >
+            }
+          </button>
+        }
+      </div>
+
+      <div class="cover">
+        <!-- The clip of the folder: it holds the sheet to the manila. -->
+        <span class="clip" aria-hidden="true"></span>
+
+        <div
+          class="sheet"
+          id="ficha-panel"
+          role="tabpanel"
+          tabindex="0"
+          [attr.aria-labelledby]="'ficha-tab-' + tabActiva()"
+        >
+          @if (loading()) {
+            <!-- Hidden from assistive tech: `aria-busy` already announces the wait. -->
+            <div class="skeleton" aria-hidden="true">
+              @for (linea of esqueletos; track linea) {
+                <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+              }
+            </div>
+          } @else if (error(); as fallo) {
+            <!-- `role="alert"` announces the failure as soon as it renders. -->
+            <div class="state" role="alert">
+              <p class="state-title">{{ fallo.mensaje }}</p>
+
+              @if (fallo.detalle) {
+                <p class="state-text">{{ fallo.detalle }}</p>
+              }
+
+              @if (fallo.accion === 'reintentar') {
+                <button type="button" class="action is-danger" (click)="reintentar()">
+                  Reintentar
+                </button>
+              }
+            </div>
+          } @else if (ficha(); as registro) {
+            @if (sello(); as stamp) {
+              <span
+                class="stamp"
+                [class.is-ok]="stamp.tono === 'ok'"
+                [class.is-bad]="stamp.tono === 'mal'"
+                [class.is-slam]="golpeSello()"
+                >{{ stamp.texto }}</span
+              >
+            }
+
+            <!--
+              The sheet states who it is about before it states anything else,
+              the way a document does: the desk above already carries the name,
+              and the document repeats it under its own heading.
+            -->
+            <header class="head">
+              <h2 class="head-title">{{ texto(registro.identificacion.nombre) }}</h2>
+
+              @if (meta(); as linea) {
+                <p class="head-meta">{{ linea }}</p>
+              }
+            </header>
+
+            <div class="grid">
+              @for (fila of filas(); track $index) {
+                @if (fila.tipo === 'subtitulo') {
+                  <p class="subtitle">{{ fila.etiqueta }}</p>
+                } @else {
+                  <div class="field" [class.is-full]="fila.completo" [class.is-missing]="esFaltante(fila)">
+                    <span class="label">{{ fila.etiqueta }}</span>
+
+                    <!--
+                      A field the backend reported as missing is a pending task,
+                      not an empty box: it says so, in the colour of the stamp,
+                      with a rule that survives a grayscale print.
+                    -->
+                    @if (esFaltante(fila)) {
+                      <span class="value">{{ textoFaltante }}</span>
+                    } @else {
+                      <span class="value" [class.is-empty]="fila.vacio">{{ fila.valor }}</span>
+                    }
+                  </div>
+                }
+              }
+            </div>
+
+            <!--
+              The way into the second level of the record. `Plaza` has one door
+              (its history); `Estado` has the act itself plus the log, and the
+              act depends on whether there is something to terminate or to
+              reopen.
+            -->
+            @if (tabActiva() === 'plaza') {
+              <div class="foot-actions is-single">
+                <button type="button" class="action" (click)="abrirVista('adscripciones', $event)">
+                  Historial de adscripciones
+                </button>
+              </div>
+            } @else if (tabActiva() === 'estado') {
+              <div class="foot-actions">
+                @if (registro.gestion_interna.activo) {
+                  <button
+                    type="button"
+                    class="action is-danger"
+                    [disabled]="!puedeDarBaja()"
+                    (click)="abrirVista('baja', $event)"
+                  >
+                    Dar de baja
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="action is-solid"
+                    (click)="abrirVista('reactivacion', $event)"
+                  >
+                    Reactivar
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="action"
+                  (click)="abrirVista('historial-bajas', $event)"
+                >
+                  Historial de bajas{{ textoHistorial() }}
+                </button>
+              </div>
+            }
+
+            <p class="foot">Folio {{ folio() }} · Hoja {{ hoja() }} de 4</p>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!--
+      The second level: an annex sheet that slides over the folder. It is
+      rendered even while closed — the slide needs a box to travel — and it is
+      `inert` and hidden from assistive tech on its own side while closed.
+    -->
+    <app-ficha-panel
+      [abierta]="vistaL2() !== null"
+      [vista]="vistaL2()"
+      [empleadoId]="empleadoId()"
+      [ficha]="ficha()"
+      [bajas]="bajas()"
+      [cargandoHistorial]="cargandoBajas()"
+      [errorHistorial]="errorBajas()?.mensaje ?? null"
+      [esLicencia]="esLicencia()"
+      [folio]="folio()"
+      (volver)="cerrarVista()"
+      (reintentarHistorial)="reintentarBajas()"
+      (bajaRegistrada)="alRegistrarBaja()"
+    />
+  </div>
+</app-drawer>

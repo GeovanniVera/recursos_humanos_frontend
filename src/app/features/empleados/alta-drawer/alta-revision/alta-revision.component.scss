@@ -1,0 +1,151 @@
+// ---------------------------------------------------------------------------
+// The closing sheet of the alta folder
+//
+// Paper vocabulary by value, as in the record's annex: a component style is
+// scoped, so the sheet, its rules and its ink are restated here instead of
+// imported. Geometry in pixels on purpose — it is the ruled margin of the
+// metaphor, not a spacing step. Colours, radii and motion come from tokens.
+// ---------------------------------------------------------------------------
+
+.revision {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: var(--paper-indent);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-paper-value);
+}
+
+.hint {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// --- Recap -----------------------------------------------------------------
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 18px 20px;
+  margin-top: 4px;
+}
+
+.summary-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.summary-title {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-paper-muted);
+}
+
+.summary-list {
+  margin: 0;
+}
+
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  padding-bottom: 3px;
+  border-bottom: 1px dotted var(--color-paper-line);
+}
+
+.summary-label {
+  font-family: var(--font-paper);
+  font-size: 13px;
+  color: var(--color-paper-muted);
+}
+
+.summary-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-paper-mono);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--color-paper-value);
+  text-align: end;
+}
+
+// --- The act ---------------------------------------------------------------
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+// Paper control: a 44 px target, a hairline of ink and no fill of its own.
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--color-paper-ink);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action.is-solid {
+  border-color: var(--color-paper-action);
+  background: var(--color-paper-action);
+  color: var(--color-paper-action-ink);
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .action:hover:not(:disabled) {
+    background: var(--color-paper-ink);
+    color: var(--color-desk);
+  }
+
+  .action.is-solid:hover:not(:disabled) {
+    background: var(--color-paper-action-ink);
+    color: var(--color-paper-action);
+  }
+}
+
+// High contrast takes the fill away: the one action that commits keeps its rank
+// with a line, which is what tells it apart from the paper around it.
+@media (forced-colors: active) {
+  .action.is-solid {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+}

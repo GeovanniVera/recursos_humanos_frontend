@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   TemplateRef,
+  computed,
   contentChild,
   effect,
   input,
@@ -29,6 +30,15 @@ let nextDialogId = 0;
 export class Drawer {
   readonly title = input('');
   readonly open = model(false);
+  /**
+   * Hands the whole panel to the caller: no header, no footer, no fill.
+   *
+   * A surface with a metaphor of its own — the expediente paints a desk, a
+   * folder and a sheet — cannot inherit the glass chrome without being painted
+   * twice, so it asks for the bare shell instead of overriding five rules from
+   * the outside.
+   */
+  readonly bare = input(false);
   /** When false, neither `Escape`, nor the backdrop, nor the ✕ can close it. */
   readonly dismissible = input(true);
   /** Edge the panel is anchored to. */
@@ -41,6 +51,14 @@ export class Drawer {
 
   /** Wired to `aria-labelledby`: the heading carries the accessible name. */
   protected readonly titleId = `drawer-title-${nextDialogId++}`;
+
+  /**
+   * Accessible name of a bare panel.
+   *
+   * A bare panel renders no `<h2>`, so there is nothing for `aria-labelledby` to
+   * point at: the title travels as a plain label instead.
+   */
+  protected readonly bareLabel = computed(() => (this.bare() ? this.title() : null));
 
   /** Footer content. `#actions` is projected as a template, not as markup. */
   protected readonly actions = contentChild('actions', { read: TemplateRef });

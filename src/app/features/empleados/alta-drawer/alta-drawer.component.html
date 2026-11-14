@@ -1,0 +1,779 @@
+<!--
+  A new employee is a file being written, not a card: a manila folder over the
+  desk of the roster, and a sheet inside. That is why the shell is bare — the
+  drawer contributes the top layer, the focus trap and the way out, and the
+  folder paints its own surface.
+-->
+<app-drawer title="Alta de empleado" [bare]="true" side="right" size="lg" [(open)]="open">
+  <!--
+    The folder owns the bar, the strip and the frame of the sheet; the form is
+    projected into the sheet, which is the only scroll container of the panel.
+  -->
+  <app-alta-expediente
+    [tabs]="tabs"
+    [activo]="indiceActivo()"
+    [errores]="erroresPorTab()"
+    [ocupado]="cargando()"
+    (seleccionar)="seleccionarIndice($event)"
+    (cerrar)="cerrar()"
+  >
+    @if (errorCatalogos(); as aviso) {
+      <!--
+        Without the catalogues there is nothing to choose from: the sheet is not
+        rendered at all, so no control can show an empty list that looks like a
+        real one.
+      -->
+      <div class="state" role="alert">
+        <p class="state-title">{{ aviso }}</p>
+
+        <button type="button" class="action" [disabled]="cargando()" (click)="cargarCatalogos()">
+          Reintentar
+        </button>
+      </div>
+    } @else if (catalogos() === null) {
+      <div class="skeleton" aria-hidden="true">
+        @for (linea of esqueletos; track linea) {
+          <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+        }
+      </div>
+      <p class="visually-hidden" role="status">Cargando catálogos del formulario…</p>
+    } @else {
+      @if (mensaje() !== null || erroresSueltos().length > 0) {
+        <!--
+          The general sentence of the failure, plus the messages that belong to no
+          sheet. Per-field messages are printed next to their own control; these
+          two would otherwise be lost, because a prohibited field has no card to
+          sit under.
+        -->
+        <div class="state" role="alert">
+          @if (mensaje(); as texto) {
+            <p class="state-title">{{ texto }}</p>
+          }
+          @for (suelto of erroresSueltos(); track suelto) {
+            <p class="state-text">{{ suelto }}</p>
+          }
+        </div>
+      }
+
+      @switch (tabActiva()) {
+        @case ('identificacion') {
+          <fieldset class="group">
+            <legend class="group-title">Identificación</legend>
+            <p class="group-hint">
+              El número de empleado, el nombre y el correo institucional son obligatorios.
+            </p>
+
+            <div class="grid">
+              <div class="field">
+                <label class="label" for="num_empleado">Número de empleado</label>
+                <!--
+                        The field is written in upper case as it is typed: the
+                        number travels that way, and a value the user cannot
+                        mistype in two shapes is one less `422`. The normalisation
+                        only writes back when it changes something, so the caret
+                        stays where it is.
+                      -->
+                <input
+                  id="num_empleado"
+                  name="num_empleado"
+                  class="control"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="20"
+                  autocomplete="off"
+                  [ngModel]="modelo().num_empleado"
+                  (ngModelChange)="guardarNormalizado('num_empleado', $event)"
+                  (blur)="tocar('num_empleado')"
+                  [class.is-invalid]="errorDe('num_empleado') !== null"
+                  [attr.aria-invalid]="errorDe('num_empleado') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('num_empleado')"
+                />
+                @if (errorDe('num_empleado'); as error) {
+                  <p class="field-error" id="error-num_empleado" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="nombre">Nombre completo</label>
+                <!--
+                        The blanks collapse when the field loses focus, never on
+                        every keystroke: rewriting the value while the user types
+                        would fight the caret. The capitalisation is kept exactly
+                        as typed.
+                      -->
+                <input
+                  id="nombre"
+                  name="nombre"
+                  class="control"
+                  type="text"
+                  maxlength="150"
+                  autocomplete="name"
+                  [ngModel]="modelo().nombre"
+                  (ngModelChange)="guardar('nombre', $event)"
+                  (blur)="salirDeNombre()"
+                  [class.is-invalid]="errorDe('nombre') !== null"
+                  [attr.aria-invalid]="errorDe('nombre') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('nombre')"
+                />
+                @if (errorDe('nombre'); as error) {
+                  <p class="field-error" id="error-nombre" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field is-wide">
+                <label class="label" for="curp">CURP</label>
+                <input
+                  id="curp"
+                  name="curp"
+                  class="control"
+                  type="text"
+                  maxlength="18"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocapitalize="characters"
+                  [ngModel]="modelo().curp"
+                  (ngModelChange)="guardarNormalizado('curp', $event)"
+                  (blur)="tocar('curp')"
+                  [class.is-invalid]="errorDe('curp') !== null"
+                  [attr.aria-invalid]="errorDe('curp') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('curp')"
+                />
+                @if (errorDe('curp'); as error) {
+                  <!--
+                          One sentence for the five rules the backend collapses
+                          into it. The technical motivo travels only in the
+                          `title`, so the user reads one thing.
+                        -->
+                  <p
+                    class="field-error"
+                    id="error-curp"
+                    role="alert"
+                    [attr.title]="explicacionCurp()"
+                  >
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="fecha_nacimiento">Fecha de nacimiento</label>
+                <!--
+                        Locked from the first render, with or without a CURP: the
+                        user only types the document, and the backend resolves the
+                        date from it. `disabled` and not `readonly`: a native date
+                        picker ignores `readonly`.
+                      -->
+                <input
+                  id="fecha_nacimiento"
+                  name="fecha_nacimiento"
+                  class="control"
+                  type="date"
+                  inputmode="numeric"
+                  [attr.max]="hoy"
+                  disabled
+                  [ngModel]="modelo().fecha_nacimiento"
+                  [class.is-invalid]="errorDe('fecha_nacimiento') !== null"
+                  [attr.aria-invalid]="errorDe('fecha_nacimiento') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('fecha_nacimiento')"
+                />
+                <p class="field-hint" id="derivado-fecha_nacimiento">
+                  Se toma de los seis dígitos de la CURP.
+                </p>
+                @if (errorDe('fecha_nacimiento'); as error) {
+                  <p class="field-error" id="error-fecha_nacimiento" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <!--
+                      Every `<select>` expresses its selection on the options
+                      (`[selected]`) instead of binding `[value]` on the select: a
+                      `[value]` binding runs before the options exist, so a sheet
+                      that is created again — a tab change, or a `422` — would
+                      show the placeholder while the draft still holds the answer.
+                    -->
+              <div class="field">
+                <label class="label" for="sexo">Sexo</label>
+                <!--
+                        Locked from the first render, for the same reason as the
+                        birth date. `disabled` is the only way: a `<select>` has
+                        no `readonly` attribute at all.
+                      -->
+                <select
+                  id="sexo"
+                  name="sexo"
+                  class="control"
+                  disabled
+                  [class.is-invalid]="errorDe('sexo') !== null"
+                  [attr.aria-invalid]="errorDe('sexo') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('sexo')"
+                >
+                  <option value="" [selected]="modelo().sexo === ''">Elige una opción</option>
+                  @for (opcion of sexos(); track opcion) {
+                    <option [value]="opcion" [selected]="modelo().sexo === opcion">
+                      {{ opcion }}
+                    </option>
+                  }
+                </select>
+                <p class="field-hint" id="derivado-sexo">Se toma del carácter 11 de la CURP.</p>
+                @if (errorDe('sexo'); as error) {
+                  <p class="field-error" id="error-sexo" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="estado_civil_id">Estado civil</label>
+                <select
+                  id="estado_civil_id"
+                  name="estado_civil_id"
+                  class="control"
+                  (change)="elegirNumero('estado_civil_id', $event)"
+                  (blur)="tocar('estado_civil_id')"
+                  [class.is-invalid]="errorDe('estado_civil_id') !== null"
+                  [attr.aria-invalid]="errorDe('estado_civil_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('estado_civil_id')"
+                >
+                  <option value="" [selected]="modelo().estado_civil_id === null">
+                    Elige una opción
+                  </option>
+                  @for (estado of estadosCiviles(); track estado.id) {
+                    <option [value]="estado.id" [selected]="modelo().estado_civil_id === estado.id">
+                      {{ estado.descripcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('estado_civil_id'); as error) {
+                  <p class="field-error" id="error-estado_civil_id" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="entidad_nacimiento">Entidad de nacimiento</label>
+                <!--
+                        Read from the CURP and only shown: the backend rejects an
+                        entity that does not match characters 12 and 13 of the
+                        CURP it received. `readonly` and not `disabled`: a
+                        disabled control leaves the tab order and is skipped by
+                        screen readers, and this field exists to inform.
+                      -->
+                <input
+                  id="entidad_nacimiento"
+                  name="entidad_nacimiento"
+                  class="control control-static"
+                  type="text"
+                  readonly
+                  autocomplete="off"
+                  [value]="entidadNacimientoNombre()"
+                  [class.is-invalid]="errorDe('entidad_nacimiento') !== null"
+                  [attr.aria-invalid]="errorDe('entidad_nacimiento') === null ? null : 'true'"
+                  [attr.aria-describedby]="
+                    errorDe('entidad_nacimiento') === null
+                      ? 'derivado-entidad_nacimiento'
+                      : 'derivado-entidad_nacimiento error-entidad_nacimiento'
+                  "
+                />
+                <p class="field-hint" id="derivado-entidad_nacimiento">
+                  Se toma de los caracteres 12 y 13 de la CURP.
+                </p>
+                <!--
+                        Only a `422` can land here: the key always travels derived
+                        from the CURP that travels with it. Without this node the
+                        folder moves to the sheet and the user sees a field with
+                        no reason on it.
+                      -->
+                @if (errorDe('entidad_nacimiento'); as error) {
+                  <p class="field-error" id="error-entidad_nacimiento" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field is-wide">
+                <label class="label" for="correo_institucional">Correo institucional</label>
+                <!--
+                        Only the local part is asked for: the form appends the
+                        institutional domain when it builds the request, and shows
+                        it as a suffix so the user reads the address that will be
+                        stored. The suffix is a text node and not a decoration —
+                        no `aria-hidden` — so a screen reader announces the whole
+                        address.
+                      -->
+                <div
+                  class="control-group"
+                  [class.is-invalid]="errorDe('correo_institucional') !== null"
+                >
+                  <input
+                    id="correo_institucional"
+                    name="correo_institucional"
+                    class="control"
+                    type="text"
+                    inputmode="email"
+                    spellcheck="false"
+                    autocapitalize="none"
+                    autocomplete="username"
+                    [attr.maxlength]="largoLocalCorreo"
+                    placeholder="nombre.apellido"
+                    [ngModel]="correoLocal()"
+                    (ngModelChange)="guardarCorreo($event)"
+                    (blur)="tocar('correo_institucional')"
+                    [class.is-invalid]="errorDe('correo_institucional') !== null"
+                    [attr.aria-invalid]="errorDe('correo_institucional') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('correo_institucional')"
+                  />
+                  <span class="control-suffix">{{ sufijoCorreo }}</span>
+                </div>
+                @if (errorDe('correo_institucional'); as error) {
+                  <p class="field-error" id="error-correo_institucional" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+            </div>
+          </fieldset>
+        }
+
+        @case ('plaza') {
+          <fieldset class="group">
+            <legend class="group-title">Plaza</legend>
+            <p class="group-hint">
+              El área, el puesto y la fecha de inicio en el puesto son obligatorios.
+            </p>
+
+            <div class="grid">
+              <div class="field">
+                <label class="label" for="area_id">Área</label>
+                <!--
+                        The chart arrives flat: the options keep the order of the
+                        API and their depth is expressed with indentation. A node
+                        that is not assignable cannot hold staff, so it cannot be
+                        chosen.
+                      -->
+                <select
+                  id="area_id"
+                  name="area_id"
+                  class="control"
+                  (change)="cambiarArea($event)"
+                  (blur)="tocar('area_id')"
+                  [class.is-invalid]="errorDe('area_id') !== null"
+                  [attr.aria-invalid]="errorDe('area_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('area_id')"
+                >
+                  <option value="" [selected]="modelo().area_id === null">Elige un área</option>
+                  @for (area of areas(); track area.id) {
+                    <option
+                      [value]="area.id"
+                      [selected]="modelo().area_id === area.id"
+                      [disabled]="!area.asignable"
+                    >
+                      {{ area.sangria }}{{ area.nombre }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('area_id'); as error) {
+                  <p class="field-error" id="error-area_id" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="puesto_id">Puesto</label>
+                <!--
+                        The options are the posts of the chosen area, read from
+                        the `area_puesto` pivot: a post the area does not offer is
+                        not on the list, because the server rejects that pair with
+                        a `422`.
+                      -->
+                <select
+                  id="puesto_id"
+                  name="puesto_id"
+                  class="control"
+                  (change)="elegirNumero('puesto_id', $event)"
+                  (blur)="tocar('puesto_id')"
+                  [class.is-invalid]="errorDe('puesto_id') !== null"
+                  [attr.aria-invalid]="errorDe('puesto_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('puesto_id')"
+                >
+                  <option value="" [selected]="modelo().puesto_id === null">Elige un puesto</option>
+                  @for (puesto of puestos(); track puesto.id) {
+                    <option [value]="puesto.id" [selected]="modelo().puesto_id === puesto.id">
+                      {{ etiquetaPuesto(puesto) }}
+                    </option>
+                  }
+                </select>
+                @if (modelo().area_id !== null && puestos().length === 0) {
+                  <!--
+                          An area without posts is a catalogue gap, not a mistake
+                          of the operator: the state is announced instead of
+                          leaving a selector that only offers its placeholder.
+                        -->
+                  <p class="field-hint" role="status">
+                    No hay puestos asociados a esta área. Asignalos desde Catálogos.
+                  </p>
+                }
+                @if (errorDe('puesto_id'); as error) {
+                  <p class="field-error" id="error-puesto_id" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <span class="label">Categoría CCT</span>
+                <!--
+                        The category is not a choice: the server derives it from
+                        the chosen post and prohibits sending `categoria_cct_id`,
+                        so the field only shows what will be stored. It reads as a
+                        value, not as a control that invites a click.
+                      -->
+                <p id="categoria-cct" class="control control-static" aria-live="polite">
+                  {{ categoriaVisible() }}
+                </p>
+              </div>
+
+              <div class="field">
+                <label class="label" for="fecha_inicio_puesto">
+                  Fecha de inicio en el puesto
+                </label>
+                <input
+                  id="fecha_inicio_puesto"
+                  name="fecha_inicio_puesto"
+                  class="control"
+                  type="date"
+                  inputmode="numeric"
+                  [attr.max]="hoy"
+                  [attr.min]="
+                    modelo().fecha_ingreso_gobierno === '' ? null : modelo().fecha_ingreso_gobierno
+                  "
+                  [ngModel]="modelo().fecha_inicio_puesto"
+                  (ngModelChange)="guardar('fecha_inicio_puesto', $event)"
+                  (blur)="tocar('fecha_inicio_puesto')"
+                  [class.is-invalid]="errorDe('fecha_inicio_puesto') !== null"
+                  [attr.aria-invalid]="errorDe('fecha_inicio_puesto') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('fecha_inicio_puesto')"
+                />
+                @if (errorDe('fecha_inicio_puesto'); as error) {
+                  <p class="field-error" id="error-fecha_inicio_puesto" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="fecha_ingreso_gobierno">
+                  Fecha de ingreso al gobierno
+                </label>
+                <input
+                  id="fecha_ingreso_gobierno"
+                  name="fecha_ingreso_gobierno"
+                  class="control"
+                  type="date"
+                  inputmode="numeric"
+                  [attr.max]="hoy"
+                  [ngModel]="modelo().fecha_ingreso_gobierno"
+                  (ngModelChange)="guardar('fecha_ingreso_gobierno', $event)"
+                  (blur)="tocar('fecha_ingreso_gobierno')"
+                  [class.is-invalid]="errorDe('fecha_ingreso_gobierno') !== null"
+                  [attr.aria-invalid]="errorDe('fecha_ingreso_gobierno') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('fecha_ingreso_gobierno')"
+                />
+                @if (errorDe('fecha_ingreso_gobierno'); as error) {
+                  <p class="field-error" id="error-fecha_ingreso_gobierno" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              @if (esMandoMedio()) {
+                <!--
+                        A mando medio post fixes both values on the server, so
+                        there is nothing to choose: the sheet says what will
+                        travel instead of showing two controls the backend would
+                        overwrite.
+                      -->
+                <p class="note grid-note">
+                  Puesto de mando medio: el tipo de personal y el tipo de jornada los fija el
+                  sistema ({{ tipoPersonal() }} · {{ tipoJornada() }}).
+                </p>
+              } @else {
+                <div class="field">
+                  <label class="label" for="tipo_personal">Tipo de personal</label>
+                  <select
+                    id="tipo_personal"
+                    name="tipo_personal"
+                    class="control"
+                    (change)="elegirTexto('tipo_personal', $event)"
+                    (blur)="tocar('tipo_personal')"
+                    [class.is-invalid]="errorDe('tipo_personal') !== null"
+                    [attr.aria-invalid]="errorDe('tipo_personal') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('tipo_personal')"
+                  >
+                    <option value="" [selected]="modelo().tipo_personal === ''">
+                      Elige una opción
+                    </option>
+                    @for (tipo of tiposPersonal(); track tipo) {
+                      <option [value]="tipo" [selected]="modelo().tipo_personal === tipo">
+                        {{ tipo }}
+                      </option>
+                    }
+                  </select>
+                  @if (errorDe('tipo_personal'); as error) {
+                    <p class="field-error" id="error-tipo_personal" role="alert">
+                      {{ error }}
+                    </p>
+                  }
+                </div>
+
+                <div class="field">
+                  <label class="label" for="tipo_jornada">Tipo de jornada</label>
+                  <select
+                    id="tipo_jornada"
+                    name="tipo_jornada"
+                    class="control"
+                    (change)="elegirTexto('tipo_jornada', $event)"
+                    (blur)="tocar('tipo_jornada')"
+                    [class.is-invalid]="errorDe('tipo_jornada') !== null"
+                    [attr.aria-invalid]="errorDe('tipo_jornada') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('tipo_jornada')"
+                  >
+                    <option value="" [selected]="modelo().tipo_jornada === ''">
+                      Elige una opción
+                    </option>
+                    @for (jornada of tiposJornada(); track jornada) {
+                      <option [value]="jornada" [selected]="modelo().tipo_jornada === jornada">
+                        {{ jornada }}
+                      </option>
+                    }
+                  </select>
+                  @if (errorDe('tipo_jornada'); as error) {
+                    <p class="field-error" id="error-tipo_jornada" role="alert">
+                      {{ error }}
+                    </p>
+                  }
+                </div>
+              }
+            </div>
+          </fieldset>
+        }
+
+        @case ('formacion') {
+          <fieldset class="group">
+            <legend class="group-title">Estudios y experiencia</legend>
+            <p class="group-hint">
+              Todo este bloque es opcional; se puede completar después del alta.
+            </p>
+
+            <div class="grid">
+              <div class="field">
+                <label class="label" for="nivel_estudios_id">Nivel de estudios</label>
+                <select
+                  id="nivel_estudios_id"
+                  name="nivel_estudios_id"
+                  class="control"
+                  (change)="elegirNumero('nivel_estudios_id', $event)"
+                  (blur)="tocar('nivel_estudios_id')"
+                  [class.is-invalid]="errorDe('nivel_estudios_id') !== null"
+                  [attr.aria-invalid]="errorDe('nivel_estudios_id') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('nivel_estudios_id')"
+                >
+                  <option value="" [selected]="modelo().nivel_estudios_id === null">
+                    Elige una opción
+                  </option>
+                  @for (nivel of niveles(); track nivel.id) {
+                    <option [value]="nivel.id" [selected]="modelo().nivel_estudios_id === nivel.id">
+                      {{ nivel.descripcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('nivel_estudios_id'); as error) {
+                  <p class="field-error" id="error-nivel_estudios_id" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field is-wide">
+                <label class="label" for="escuela_procedencia">Escuela de procedencia</label>
+                <input
+                  id="escuela_procedencia"
+                  name="escuela_procedencia"
+                  class="control"
+                  type="text"
+                  maxlength="100"
+                  [ngModel]="modelo().escuela_procedencia"
+                  (ngModelChange)="guardar('escuela_procedencia', $event)"
+                  (blur)="tocar('escuela_procedencia')"
+                  [class.is-invalid]="errorDe('escuela_procedencia') !== null"
+                  [attr.aria-invalid]="errorDe('escuela_procedencia') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('escuela_procedencia')"
+                />
+                @if (errorDe('escuela_procedencia'); as error) {
+                  <p class="field-error" id="error-escuela_procedencia" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="generacion">Generación</label>
+                <input
+                  id="generacion"
+                  name="generacion"
+                  class="control"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="9"
+                  placeholder="2018-2022"
+                  [ngModel]="modelo().generacion"
+                  (ngModelChange)="guardar('generacion', $event)"
+                  (blur)="tocar('generacion')"
+                  [class.is-invalid]="errorDe('generacion') !== null"
+                  [attr.aria-invalid]="errorDe('generacion') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('generacion')"
+                />
+                @if (errorDe('generacion'); as error) {
+                  <p class="field-error" id="error-generacion" role="alert">{{ error }}</p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="exp_publico_anios">Experiencia pública (años)</label>
+                <input
+                  id="exp_publico_anios"
+                  name="exp_publico_anios"
+                  class="control"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="100"
+                  step="1"
+                  [ngModel]="modelo().exp_publico_anios"
+                  (ngModelChange)="guardar('exp_publico_anios', $event)"
+                  (blur)="tocar('exp_publico_anios')"
+                  [class.is-invalid]="errorDe('exp_publico_anios') !== null"
+                  [attr.aria-invalid]="errorDe('exp_publico_anios') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('exp_publico_anios')"
+                />
+                @if (errorDe('exp_publico_anios'); as error) {
+                  <p class="field-error" id="error-exp_publico_anios" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="exp_privado_anios">Experiencia privada (años)</label>
+                <input
+                  id="exp_privado_anios"
+                  name="exp_privado_anios"
+                  class="control"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="100"
+                  step="1"
+                  [ngModel]="modelo().exp_privado_anios"
+                  (ngModelChange)="guardar('exp_privado_anios', $event)"
+                  (blur)="tocar('exp_privado_anios')"
+                  [class.is-invalid]="errorDe('exp_privado_anios') !== null"
+                  [attr.aria-invalid]="errorDe('exp_privado_anios') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('exp_privado_anios')"
+                />
+                @if (errorDe('exp_privado_anios'); as error) {
+                  <p class="field-error" id="error-exp_privado_anios" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              <div class="field">
+                <label class="label" for="trabaja_otro_lugar">¿Trabaja en otro lugar?</label>
+                <select
+                  id="trabaja_otro_lugar"
+                  name="trabaja_otro_lugar"
+                  class="control"
+                  (change)="cambiarOtroLugar($event)"
+                  (blur)="tocar('trabaja_otro_lugar')"
+                  [class.is-invalid]="errorDe('trabaja_otro_lugar') !== null"
+                  [attr.aria-invalid]="errorDe('trabaja_otro_lugar') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('trabaja_otro_lugar')"
+                >
+                  @for (opcion of opcionesOtroLugar(); track opcion) {
+                    <option [value]="opcion" [selected]="modelo().trabaja_otro_lugar === opcion">
+                      {{ opcion }}
+                    </option>
+                  }
+                </select>
+                @if (errorDe('trabaja_otro_lugar'); as error) {
+                  <p class="field-error" id="error-trabaja_otro_lugar" role="alert">
+                    {{ error }}
+                  </p>
+                }
+              </div>
+
+              @if (pideOtroLugar()) {
+                <!--
+                        The backend prohibits this field when the answer is `No`,
+                        so it is only on screen when it has a value to carry.
+                      -->
+                <div class="field is-wide">
+                  <label class="label" for="trabaja_otro_donde">¿Dónde trabaja?</label>
+                  <input
+                    id="trabaja_otro_donde"
+                    name="trabaja_otro_donde"
+                    class="control"
+                    type="text"
+                    maxlength="255"
+                    [ngModel]="modelo().trabaja_otro_donde"
+                    (ngModelChange)="guardar('trabaja_otro_donde', $event)"
+                    (blur)="tocar('trabaja_otro_donde')"
+                    [class.is-invalid]="errorDe('trabaja_otro_donde') !== null"
+                    [attr.aria-invalid]="errorDe('trabaja_otro_donde') === null ? null : 'true'"
+                    [attr.aria-describedby]="idDeError('trabaja_otro_donde')"
+                  />
+                  @if (errorDe('trabaja_otro_donde'); as error) {
+                    <p class="field-error" id="error-trabaja_otro_donde" role="alert">
+                      {{ error }}
+                    </p>
+                  }
+                </div>
+              }
+
+              <div class="field is-wide">
+                <label class="label" for="observaciones">Observaciones</label>
+                <textarea
+                  id="observaciones"
+                  name="observaciones"
+                  class="control control-area"
+                  rows="4"
+                  maxlength="2000"
+                  [ngModel]="modelo().observaciones"
+                  (ngModelChange)="guardar('observaciones', $event)"
+                  (blur)="tocar('observaciones')"
+                  [class.is-invalid]="errorDe('observaciones') !== null"
+                  [attr.aria-invalid]="errorDe('observaciones') === null ? null : 'true'"
+                  [attr.aria-describedby]="idDeError('observaciones')"
+                ></textarea>
+                @if (errorDe('observaciones'); as error) {
+                  <p class="field-error" id="error-observaciones" role="alert">{{ error }}</p>
+                }
+              </div>
+            </div>
+          </fieldset>
+        }
+
+        @default {
+          <!--
+                  The closing sheet: the recap and the act. It is its own
+                  component because the recap is a different document — a page
+                  that only reads and then acts.
+                -->
+          <app-alta-revision
+            [resumen]="resumen()"
+            [enviando]="enviando()"
+            (registrar)="registrar()"
+          />
+        }
+      }
+    }
+  </app-alta-expediente>
+</app-drawer>
