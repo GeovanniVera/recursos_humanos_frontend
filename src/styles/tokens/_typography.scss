@@ -29,4 +29,10 @@
   // interactive text, not chrome.
   --text-nav-branch: 600 13px/1.4 var(--font-sans);
   --text-nav-item: 400 13px/1.4 var(--font-sans);
+
+  // Editorial typewriter. The record surfaces — the expediente, the archive
+  // index, a stamped role — are written as if typed: it is what tells a reader
+  // "this is a record, not an interface". Structural text (navigation, form
+  // labels) keeps the sans; only the archive voice uses this one.
+  --font-typewriter: 'Courier Prime', 'Courier New', Courier, monospace;
 }

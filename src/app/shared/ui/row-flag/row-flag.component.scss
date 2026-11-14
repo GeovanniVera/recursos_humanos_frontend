@@ -17,16 +17,20 @@
   pointer-events: none;
 }
 
+// One state role per tone: these flip with the theme, so the lane stays visible
+// on the pale canvas of `light` and on the deep one of `guinda`. The roster only
+// ever passes `activo` and `baja`, so the three completeness tones belong to the
+// semáforo screen alone.
 .row-flag.is-completo {
-  background: var(--color-semaforo-filter-completo);
+  background: var(--color-state-success);
 }
 
 .row-flag.is-casi-completo {
-  background: var(--color-semaforo-filter-casi-completo);
+  background: var(--color-state-warning);
 }
 
 .row-flag.is-incompleto {
-  background: var(--color-semaforo-filter-incompleto);
+  background: var(--color-state-error);
 }
 
 .row-flag.is-activo {

@@ -81,7 +81,7 @@
   // families the reference is built on. They are scoped to this world: the rest
   // of the system keeps Sora and JetBrains Mono.
   --font-paper: 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif;
-  --font-paper-mono: 'Courier Prime', 'Courier New', Courier, monospace;
+  --font-paper-mono: var(--font-typewriter);
 
   // --- Proportions -------------------------------------------------------
   // The ruled margin of the sheet, and the indent that keeps text clear of it.

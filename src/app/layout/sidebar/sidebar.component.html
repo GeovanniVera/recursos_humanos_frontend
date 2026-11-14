@@ -1,10 +1,14 @@
-@if (!isTablet()) {
+<!--
+  The drawer is an object on the page: a sheet with the credential card of the
+  session at its foot, and a round clip on its right edge that folds the sheet
+  into the rail. The header is written above the fold, the destinations below
+  it.
+-->
+<div class="top">
   <header class="header">
-    @if (!collapsed()) {
-      <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
-    }
-
     @if (isMobile()) {
+      <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
+
       <button
         #mobileCloseBtn
         type="button"
@@ -25,47 +29,57 @@
           <path d="M18 6l-12 12" />
         </svg>
       </button>
-    } @else {
+    } @else if (collapsed()) {
       <!--
-        One control, two states. `aria-expanded` describes the navigation it
-        controls, so it reads `true` while the drawer shows its labels. The
-        accessible name always contains the visible word, so label-in-name holds.
+        The rail keeps the emblem. A 76px column with an empty head reads as a
+        broken panel, and the square shield is the one mark that fits a square
+        slot; the wordmark and the caption cannot.
       -->
-      <button
-        type="button"
-        class="toggle"
-        aria-controls="sidebar-nav"
-        data-tooltip-key="toggle"
-        [attr.aria-expanded]="!collapsed()"
-        [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
-        [attr.aria-describedby]="tooltipFor('toggle')"
-        (click)="toggleCollapsed()"
-      >
-        <svg
-          class="chevron"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-
-        @if (!collapsed()) {
-          <span class="toggle-label">Colapsar</span>
-        }
-      </button>
+      <app-brand-logos variant="mark" [plated]="false" />
+    } @else {
+      <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
     }
   </header>
-}
+
+  @if (!isMobile() && !isTablet()) {
+    <!--
+      One control, two states, and it hangs over the edge of the sheet. It sits
+      outside the navigation list on purpose: folding the drawer is not a
+      destination, and the list is for places to go.
+      `aria-expanded` describes the navigation it controls, so it reads `true`
+      while the drawer shows its labels.
+    -->
+    <button
+      type="button"
+      class="toggle"
+      aria-controls="sidebar-nav"
+      data-tooltip-key="toggle"
+      [attr.aria-expanded]="!collapsed()"
+      [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
+      [attr.aria-describedby]="tooltipFor('toggle')"
+      (click)="toggleCollapsed()"
+    >
+      <svg
+        class="chevron"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M15 6l-6 6 6 6" />
+      </svg>
+    </button>
+  }
+</div>
 
 <nav
   class="nav"
   id="sidebar-nav"
   aria-label="Menú principal"
+  [class.has-pill]="pillVisible()"
   (click)="onNavClick($event)"
   (scroll)="onNavScroll()"
 >
@@ -78,58 +92,174 @@
     [style.height.px]="pillHeight()"
   ></div>
 
-  <ul class="list">
-    <li>
-      <!--
-        Home. `exact` matters: without it the `/` link stays active on every
-        nested route and the rail would light up the wrong entry.
-      -->
-      <a
-        class="item"
-        routerLink="/"
-        routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        data-tooltip-key="dashboard"
-        [attr.aria-label]="collapsed() ? 'Dashboard' : null"
-        [attr.title]="collapsed() ? 'Dashboard' : null"
-        [attr.aria-describedby]="tooltipFor('dashboard')"
-      >
-        <svg
-          class="icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
-          <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
-          <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
-          <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
-        </svg>
-        <span class="item-label">Dashboard</span>
-      </a>
-    </li>
+  <!--
+    Two drawers of the same archive: `Operación` is the daily work, `Sistema` is
+    the configuration of the system itself. The labels are typed index cards; in
+    the rail they have no room and are replaced by the dashes of their rule.
+  -->
+  <div class="section">
+    @if (collapsed()) {
+      <span class="section-rule" aria-hidden="true"></span>
+    } @else {
+      <p class="section-label" id="sidebar-section-operacion">Operación</p>
+    }
 
-    <li>
-      <!--
-        The employees branch. In the rail a submenu cannot fit inside 76px, so
-        the branch collapses into a single link to its landing screen. That is
-        the deliberate trade-off: the rail never nests anything.
-      -->
-      @if (collapsed()) {
+    <ul class="list" [attr.aria-labelledby]="collapsed() ? null : 'sidebar-section-operacion'">
+      <li>
+        <!--
+          Home. `exact` matters: without it the `/` link stays active on every
+          nested route and the rail would light up the wrong entry.
+        -->
         <a
           class="item"
-          routerLink="/empleados"
+          routerLink="/"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+          data-tooltip-key="dashboard"
+          [attr.aria-label]="collapsed() ? 'Dashboard' : null"
+          [attr.title]="collapsed() ? 'Dashboard' : null"
+          [attr.aria-describedby]="tooltipFor('dashboard')"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+          </svg>
+          <span class="item-label">Dashboard</span>
+        </a>
+      </li>
+
+      <li>
+        <!--
+          The employees branch. In the rail a submenu cannot fit inside 76px, so
+          the branch becomes a button that opens its children as a floating list
+          next to the rail instead of nesting anything.
+        -->
+        @if (collapsed()) {
+          <button
+            type="button"
+            class="item is-branch"
+            data-tooltip-key="empleados"
+            aria-label="Empleados"
+            title="Empleados"
+            aria-controls="rail-submenu-empleados"
+            [attr.aria-expanded]="railSubmenuOpen()"
+            [class.is-active]="empleadosActive()"
+            [attr.aria-describedby]="tooltipFor('empleados')"
+            (click)="toggleRailSubmenu($event)"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
+              <circle cx="10" cy="8" r="3.6" />
+              <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
+              <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+            </svg>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="item is-branch"
+            aria-controls="submenu-empleados"
+            [attr.aria-expanded]="submenuOpen()"
+            (click)="toggleSubmenu()"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
+              <circle cx="10" cy="8" r="3.6" />
+              <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
+              <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+            </svg>
+            <span class="item-label">Empleados</span>
+            <svg
+              class="item-chevron"
+              [class.is-open]="submenuOpen()"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          <div
+            class="submenu-panel"
+            id="submenu-empleados"
+            [class.is-open]="submenuOpen()"
+            [attr.inert]="submenuOpen() ? null : ''"
+            [attr.aria-hidden]="submenuOpen() ? null : 'true'"
+          >
+            <div class="submenu-inner">
+              <!-- The children hang from a dashed guide: the margin of a record. -->
+              <ul class="sublist">
+                <li>
+                  <a
+                    class="item is-child"
+                    routerLink="/empleados/activos"
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                  >
+                    <span class="item-label">Empleados Activos</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="item is-child"
+                    routerLink="/empleados/baja"
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                  >
+                    <span class="item-label">Empleados Baja</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        }
+      </li>
+
+      <li>
+        <a
+          class="item"
+          routerLink="/semaforo-documentos"
           routerLinkActive="is-active"
           ariaCurrentWhenActive="page"
-          data-tooltip-key="empleados"
-          aria-label="Empleados"
-          title="Empleados"
-          [attr.aria-describedby]="tooltipFor('empleados')"
+          data-tooltip-key="semaforo"
+          [attr.aria-label]="collapsed() ? 'Semáforo de documentos' : null"
+          [attr.title]="collapsed() ? 'Semáforo de documentos' : null"
+          [attr.aria-describedby]="tooltipFor('semaforo')"
         >
           <svg
             class="icon"
@@ -141,146 +271,29 @@
             stroke-linejoin="round"
             aria-hidden="true"
           >
-            <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
-            <circle cx="10" cy="8" r="3.6" />
-            <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
-            <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+            <rect x="7.5" y="2.5" width="9" height="19" rx="4.5" />
+            <circle cx="12" cy="7.5" r="1.4" />
+            <circle cx="12" cy="12" r="1.4" />
+            <circle cx="12" cy="16.5" r="1.4" />
           </svg>
-          <span class="item-label">Empleados</span>
+          <span class="item-label">Semáforo de documentos</span>
         </a>
-      } @else {
-        <button
-          type="button"
-          class="item is-branch"
-          aria-controls="submenu-empleados"
-          [attr.aria-expanded]="submenuOpen()"
-          (click)="toggleSubmenu()"
-        >
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
-            <circle cx="10" cy="8" r="3.6" />
-            <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
-            <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
-          </svg>
-          <span class="item-label">Empleados</span>
-          <svg
-            class="item-chevron"
-            [class.is-open]="submenuOpen()"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
+      </li>
+    </ul>
+  </div>
 
-        <div
-          class="submenu-panel"
-          id="submenu-empleados"
-          [class.is-open]="submenuOpen()"
-          [attr.inert]="submenuOpen() ? null : ''"
-          [attr.aria-hidden]="submenuOpen() ? null : 'true'"
-        >
-          <div class="submenu-inner">
-            <ul class="sublist">
-              <li>
-                <a
-                  class="item is-child"
-                  routerLink="/empleados/activos"
-                  routerLinkActive="is-active"
-                  ariaCurrentWhenActive="page"
-                >
-                  <span class="item-label">Empleados Activos</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  class="item is-child"
-                  routerLink="/empleados/baja"
-                  routerLinkActive="is-active"
-                  ariaCurrentWhenActive="page"
-                >
-                  <span class="item-label">Empleados Baja</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      }
-    </li>
+  <div class="section is-system">
+    @if (collapsed()) {
+      <span class="section-rule" aria-hidden="true"></span>
+    } @else {
+      <p class="section-label" id="sidebar-section-sistema">Sistema</p>
+    }
 
-    <li>
-      <a
-        class="item"
-        routerLink="/semaforo-documentos"
-        routerLinkActive="is-active"
-        ariaCurrentWhenActive="page"
-        data-tooltip-key="semaforo"
-        [attr.aria-label]="collapsed() ? 'Semáforo de documentos' : null"
-        [attr.title]="collapsed() ? 'Semáforo de documentos' : null"
-        [attr.aria-describedby]="tooltipFor('semaforo')"
-      >
-        <svg
-          class="icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="7.5" y="2.5" width="9" height="19" rx="4.5" />
-          <circle cx="12" cy="7.5" r="1.4" />
-          <circle cx="12" cy="12" r="1.4" />
-          <circle cx="12" cy="16.5" r="1.4" />
-        </svg>
-        <span class="item-label">Semáforo de documentos</span>
-      </a>
-    </li>
-  </ul>
-</nav>
-
-<!--
-  Account section. It sits outside the scroll container so the entries and the
-  session card stay reachable while a long menu scrolls underneath.
--->
-<footer class="footer">
-  <div
-    class="footer-nav"
-    id="sidebar-footer-nav"
-    [class.has-pill]="footerPillVisible()"
-    (click)="onFooterNavClick($event)"
-  >
-    <div
-      class="pill-indicator is-footer"
-      aria-hidden="true"
-      [class.is-visible]="footerPillVisible()"
-      [style.transform]="'translate3d(' + footerPillLeft() + 'px, ' + footerPillTop() + 'px, 0)'"
-      [style.width.px]="footerPillWidth()"
-      [style.height.px]="footerPillHeight()"
-    ></div>
-
-    <ul class="list">
+    <ul class="list" [attr.aria-labelledby]="collapsed() ? null : 'sidebar-section-sistema'">
       <!--
-        The catalogs sit in the footer, above the account entry: they configure the
-        system instead of operating it, so they must not mix with the daily
-        destinations of the menu above. The entry is visible to every session on
-        purpose: the endpoint answers `403` to a role without `E-13`, and the screen
-        explains it. Hiding it made the module impossible to find.
+        The catalogs are visible to every session on purpose: the endpoint
+        answers `403` to a role without `E-13`, and the screen explains it.
+        Hiding it made the module impossible to find.
       -->
       <li>
         <a
@@ -342,44 +355,64 @@
           <span class="item-label">Ajustes</span>
         </a>
       </li>
+    </ul>
+  </div>
+</nav>
+
+<!-- The identity of the session, and the way out. It closes the sheet. -->
+<footer class="footer">
+  <app-sidebar-credential-card
+    [name]="userName()"
+    [initials]="initials()"
+    [role]="roleText()"
+    [collapsed]="collapsed()"
+    [tooltipId]="tooltipFor('logout')"
+    (signOut)="cerrarSesion()"
+  />
+</footer>
+
+@if (collapsed() && !isMobile() && railSubmenuOpen()) {
+  <!--
+    The children of the `Empleados` branch, floating next to the rail. It is
+    rendered by the host and not by the nav, because the nav is the scroll
+    container and would clip it. A click on a destination closes it; so does
+    `Escape`, an outside click, and a navigation.
+  -->
+  <div
+    #railPopover
+    class="rail-popover"
+    id="rail-submenu-empleados"
+    role="group"
+    aria-label="Empleados"
+    [style.transform]="
+      'translate3d(' + railSubmenuLeft() + 'px, ' + railSubmenuTop() + 'px, 0)'
+    "
+    (click)="closeRailSubmenu()"
+  >
+    <ul class="rail-sublist">
       <li>
-        <button
-          type="button"
-          class="item"
-          data-tooltip-key="logout"
-          [attr.aria-label]="collapsed() ? 'Cerrar Sesión' : null"
-          [attr.title]="collapsed() ? 'Cerrar Sesión' : null"
-          [attr.aria-describedby]="tooltipFor('logout')"
-          (click)="cerrarSesion()"
+        <a
+          class="rail-link"
+          routerLink="/empleados/activos"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
         >
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
-            <path d="M9 8l-4 4 4 4" />
-            <path d="M5 12h10" />
-          </svg>
-          <span class="item-label">Cerrar Sesión</span>
-        </button>
+          Empleados Activos
+        </a>
+      </li>
+      <li>
+        <a
+          class="rail-link"
+          routerLink="/empleados/baja"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+        >
+          Empleados Baja
+        </a>
       </li>
     </ul>
   </div>
-
-  <div class="user">
-    <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-    <span class="user-meta">
-      <span class="user-name">{{ userName() }}</span>
-      <span class="user-role">{{ userRole() }}</span>
-    </span>
-  </div>
-</footer>
+}
 
 @if (collapsed() && !isMobile() && railTooltip(); as tooltip) {
   <div

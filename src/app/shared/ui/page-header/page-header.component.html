@@ -1,0 +1,16 @@
+<header class="head">
+  <div class="identity">
+    <p class="eyebrow">{{ eyebrow() }}</p>
+    <h1 class="title">{{ title() }}</h1>
+    @if (subtitle(); as description) {
+      <p class="subtitle">{{ description }}</p>
+    }
+  </div>
+
+  <!--
+    The trailing action of the screen, projected by the page. The slot is not a
+    box (see the stylesheet), so a page without an action leaves no empty gap on
+    the right and a page with two keeps them grouped.
+  -->
+  <div class="actions"><ng-content /></div>
+</header>

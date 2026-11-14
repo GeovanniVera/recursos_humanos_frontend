@@ -15,6 +15,19 @@
   gap: var(--logo-gap-lg);
 }
 
+// The rail emblem: one square slot, centred, with the artwork's own height.
+// It is not stretched to the column — a 44px shield in a 76px drawer is centred
+// with air on both sides, the way a stamp is.
+.logos.is-mark {
+  justify-content: center;
+}
+
+.logos.is-mark .slot {
+  flex: none;
+  width: var(--space-8);
+  height: var(--space-8);
+}
+
 // Bare slot: the artwork sits directly on whatever surface hosts it.
 .slot {
   display: flex;

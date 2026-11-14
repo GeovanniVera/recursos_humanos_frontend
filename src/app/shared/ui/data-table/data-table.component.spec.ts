@@ -256,4 +256,59 @@ describe('DataTable', () => {
     await fixture.whenStable();
     expect(tableOf(fixture).querySelectorAll('tbody tr').length).toBe(2);
   });
+
+  it('defaults to the plain variant and leaves the plain markup untouched', async () => {
+    const plain = TestBed.createComponent(DataTable);
+    plain.componentRef.setInput('columns', COLUMNS);
+    plain.componentRef.setInput('rows', ROWS);
+    await plain.whenStable();
+
+    const host = plain.nativeElement as HTMLElement;
+    const table = tableOf(plain);
+    const wrap = host.querySelector<HTMLElement>('.wrap')!;
+
+    // The roster and the catalog read this: no ledger, no density class at the
+    // default `standard`, and no extra class on the sheet.
+    expect(table.classList.contains('is-ledger')).toBe(false);
+    expect(table.classList.contains('is-compact')).toBe(false);
+    expect(table.classList.contains('is-comfortable')).toBe(false);
+    expect(wrap.classList.contains('is-ledger')).toBe(false);
+
+    // The same table asked for `plain` explicitly renders the same class list.
+    const explicit = TestBed.createComponent(DataTable);
+    explicit.componentRef.setInput('columns', COLUMNS);
+    explicit.componentRef.setInput('rows', ROWS);
+    explicit.componentRef.setInput('variant', 'plain');
+    await explicit.whenStable();
+
+    const explicitTable = tableOf(explicit);
+    const explicitWrap = (explicit.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.wrap',
+    )!;
+    expect(Array.from(explicitTable.classList)).toEqual(Array.from(table.classList));
+    expect(Array.from(explicitWrap.classList)).toEqual(Array.from(wrap.classList));
+  });
+
+  it('opts into the ledger sheet and the density class only when asked', async () => {
+    const fixture = TestBed.createComponent(DataTable);
+    fixture.componentRef.setInput('columns', COLUMNS);
+    fixture.componentRef.setInput('rows', ROWS);
+    fixture.componentRef.setInput('variant', 'ledger');
+    fixture.componentRef.setInput('density', 'compact');
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const table = tableOf(fixture);
+    expect(table.classList.contains('is-ledger')).toBe(true);
+    expect(table.classList.contains('is-compact')).toBe(true);
+    expect(host.querySelector('.wrap')?.classList.contains('is-ledger')).toBe(true);
+
+    fixture.componentRef.setInput('density', 'comfortable');
+    await fixture.whenStable();
+    expect(table.classList.contains('is-comfortable')).toBe(true);
+    expect(table.classList.contains('is-compact')).toBe(false);
+
+    // The rows are the same rows: the variant is a surface, not a data change.
+    expect(table.querySelectorAll('tbody tr').length).toBe(2);
+  });
 });

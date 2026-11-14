@@ -16,6 +16,8 @@ import { filter, finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { SidebarStateService } from '../../core/layout/sidebar-state.service';
 import { BrandLogos } from '../../shared/ui/brand-logos/brand-logos.component';
+import { SidebarCredentialCard } from './credential-card/credential-card.component';
+import { roleLabel } from './role-label';
 
 /**
  * Main navigation drawer.
@@ -25,6 +27,12 @@ import { BrandLogos } from '../../shared/ui/brand-logos/brand-logos.component';
  * - Tablet (`768px–1023px`): auto-collapsed 76px icon rail (`effectiveCollapsed`)
  *   preserving desktop `localStorage` preference.
  * - Mobile (`<= 767px`): full-label off-canvas drawer controlled by `mobileOpen`.
+ *
+ * The drawer is drawn as an object on the page: a sheet clipped to the canvas,
+ * with the credential card of the session at its foot. Every surface, line and
+ * ink is a themed role of the system, so the sheet answers `guinda`, `light` and
+ * `dark` the way the rest of the shell does; only the structure and the
+ * typewriter voice are fixed.
  */
 interface PillGroupState {
   top: WritableSignal<number>;
@@ -45,7 +53,7 @@ export interface RailTooltipState {
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive, BrandLogos],
+  imports: [RouterLink, RouterLinkActive, BrandLogos, SidebarCredentialCard],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
   host: {
@@ -57,7 +65,8 @@ export interface RailTooltipState {
     '(mouseout)': 'onHostMouseOut($event)',
     '(focusin)': 'onHostFocusIn($event)',
     '(focusout)': 'onHostFocusOut($event)',
-    '(keydown.escape)': 'hideTooltip()',
+    '(keydown.escape)': 'onEscape()',
+    '(document:keydown)': 'onDocumentKeydown($event)',
   },
 })
 export class Sidebar {
@@ -91,15 +100,27 @@ export class Sidebar {
   readonly pillHeight = signal(44);
   readonly pillVisible = signal(false);
 
-  /** Sliding pill indicator coordinates and visibility (`footer`). */
-  readonly footerPillTop = signal(0);
-  readonly footerPillLeft = signal(0);
-  readonly footerPillWidth = signal(0);
-  readonly footerPillHeight = signal(44);
-  readonly footerPillVisible = signal(false);
-
   /** Accessible tooltip state shown next to the 76px collapsed rail. */
   readonly railTooltip = signal<RailTooltipState | null>(null);
+
+  /** `true` while the rail popover of the `Empleados` branch is open. */
+  readonly railSubmenuOpen = signal(false);
+
+  /** Position of that popover, in host coordinates. */
+  readonly railSubmenuTop = signal(0);
+  readonly railSubmenuLeft = signal(0);
+
+  /** Mirrors the router URL, so the rail branch can mark itself active. */
+  private readonly currentUrl = signal(this.router.url);
+
+  /**
+   * `true` while any destination of the employees branch is on screen. In the
+   * rail the branch is a button, not a link, so `routerLinkActive` cannot carry
+   * the state for it.
+   */
+  readonly empleadosActive = computed(() => this.currentUrl().startsWith('/empleados'));
+
+  private readonly railPopoverPanel = viewChild<ElementRef<HTMLElement>>('railPopover');
 
   private readonly navPillGroup: PillGroupState = {
     top: this.pillTop,
@@ -111,38 +132,34 @@ export class Sidebar {
     hasAnimatedOnce: false,
   };
 
-  private readonly footerPillGroup: PillGroupState = {
-    top: this.footerPillTop,
-    left: this.footerPillLeft,
-    width: this.footerPillWidth,
-    height: this.footerPillHeight,
-    visible: this.footerPillVisible,
-    timer: null,
-    hasAnimatedOnce: false,
-  };
-
   private scheduleTimer: ReturnType<typeof setTimeout> | null = null;
   private focusTimer: ReturnType<typeof setTimeout> | null = null;
+  private popoverTimer: ReturnType<typeof setTimeout> | null = null;
   private hoverTarget: HTMLElement | null = null;
   private focusTarget: HTMLElement | null = null;
+  private railSubmenuAnchor: HTMLElement | null = null;
 
   constructor() {
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => {
+        this.currentUrl.set(this.router.url);
         if (this.isMobile() && this.mobileOpen()) {
           this.sidebarState.closeMobile();
         }
+        // A popover lives one navigation: the destination is on screen now.
+        this.resetRailPopover();
         this.schedulePillUpdate(false);
       });
 
     // Recalculate indicator geometry immediately whenever sidebar width/mode changes,
-    // and dismiss any rail tooltip once expanded or inside the mobile drawer.
+    // and dismiss any rail tooltip or popover once expanded or inside the mobile drawer.
     effect(() => {
       const isRail = this.collapsed() && !this.isMobile();
       this.mobileOpen();
       if (!isRail) {
         this.hideTooltip();
+        this.resetRailPopover();
       }
       this.schedulePillUpdate(true);
     });
@@ -160,6 +177,16 @@ export class Sidebar {
       }
     });
 
+    // A click anywhere outside the open popover and its branch button closes it.
+    // `pointerdown` and not `click`: the list has to be gone before the click
+    // lands on whatever the person aimed at next.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('pointerdown', this.handleOutsidePointer, true);
+      this.destroyRef.onDestroy(() => {
+        document.removeEventListener('pointerdown', this.handleOutsidePointer, true);
+      });
+    }
+
     afterNextRender(() => {
       this.syncPillPosition(true);
       this.setupResizeObserver();
@@ -173,8 +200,14 @@ export class Sidebar {
   /** Display name from the session, or a neutral placeholder before it loads. */
   readonly userName = computed(() => this.auth.sesion()?.nombre ?? 'Nombre Apellido');
 
-  /** Role from the session, or a neutral placeholder before it loads. */
-  readonly userRole = computed(() => this.auth.sesion()?.rol ?? 'Administrador');
+  /**
+   * Role code from the session, or the neutral placeholder before it loads.
+   * The placeholder is a known code, so it is read as a role and not as a word.
+   */
+  readonly userRole = computed(() => this.auth.sesion()?.rol ?? 'ADMIN');
+
+  /** Readable label of the role. The raw code is a wire format, not a name. */
+  readonly roleText = computed(() => roleLabel(this.userRole()));
 
   /** Two initials for the avatar; `NA` while the session is not loaded. */
   readonly initials = computed(() => {
@@ -195,6 +228,33 @@ export class Sidebar {
     this.schedulePillUpdate(true);
   }
 
+  /**
+   * `Ctrl+B` / `Cmd+B` flips the drawer, the way an editor toggles its side
+   * panel.
+   *
+   * The letter is only a shortcut where nobody is typing: inside a field, or a
+   * `contenteditable`, the keystroke belongs to the person. The mobile drawer
+   * owns the screen while it is open, and the tablet rail has no visible
+   * control to explain what the shortcut did, so neither of those toggles
+   * either.
+   */
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) {
+      return;
+    }
+    if (event.key.toLowerCase() !== 'b' || event.defaultPrevented) {
+      return;
+    }
+    if (this.isTypingTarget(event.target) || this.isTablet()) {
+      return;
+    }
+    if (this.isMobile() && this.mobileOpen()) {
+      return;
+    }
+    event.preventDefault();
+    this.toggleCollapsed();
+  }
+
   /** Requests closing the mobile off-canvas drawer and restoring trigger focus. */
   requestMobileClose(): void {
     this.mobileClose.emit();
@@ -206,14 +266,58 @@ export class Sidebar {
     this.schedulePillUpdate(false);
   }
 
+  /**
+   * Opens the rail popover of the `Empleados` branch next to the button that
+   * was pressed, or closes it.
+   *
+   * The list is rendered by the host and not inside the nav: the navigation is
+   * the scroll container, and a popover born inside it would be clipped by it.
+   */
+  toggleRailSubmenu(event: MouseEvent): void {
+    if (this.railSubmenuOpen()) {
+      this.closeRailSubmenu();
+      return;
+    }
+
+    const hostEl = this.elementRef.nativeElement as HTMLElement;
+    const hostRect = hostEl.getBoundingClientRect();
+    const anchorRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+
+    this.railSubmenuAnchor = event.currentTarget as HTMLElement;
+    this.railSubmenuTop.set(anchorRect.top - hostRect.top);
+    this.railSubmenuLeft.set((hostRect.width > 0 ? hostRect.width : 76) + 10);
+    this.railSubmenuOpen.set(true);
+    this.hideTooltip();
+
+    // The popover *is* the branch, so the keyboard enters it instead of stalling
+    // on a button that only shows a list.
+    this.popoverTimer = setTimeout(() => {
+      this.railPopoverPanel()?.nativeElement.querySelector<HTMLElement>('a')?.focus();
+      this.popoverTimer = null;
+    }, 0);
+  }
+
+  /** Closes the rail popover, handing the focus back to the branch on request. */
+  closeRailSubmenu(restoreFocus = false): void {
+    if (!this.railSubmenuOpen()) {
+      return;
+    }
+    const anchor = this.railSubmenuAnchor;
+    this.resetRailPopover();
+    if (restoreFocus) {
+      anchor?.focus();
+    }
+  }
+
+  /** `Escape` on the drawer: the tooltip and the popover both leave. */
+  onEscape(): void {
+    this.hideTooltip();
+    this.closeRailSubmenu(true);
+  }
+
   /** Captures clicks on nav items to trigger pill animation and auto-close mobile drawer. */
   onNavClick(event: MouseEvent): void {
     this.handleGroupClick(event, '#sidebar-nav', this.navPillGroup);
-  }
-
-  /** Animates footer active pill and closes mobile drawer when clicking footer destinations. */
-  onFooterNavClick(event: MouseEvent): void {
-    this.handleGroupClick(event, '#sidebar-footer-nav', this.footerPillGroup);
   }
 
   onNavScroll(): void {
@@ -320,6 +424,46 @@ export class Sidebar {
     return this.collapsed() && !this.isMobile();
   }
 
+  /** `true` when the keystroke belongs to a field the person is typing into. */
+  private isTypingTarget(target: EventTarget | null): boolean {
+    const element = target as HTMLElement | null;
+    if (element === null || typeof element.closest !== 'function') {
+      return false;
+    }
+    if (element.isContentEditable) {
+      return true;
+    }
+    return element.closest('input, textarea, select, [contenteditable]') !== null;
+  }
+
+  /** Drops the rail popover without asking whether it was open. */
+  private resetRailPopover(): void {
+    this.railSubmenuOpen.set(false);
+    this.railSubmenuAnchor = null;
+    if (this.popoverTimer !== null) {
+      clearTimeout(this.popoverTimer);
+      this.popoverTimer = null;
+    }
+  }
+
+  /** Document-level `pointerdown`, kept as a field so it can be removed again. */
+  private readonly handleOutsidePointer = (event: Event): void => {
+    if (!this.railSubmenuOpen()) {
+      return;
+    }
+    const target = event.target as Node | null;
+    if (target === null) {
+      return;
+    }
+    if (this.railPopoverPanel()?.nativeElement.contains(target)) {
+      return;
+    }
+    if (this.railSubmenuAnchor?.contains(target)) {
+      return;
+    }
+    this.resetRailPopover();
+  };
+
   private isFocusVisible(element: HTMLElement): boolean {
     try {
       return element.matches(':focus-visible');
@@ -354,7 +498,6 @@ export class Sidebar {
 
   private clearTimers(): void {
     this.clearPillTimer(this.navPillGroup);
-    this.clearPillTimer(this.footerPillGroup);
     if (this.scheduleTimer !== null) {
       clearTimeout(this.scheduleTimer);
       this.scheduleTimer = null;
@@ -362,6 +505,10 @@ export class Sidebar {
     if (this.focusTimer !== null) {
       clearTimeout(this.focusTimer);
       this.focusTimer = null;
+    }
+    if (this.popoverTimer !== null) {
+      clearTimeout(this.popoverTimer);
+      this.popoverTimer = null;
     }
   }
 
@@ -378,19 +525,13 @@ export class Sidebar {
     }
     const hostEl = this.elementRef.nativeElement as HTMLElement;
     const navEl = hostEl.querySelector<HTMLElement>('#sidebar-nav');
-    const footerEl = hostEl.querySelector<HTMLElement>('#sidebar-footer-nav');
-    if (!navEl && !footerEl) {
+    if (!navEl) {
       return;
     }
     const observer = new ResizeObserver(() => {
       this.syncPillPosition(true);
     });
-    if (navEl) {
-      observer.observe(navEl);
-    }
-    if (footerEl) {
-      observer.observe(footerEl);
-    }
+    observer.observe(navEl);
     this.destroyRef.onDestroy(() => observer.disconnect());
   }
 
@@ -466,7 +607,6 @@ export class Sidebar {
 
   private syncPillPosition(immediate: boolean): void {
     this.syncPillGroup(this.navPillGroup, '#sidebar-nav', immediate);
-    this.syncPillGroup(this.footerPillGroup, '#sidebar-footer-nav', immediate);
   }
 
   private syncPillGroup(

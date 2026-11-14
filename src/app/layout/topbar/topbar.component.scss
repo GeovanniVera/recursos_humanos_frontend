@@ -1,11 +1,18 @@
 @use '../../../styles/breakpoints' as bp;
 
-// Shared bar for every screen behind the shell.
+// ---------------------------------------------------------------------------
+// Head of the archive index.
 //
-// It is a header strip, not a card: no radius, no border box, no shadow. The
-// drawer and the cards are the containers of this interface; if the bar also
-// looked like one, four floating surfaces would compete at once. What is left is
-// a thin glass band that blurs whatever scrolls under it, closed by a hairline.
+// It is a header strip, not a card: no radius, no box, no shadow. The drawer and
+// the cards are the containers of this interface; if the bar also looked like
+// one, four floating surfaces would compete at once. What is left is a glass band
+// that blurs whatever scrolls under it, closed by a dashed fold — the same rule
+// the drawer uses between its header and its destinations.
+//
+// The archive voice comes from the typewriter face and from structure (typed
+// labels, one dashed note, one stamp). Every colour below is a theme role, so the
+// bar answers `guinda`, `light` and `dark` like the rest of the shell does.
+// ---------------------------------------------------------------------------
 :host {
   position: sticky;
   // Flush to the viewport top so nothing scrolls into the gap above it. The top
@@ -17,7 +24,8 @@
   gap: var(--space-4);
   width: 100%;
   padding: var(--space-4) var(--space-4) var(--space-3);
-  border-bottom: var(--border-width) solid var(--color-border-default);
+  // The fold between the index head and the page it indexes.
+  border-bottom: var(--border-width) dashed var(--color-border-default);
   background: var(--color-surface-glass);
   backdrop-filter: blur(var(--blur-glass));
 }
@@ -94,22 +102,49 @@
 
 .crumb.is-current {
   color: var(--color-text-primary);
-  font: var(--text-nav-branch);
 }
 
+// The stamped step. The weight is the hierarchy the trail would otherwise lose
+// once the glyphs between steps are gone.
+.crumb.is-typed {
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+}
+
+// A ruled step divider, not a typed glyph: the trail reads as one row of an
+// index instead of as a file path. A border and not a fill, so high contrast
+// keeps it visible when it drops backgrounds.
 .separator {
   flex: none;
-  color: var(--color-text-secondary);
+  align-self: center;
+  height: 12px;
+  border-inline-start: var(--border-width) solid var(--color-border-default);
 }
 
-// A hairline separates the clock from the location trail. No second glass pill:
-// the bar is already glass, so nesting another one only muddied the surface.
+// A note taped to the head: dashed edge, typed, no fill of its own.
+.shortcut {
+  flex: none;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) dashed var(--color-border-default);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+}
+
+// The time is stamped, not written: typed digits in a box, tabular so a change
+// of minute never shifts the rule beside it.
 .clock {
   flex: none;
-  padding-left: var(--space-4);
-  border-left: var(--border-width) solid var(--color-border-default);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-glass);
   color: var(--color-text-secondary);
-  font: var(--text-body);
+  font-family: var(--font-typewriter);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -121,17 +156,17 @@
     padding: var(--space-2) var(--space-3);
   }
 
+  // Nothing explains the shortcut here: the drawer is the way in, so the note
+  // is not rendered and the stamp takes the free edge of the row.
   .clock {
     margin-left: auto;
-    padding-left: 0;
-    border-left: none;
   }
 
   .breadcrumb {
     order: 3;
     flex: 1 0 100%;
     padding-top: var(--space-2);
-    border-top: var(--border-width) solid var(--color-border-default);
+    border-top: var(--border-width) dashed var(--color-border-default);
   }
 
   .trail {
