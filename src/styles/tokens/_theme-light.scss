@@ -88,10 +88,10 @@
 
   // Paper world: see `_paper.scss`. The warm grey desk is what makes the warm
   // sheet read as paper instead of as a white card on white.
-  --color-desk: var(--paper-desk);
-  --color-paper-ink: var(--paper-ink);
-  --color-paper-action: var(--paper-ink);
-  --color-paper-action-ink: var(--paper-sheet);
+  --color-desk: var(--rose-100);
+  --color-paper-ink: var(--guinda-ink);
+  --color-paper-action: var(--guinda-500);
+  --color-paper-action-ink: var(--white);
 
   color-scheme: light;
 }

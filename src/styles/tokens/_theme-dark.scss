@@ -72,10 +72,10 @@
 
   // Paper world: see `_paper.scss`. On dark the ink turns cool and the action
   // picks up the manila, exactly as the reference does.
-  --color-desk: var(--paper-desk-dark);
-  --color-paper-ink: var(--paper-ink-dark);
-  --color-paper-action: var(--manila-300);
-  --color-paper-action-ink: var(--paper-desk-dark);
+  --color-desk: var(--guinda-950);
+  --color-paper-ink: var(--gold-200);
+  --color-paper-action: var(--gold-400);
+  --color-paper-action-ink: var(--guinda-950);
 
   color-scheme: dark;
 }

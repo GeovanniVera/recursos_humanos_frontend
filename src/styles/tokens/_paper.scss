@@ -5,54 +5,67 @@
 // manila folder over a desk, a warm sheet inside, ink written on it. It is not
 // glass, and it does not try to be.
 //
-// Most of these roles live at `:root` on purpose. A sheet is the same sheet in
-// guinda, light and dark; what changes with the theme is the desk it rests on,
-// the ink that sits on that desk, and the action colour — those four are
-// declared per theme.
+// Every value here comes from the brand palette. The first version of this file
+// carried colours lifted straight from the reference - a navy ink, a cool blue,
+// a warm black, manila and stamp values of its own - and none of them belonged
+// to the system: the folder read as a foreign object and the buttons broke the
+// guinda/gold/white rule. The paper illusion survives on palette alone; what it
+// needed was the right roles, not new colours.
+//
+// Most roles live at `:root` because a sheet is a sheet in every theme. What
+// changes with the theme is the desk it rests on, the ink that sits on that
+// desk and the action colour - those three are declared per theme.
 //
 // Geometry that carries the metaphor is deliberately NOT expressed with the
-// global `--space-*` scale. A 46 px gutter is not "six spaces": it is the width
+// global `--space-*` scale: a 46 px gutter is not "six spaces", it is the width
 // of a ruled margin, and snapping it to 24 px flattens the reference into a
 // card. Those measurements live in the component as plain pixels, which the
-// style contract allows — it polices colour, radius, shadow and motion, not
-// lengths. Radii and shadows that the metaphor depends on are tokens here.
+// style contract allows - it polices colour, radius, shadow and motion, not
+// lengths. Radii and shadows the metaphor depends on are tokens here.
 // ---------------------------------------------------------------------------
 
 :root {
   // --- The sheet ---------------------------------------------------------
-  --color-paper: var(--paper-sheet);
+  // Warm ivory, the palette's own paper. Never pure white: the sheet has to sit
+  // on the desk as an object, not glow like a light box.
+  --color-paper: var(--marfil-surface);
   // Body copy on the sheet.
-  --color-paper-text: var(--paper-text);
+  --color-paper-text: var(--guinda-ink);
   // Field labels and the folio line.
-  --color-paper-muted: var(--paper-muted);
+  --color-paper-muted: var(--guinda-600);
   // The dotted rule under a value.
-  --color-paper-line: var(--paper-line);
+  --color-paper-line: var(--rose-300);
   // A value nobody has typed yet.
-  --color-paper-empty: var(--paper-empty);
-  // Titles and typed values. Fixed navy: the sheet keeps its own ink even when
-  // the desk around it turns light or dark.
-  --color-paper-value: var(--paper-ink);
+  --color-paper-empty: var(--guinda-500);
+  // Titles and typed values. The sheet keeps its own darker ink even when the
+  // desk around it turns light or dark.
+  --color-paper-value: var(--guinda-ink);
 
   // --- The folder --------------------------------------------------------
-  --color-manila: var(--manila-300);
+  // The accent gold, one step off the cover so it never competes with nothing:
+  // the folder *is* the brand's gold.
+  --color-manila: var(--gold-400);
   // An unselected tab sits a shade under the cover.
-  --color-manila-dark: var(--manila-500);
-  --color-manila-edge: var(--manila-700);
-  --color-manila-ink: var(--manila-ink);
+  --color-manila-dark: var(--gold-600);
+  --color-manila-edge: var(--gold-600);
+  --color-manila-ink: var(--guinda-900);
 
   // --- The seal ----------------------------------------------------------
-  --color-stamp: var(--stamp-600);
-  --color-stamp-ok: var(--stamp-ok);
+  // The institutional red, not a borrowed stamp red.
+  --color-stamp: var(--guinda-400);
+  --color-stamp-ok: var(--mint-700);
   --color-stamp-on: var(--white);
-  // The red margin rule of the sheet, faint enough to read as printed.
-  --color-stamp-soft: rgba(179, 38, 30, 0.35);
+  // The red margin rule of the sheet: the same red, faint enough to read as
+  // printed.
+  --color-stamp-soft: rgba(179, 13, 40, 0.35);
 
   // --- Backdrops ---------------------------------------------------------
-  // Warm scrim, not the guinda one: the folder casts onto a desk, not onto
-  // the application chrome.
-  --color-paper-scrim: rgba(20, 16, 10, 0.5);
-  // The transient highlight when a missing field is jumped to.
-  --color-paper-flash: rgba(253, 176, 70, 0.7);
+  // The application scrim, guinda-tinted like everywhere else: the folder casts
+  // onto the same page as the rest of the system.
+  --color-paper-scrim: var(--scrim);
+  // The transient highlight when a missing field is jumped to. Gold, the
+  // accent, at the strength of a swipe of marker.
+  --color-paper-flash: rgba(232, 199, 102, 0.55);
 
   // --- Radii -------------------------------------------------------------
   // Smaller than the glass scale by design: paper and manila have crisp
@@ -76,19 +89,20 @@
   --paper-indent: 34px;
 
   // --- Elevation and texture ---------------------------------------------
-  // Three stacked sheets: a hard lip, a second lip, then the drop.
+  // Three stacked sheets: a hard lip, a second lip, then the drop. Guinda-tinted
+  // alphas, like every other shadow in the system.
   --shadow-paper-sheet:
-    0 2px 0 #e8e0cc,
-    0 5px 0 -1px #f3edda,
-    0 6px 8px rgba(0, 0, 0, 0.25);
-  --shadow-paper-cover: 0 8px 18px rgba(0, 0, 0, 0.25);
-  --shadow-paper-drawer: -12px 0 40px rgba(0, 0, 0, 0.35);
-  --shadow-paper-panel: -10px 0 30px rgba(0, 0, 0, 0.45);
-  --shadow-paper-clip: 1px 1px 0 rgba(0, 0, 0, 0.2);
-  // The grain of the manila cover.
+    0 2px 0 rgba(74, 10, 29, 0.06),
+    0 5px 0 -1px rgba(74, 10, 29, 0.04),
+    0 6px 8px rgba(74, 10, 29, 0.18);
+  --shadow-paper-cover: 0 8px 18px rgba(74, 10, 29, 0.2);
+  --shadow-paper-drawer: -12px 0 40px rgba(74, 10, 29, 0.35);
+  --shadow-paper-panel: -10px 0 30px rgba(74, 10, 29, 0.4);
+  --shadow-paper-clip: 1px 1px 0 rgba(74, 10, 29, 0.2);
+  // The grain of the manila cover, in white and guinda alpha.
   --paper-cover-texture: repeating-linear-gradient(
     0deg,
-    rgba(255, 255, 255, 0.05) 0 2px,
-    rgba(0, 0, 0, 0.025) 2px 4px
+    rgba(255, 255, 255, 0.06) 0 2px,
+    rgba(74, 10, 29, 0.03) 2px 4px
   );
 }
