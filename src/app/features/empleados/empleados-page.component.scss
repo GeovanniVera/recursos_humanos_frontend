@@ -180,18 +180,106 @@
   background: var(--color-accent);
 }
 
+// --- State tabs -------------------------------------------------------------
+
+// The strip and the sheet are one paper: the tabs overlap the sheet's top edge
+// by one border width, carry no bottom border, and the pressed one takes the
+// sheet's own fill, so the seam is never painted. The mechanic is the semáforo's
+// exactly — the two listings open the same way.
+.ledger {
+  display: grid;
+  min-width: 0;
+}
+
+.tabs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  // One border width of overlap: the pressed tab covers the sheet's top rule
+  // over its own width.
+  margin-bottom: calc(-1 * var(--border-width));
+  overflow-x: auto;
+  // Four tabs and no more: a scrollbar under the strip would be furniture.
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  // Room for the count that the contract will bring, before it lands.
+  gap: var(--space-4);
+  flex: 0 0 auto;
+  min-height: var(--space-8);
+  // A tab that is not pressed sits a step lower than the pressed one.
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--color-surface-overlay);
+  // Dimmer until it is the one applied: only the pressed tab reads at full ink.
+  color: var(--color-text-secondary);
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: margin-top var(--motion-fast) var(--motion-ease);
+}
+
+.tab-title {
+  font: var(--text-nav-branch);
+}
+
+// The count slot, reserved in every tab and empty: the figures arrive with the
+// contract, and the strip must not reflow the day they do. Nothing is printed
+// here — not even `0`, which is a real answer of this API.
+.tab-count {
+  min-inline-size: var(--space-8);
+  font-family: var(--font-typewriter);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+// The pressed tab rises and becomes the sheet itself: same fill, full ink, no
+// rule under it. There is no state colour to spend here — the data the other
+// tabs would count does not exist yet.
+.tab.is-active {
+  z-index: 1;
+  margin-top: 0;
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+// The filters the endpoint cannot answer yet. They keep the tab's shape — a
+// ghost button would not be judgeable — and say "not ready" three ways: lower,
+// dimmer, and ruled in dashes, so the state survives grayscale and high contrast
+// without a colour of its own.
+.tab[aria-disabled='true'] {
+  border-style: dashed;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
 // --- The sheet --------------------------------------------------------------
 
 // One frame around the table and the band that closes it: the same paper the
 // semáforo leaves on screen, so the two listings read as pages of one archive.
-// Unlike there, no strip of tabs overlaps the top edge, so all four corners keep
-// the card's radius. `overflow: hidden` clips the table's own card into the
-// frame and holds the band's fill inside those corners.
+// The tab strip overlaps its top edge, so the corner under the strip is square;
+// the other three keep the card's radius. `overflow: hidden` clips the table's
+// own card into the frame and holds the band's fill inside those corners.
 .sheet {
   display: grid;
   min-width: 0;
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
+  border-start-start-radius: 0;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
@@ -314,6 +402,21 @@
     outline: calc(var(--border-width) * 2) solid CanvasText;
     outline-offset: calc(-1 * var(--border-width) * 2);
   }
+
+  // High contrast takes fills away, so the pressed tab is restated as an
+  // outline. The dashed rule of the pending ones already survives on its own,
+  // which keeps the two states apart without a colour.
+  .tab.is-active {
+    outline: var(--border-width) solid CanvasText;
+    outline-offset: calc(-1 * var(--border-width));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  // The pressed tab still starts pressed; it just does not travel there.
+  .tab {
+    transition: none;
+  }
 }
 
 @include bp.down(bp.$bp-sm) {
@@ -327,5 +430,14 @@
   // The pager needs the whole width; the control does not.
   .density {
     align-self: start;
+  }
+}
+
+@include bp.down(bp.$bp-xs) {
+  // Four tabs on a phone: the strip scrolls, and each one gives up a step of
+  // padding so more than one fits before the first swipe.
+  .tab {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-3);
   }
 }

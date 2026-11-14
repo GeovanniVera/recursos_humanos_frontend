@@ -116,116 +116,159 @@
     </p>
   }
 
-  <!--
-    The strip that would filter this listing by state — `Todos`, `Activos`,
-    `Bajas definitivas`, `Licencias` — belongs here, on the top edge of the
-    sheet. It is not built yet, and it is not faked: `GET /padron` accepts only
-    `buscar`, `pagina` and `por_pagina`, the wire model carries just
-    `Activo | Baja`, and the endpoint already answers with active workers only.
-    Counting states over the one page that was served would print figures that
-    contradict the rest of the padrón while the pager walks a server-side list.
-    It lands when the endpoint takes `estado` and sends the counters with it, so
-    nothing is rendered here in the meantime.
-  -->
-
-  <!--
-    The sheet: one frame around the table and the band that closes it, the same
-    paper the semáforo leaves on screen, so the two listings read as pages of one
-    archive. Density and pager share the foot, because neither is a strip of the
-    page: both describe the listing they close.
-  -->
-  <div class="sheet">
+  <div class="ledger">
     <!--
-      The number and the name are the two cells with a shape of their own; the
-      projected renderer receives the row, the column and the value, so the table
-      stays generic. The state is still not a column — the roster is one list of
-      active workers — so it is written the way a ledger writes it: the lane on
-      the leading edge at a glance, and the stamp beside the typed number in
-      words. The name is a shared `app-row-link`: the row click is a pointer
-      shortcut, and the keyboard needs an element that already is a control.
+      State tabs of the roster, folded on the top edge of the sheet.
+
+      PENDING CONTRACT. The strip only becomes a filter when `GET /padron`
+      accepts `?estado=todos|activo|baja_definitiva|licencia` and answers with a
+      `contadores` object carrying the four figures. Until then the endpoint
+      takes just `buscar`, `pagina` and `por_pagina`, its wire model carries only
+      `Activo | Baja`, and it already answers with active workers alone.
+
+      The filter has to land on the server, not here: this screen pages against
+      a buffered list, so filtering or counting the rows already loaded would
+      make the range line ("Mostrando 1–20 de N") and the pager lie about the
+      rest of the padrón. That is also why the count slots are reserved and
+      empty — a figure derived from one served page is worse than no figure.
+
+      `Activos` is the one tab the endpoint can answer today, and it is the list
+      this screen already shows. The other three keep the tab's shape so the
+      mechanic is judgeable, and say why they do not respond.
     -->
-    <app-data-table
-      variant="ledger"
-      [density]="densidad()"
-      mobileMode="cards"
-      [columns]="columnas"
-      [leadingDecoration]="true"
-      [rows]="filas()"
-      [loading]="cargandoInicial()"
-      [emptyMessage]="mensajeVacio()"
-      caption="Padrón de empleados"
-      rowKey="id"
-      [clickableRows]="true"
-      (rowClick)="abrirFicha($event)"
-    >
-      <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
-        @if (column.key === 'num_empleado') {
+    <div class="tabs" role="group" aria-label="Filtrar el padrón por estado">
+      @for (filtro of filtrosEstado; track filtro.id) {
+        <button
+          type="button"
+          class="tab"
+          [class.is-active]="estadoFiltro() === filtro.id"
+          [attr.aria-pressed]="estadoFiltro() === filtro.id ? 'true' : null"
+          [attr.aria-disabled]="filtro.disponible ? null : 'true'"
+          [attr.aria-describedby]="filtro.disponible ? null : 'estado-pendiente'"
+          [attr.title]="filtro.disponible ? null : 'Espera el filtro por estado del servidor'"
+          (click)="filtrarEstado(filtro)"
+        >
+          <span class="tab-title">{{ filtro.label }}</span>
           <!--
-            The stamp is hidden from assistive tech on purpose: the flag already
-            announces the same state in a sentence, and one datum deserves one
-            reading. The stamp is the word, the lane is the glance.
+            The count slot, reserved and empty: the figures arrive with the
+            contract, and the strip must not reflow the day they do. Nothing is
+            printed here — not even `0`, which is a real answer of this API.
           -->
-          <app-row-flag
-            [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
-            [label]="'Estado: ' + row.estado"
-          />
-          <span
-            class="seal is-{{ row.estado === 'Activo' ? 'activo' : 'baja' }}"
-            aria-hidden="true"
-            >{{ row.estado }}</span
-          >
-          <span class="mono">{{ value }}</span>
-        } @else if (column.key === 'nombre') {
-          <app-row-link
-            [ariaLabel]="'Ver la ficha de ' + value"
-            (click)="abrirFichaDesdeNombre($event, row)"
-          >
-            <span class="mono">{{ value }}</span>
-          </app-row-link>
-        } @else {
-          {{ value }}
-        }
-      </ng-template>
-    </app-data-table>
+          <span class="tab-count" aria-hidden="true"></span>
+        </button>
+      }
+    </div>
 
     <!--
-      The band that closes the sheet. How much room a row gets lives here because
-      it is a state of these rows; the pager lives here because it is the foot of
-      this table, not a strip of the page. Three real buttons in a group, each
-      carrying `aria-pressed`: density is a state, not a link.
+      One sentence for the three tabs that await the contract, linked by
+      `aria-describedby` and read with the tab. It stays hidden because the tab
+      itself already says what it is; this only says why it does not answer.
     -->
-    <div class="sheet-foot">
-      <div class="density" role="group" aria-label="Densidad de la tabla">
-        @for (opcion of densidades; track opcion.id) {
-          <button
-            type="button"
-            [attr.aria-pressed]="densidad() === opcion.id"
-            (click)="cambiarDensidad(opcion.id)"
-          >
-            {{ opcion.label }}
-          </button>
+    <p class="visually-hidden" id="estado-pendiente">
+      Este filtro espera el parámetro estado del servidor. Mientras el padrón no filtre por estado,
+      la lista muestra solo al personal activo.
+    </p>
+
+    <!--
+      The sheet: one frame around the table and the band that closes it, the same
+      paper the semáforo leaves on screen, so the two listings read as pages of one
+      archive. The tab strip sits on its top edge, so the corner under the strip is
+      square. Density and pager share the foot, because neither is a strip of the
+      page: both describe the listing they close.
+    -->
+    <div class="sheet">
+      <!--
+        The number and the name are the two cells with a shape of their own; the
+        projected renderer receives the row, the column and the value, so the table
+        stays generic. The state is still not a column — the roster is one list of
+        active workers — so it is written the way a ledger writes it: the lane on
+        the leading edge at a glance, and the stamp beside the typed number in
+        words. The name is a shared `app-row-link`: the row click is a pointer
+        shortcut, and the keyboard needs an element that already is a control.
+      -->
+      <app-data-table
+        variant="ledger"
+        [density]="densidad()"
+        mobileMode="cards"
+        [columns]="columnas"
+        [leadingDecoration]="true"
+        [rows]="filas()"
+        [loading]="cargandoInicial()"
+        [emptyMessage]="mensajeVacio()"
+        caption="Padrón de empleados"
+        rowKey="id"
+        [clickableRows]="true"
+        (rowClick)="abrirFicha($event)"
+      >
+        <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+          @if (column.key === 'num_empleado') {
+            <!--
+              The stamp is hidden from assistive tech on purpose: the flag already
+              announces the same state in a sentence, and one datum deserves one
+              reading. The stamp is the word, the lane is the glance.
+            -->
+            <app-row-flag
+              [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
+              [label]="'Estado: ' + row.estado"
+            />
+            <span
+              class="seal is-{{ row.estado === 'Activo' ? 'activo' : 'baja' }}"
+              aria-hidden="true"
+              >{{ row.estado }}</span
+            >
+            <span class="mono">{{ value }}</span>
+          } @else if (column.key === 'nombre') {
+            <app-row-link
+              [ariaLabel]="'Ver la ficha de ' + value"
+              (click)="abrirFichaDesdeNombre($event, row)"
+            >
+              <span class="mono">{{ value }}</span>
+            </app-row-link>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+      </app-data-table>
+
+      <!--
+        The band that closes the sheet. How much room a row gets lives here because
+        it is a state of these rows; the pager lives here because it is the foot of
+        this table, not a strip of the page. Three real buttons in a group, each
+        carrying `aria-pressed`: density is a state, not a link.
+      -->
+      <div class="sheet-foot">
+        <div class="density" role="group" aria-label="Densidad de la tabla">
+          @for (opcion of densidades; track opcion.id) {
+            <button
+              type="button"
+              [attr.aria-pressed]="densidad() === opcion.id"
+              (click)="cambiarDensidad(opcion.id)"
+            >
+              {{ opcion.label }}
+            </button>
+          }
+        </div>
+
+        @if (hayDatos()) {
+          <app-pagination
+            [rangeText]="rango()"
+            [pageLabel]="etiquetaPagina()"
+            [page]="paginaActual()"
+            [totalPages]="totalPaginasMax()"
+            [pageSize]="porPagina()"
+            [pageSizeOptions]="tamanosPagina"
+            [disabled]="controlesDeshabilitados()"
+            [disableFirst]="primeraDeshabilitado()"
+            [disablePrev]="anteriorDeshabilitado()"
+            [disableNext]="siguienteDeshabilitado()"
+            [disableLast]="ultimaDeshabilitado()"
+            [jumpError]="errorPagina()"
+            (pageChange)="irA($event)"
+            (pageSizeChange)="cambiarTamanoPagina($event)"
+            (jumpSubmit)="irAPaginaValor($event)"
+          />
         }
       </div>
-
-      @if (hayDatos()) {
-        <app-pagination
-          [rangeText]="rango()"
-          [pageLabel]="etiquetaPagina()"
-          [page]="paginaActual()"
-          [totalPages]="totalPaginasMax()"
-          [pageSize]="porPagina()"
-          [pageSizeOptions]="tamanosPagina"
-          [disabled]="controlesDeshabilitados()"
-          [disableFirst]="primeraDeshabilitado()"
-          [disablePrev]="anteriorDeshabilitado()"
-          [disableNext]="siguienteDeshabilitado()"
-          [disableLast]="ultimaDeshabilitado()"
-          [jumpError]="errorPagina()"
-          (pageChange)="irA($event)"
-          (pageSizeChange)="cambiarTamanoPagina($event)"
-          (jumpSubmit)="irAPaginaValor($event)"
-        />
-      }
     </div>
   </div>
 </section>

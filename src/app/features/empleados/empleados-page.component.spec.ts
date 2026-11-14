@@ -234,6 +234,13 @@ function encabezados(fixture: ComponentFixture<EmpleadosPage>): string[] {
   );
 }
 
+/** The buttons of the state strip, in the order the strip shows them. */
+function tabsEstado(fixture: ComponentFixture<EmpleadosPage>): HTMLButtonElement[] {
+  // Scoped to the page: the three drawers are mounted closed on this screen and
+  // each one carries a tab strip of its own.
+  return Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('.page .tabs .tab'));
+}
+
 /** Submits the "Ir a página" form the way the keyboard does. */
 function irAPagina(fixture: ComponentFixture<EmpleadosPage>, valor: string): void {
   const form = host(fixture).querySelector<HTMLFormElement>('.pager-jump');
@@ -396,6 +403,134 @@ describe('EmpleadosPage', () => {
 
     expect(host(fixture).querySelector('.wrap')?.classList.contains('is-ledger')).toBe(true);
     expect(host(fixture).querySelector('table')?.classList.contains('is-ledger')).toBe(true);
+  });
+
+  it('renders the four state tabs in order', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const tabs = tabsEstado(fixture);
+
+    expect(tabs).toHaveLength(4);
+    expect(tabs.map((tab) => tab.querySelector('.tab-title')?.textContent?.trim())).toEqual([
+      'Todos',
+      'Activos',
+      'Bajas definitivas',
+      'Licencias',
+    ]);
+    // The strip is a group of pressed buttons, not a tablist: the tabs that work
+    // filter one listing instead of swapping panels.
+    expect(host(fixture).querySelector('.page .tabs')?.getAttribute('role')).toBe('group');
+  });
+
+  it('keeps Activos as the selected and operable tab', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const tabs = tabsEstado(fixture);
+
+    // `Activos` is the one filter the endpoint can answer today, and it is the
+    // list on screen; the other three are visible but not operable.
+    expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual([
+      null,
+      'true',
+      null,
+      null,
+    ]);
+    expect(tabs.map((tab) => tab.getAttribute('aria-disabled'))).toEqual([
+      'true',
+      null,
+      'true',
+      'true',
+    ]);
+    expect(tabs.map((tab) => tab.classList.contains('is-active'))).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ]);
+    // Not natively `disabled` on purpose: a disabled button leaves the tab order,
+    // and then the reason the tab does not answer could never be read.
+    expect(tabs.map((tab) => tab.disabled)).toEqual([false, false, false, false]);
+  });
+
+  it('explains why the three pending tabs do not answer', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const pendientes = tabsEstado(fixture).filter(
+      (tab) => tab.getAttribute('aria-disabled') === 'true',
+    );
+    expect(pendientes).toHaveLength(3);
+
+    for (const tab of pendientes) {
+      // The reason travels two ways: a `title` for the pointer and an
+      // `aria-describedby` target for the keyboard and the screen reader.
+      expect(tab.getAttribute('title')).toContain('filtro por estado del servidor');
+
+      const descrito = tab.getAttribute('aria-describedby');
+      expect(descrito).toBe('estado-pendiente');
+
+      const pista = host(fixture).querySelector('#estado-pendiente');
+      expect(pista?.textContent).toContain('espera el parámetro estado del servidor');
+    }
+
+    // The one operable tab carries neither the title nor the hint.
+    const activo = tabsEstado(fixture)[1];
+    expect(activo.getAttribute('title')).toBeNull();
+    expect(activo.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('reserves the count slot of every tab and prints no figure', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const tabs = tabsEstado(fixture);
+
+    // The slot exists in all four, because the strip must not reflow when the
+    // contract brings the figures.
+    expect(tabs.map((tab) => tab.querySelector('.tab-count'))).toHaveLength(4);
+    expect(tabs.map((tab) => tab.querySelector('.tab-count')?.textContent?.trim())).toEqual([
+      '',
+      '',
+      '',
+      '',
+    ]);
+    // Nothing is printed next to the label: not `0`, not the size of this page.
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual([
+      'Todos',
+      'Activos',
+      'Bajas definitivas',
+      'Licencias',
+    ]);
+  });
+
+  it('sends no request when a pending tab is pressed', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const tabs = tabsEstado(fixture);
+
+    // The three tabs that await the endpoint are inert: a client-side filter
+    // would make the range line and the pager lie about the rest of the padrón.
+    tabs[0].click();
+    tabs[2].click();
+    tabs[3].click();
+    await fixture.whenStable();
+
+    expect(peticiones().length).toBe(0);
+    expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual([
+      null,
+      'true',
+      null,
+      null,
+    ]);
+
+    // Pressing the one filter the endpoint answers is also not a request: it is
+    // the list already on screen.
+    tabs[1].click();
+    await fixture.whenStable();
+    expect(peticiones().length).toBe(0);
   });
 
   it('keeps the density control in the foot of the sheet and changes the density', async () => {

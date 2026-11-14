@@ -74,6 +74,20 @@ interface FallaPadron {
 }
 
 /**
+ * A tab of the roster's state strip.
+ *
+ * `id` is the value the pending contract will send as `estado`
+ * (`?estado=todos|activo|baja_definitiva|licencia`), so the day the backend takes
+ * it this array is the query and not a translation table.
+ */
+interface FiltroEstado {
+  id: 'todos' | 'activo' | 'baja_definitiva' | 'licencia';
+  label: string;
+  /** Whether `GET /padron` can answer this filter today. */
+  disponible: boolean;
+}
+
+/**
  * Active employees, reachable at `/empleados/activos`.
  *
  * Paging has two levels. The user sees 20 rows at a time; the store asks the
@@ -161,6 +175,28 @@ export class EmpleadosPage {
     { id: 'standard', label: 'Estándar' },
     { id: 'comfortable', label: 'Amplia' },
   ];
+
+  /**
+   * The four state tabs, in the order the strip shows them.
+   *
+   * Only `activo` is operable today: the endpoint takes `buscar`, `pagina` and
+   * `por_pagina`, its wire model carries only `Activo | Baja`, and it already
+   * answers with active workers alone. The other three are drawn so the mechanic
+   * can be judged, and they carry `aria-disabled` plus the reason until the
+   * contract lands — see the comment on the strip in the template.
+   */
+  readonly filtrosEstado: readonly FiltroEstado[] = [
+    { id: 'todos', label: 'Todos', disponible: false },
+    { id: 'activo', label: 'Activos', disponible: true },
+    { id: 'baja_definitiva', label: 'Bajas definitivas', disponible: false },
+    { id: 'licencia', label: 'Licencias', disponible: false },
+  ];
+
+  /**
+   * Filter the strip has pressed. It only moves among the tabs the endpoint can
+   * answer, which today means it stays on `activo`.
+   */
+  readonly estadoFiltro = signal<FiltroEstado['id']>('activo');
 
   /** Logical page on screen. */
   readonly paginaActual = this.store.pagina;
@@ -480,6 +516,22 @@ export class EmpleadosPage {
    */
   cambiarDensidad(densidad: TableDensity): void {
     this.densidad.set(densidad);
+  }
+
+  /**
+   * Presses a state filter of the strip.
+   *
+   * The three tabs that await the contract are ignored instead of filtering the
+   * loaded rows: a client-side filter would count and page a slice of one block
+   * as if it were the whole padrón, and the range line and the pager would lie.
+   * `activo` is the list this screen already shows, so pressing it changes
+   * nothing and sends no request.
+   */
+  filtrarEstado(filtro: FiltroEstado): void {
+    if (!filtro.disponible) {
+      return;
+    }
+    this.estadoFiltro.set(filtro.id);
   }
 
   /**
