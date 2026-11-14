@@ -1,60 +1,72 @@
 <section class="page">
-  <header class="head">
-    <div class="identity">
-      <p class="overline">Expedientes · Recursos Humanos</p>
-      <h1>Semáforo de Completitud</h1>
-      <p class="sub">
-        Identifica la información pendiente de cada expediente. Consulta los campos faltantes para
-        conocer qué hace falta completar.
-      </p>
+  <!--
+    The shared letterhead of the archive. The copy is the screen's own; the
+    component only owns the shape and the voice. Two trailing actions are
+    projected into the header: the way back, and the refresh of the listing the
+    screen is showing. The slot of the head is `display: contents`, so the group
+    is one box of the page — the head places it on the right and stretches it
+    under the title when it folds into a single column.
+  -->
+  <app-page-header
+    eyebrow="Expedientes · Recursos Humanos"
+    title="Semáforo de Completitud"
+    subtitle="Identifica la información pendiente de cada expediente. Consulta los campos faltantes para conocer qué hace falta completar."
+  >
+    <div class="head-actions">
+      <a class="back" routerLink="/"
+        >Volver al panel
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <path d="M15 10H5m5-5-5 5 5 5" />
+        </svg>
+      </a>
+      <!--
+        The refresh re-asks the server for the same window: the query did not
+        change, so the request is forced. It is disabled while one is in flight,
+        exactly like every control of the pager.
+      -->
+      <app-button variant="secondary" [disabled]="loading()" (click)="solicitar(false, true)"
+        >Actualizar</app-button
+      >
     </div>
-    <a class="back" routerLink="/"
-      >Volver al panel
-      <svg
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.6"
-        aria-hidden="true"
-      >
-        <path d="M15 10H5m5-5-5 5 5 5" />
-      </svg>
-    </a>
-  </header>
-  <div class="legend" aria-label="Estados de completitud">
-    <span>Completo: sin pendientes</span><span>Casi completo: 1–3 campos</span
-    ><span>Incompleto: 4 o más campos</span>
-  </div>
-  <div class="filters" role="group" aria-label="Filtrar por estado del expediente">
-    @for (filtro of filtros; track filtro.label) {
-      <button
-        type="button"
-        class="filter is-{{ filtro.estado ?? 'todos' }}"
-        [class.selected]="estado() === filtro.estado"
-        [attr.aria-pressed]="estado() === filtro.estado"
-        (click)="filtrar(filtro.estado)"
-      >
-        <span>{{ filtro.label }}</span><strong>{{
-          loading() ? '—' : (respuesta()?.contadores?.[filtro.contador] ?? '—')
-        }}</strong>
-      </button>
-    }
-  </div>
+  </app-page-header>
+  <!--
+    The toolbar holds one control and no more: the search field. The magnifier
+    is the field's own mark — a decorative SVG, absolutely placed inside the
+    box, out of the pointer's way — and the field is a field and not a banner,
+    so it stops at a readable measure. Its name comes from the label.
+  -->
   <div class="toolbar">
     <div class="search">
-      <label for="semaforo-buscar">Buscar trabajador</label
-      ><input
-        id="semaforo-buscar"
-        type="search"
-        autocomplete="off"
-        placeholder="Número de empleado o nombre"
-        [value]="buscar()"
-        (input)="alBuscar($event)"
-      />
+      <label for="semaforo-buscar">Buscar trabajador</label>
+      <div class="field">
+        <svg
+          class="search-icon"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="8.75" cy="8.75" r="5.25" />
+          <path d="m12.75 12.75 3.5 3.5" stroke-linecap="round" />
+        </svg>
+        <input
+          id="semaforo-buscar"
+          type="search"
+          autocomplete="off"
+          placeholder="Número de empleado o nombre"
+          [value]="buscar()"
+          (input)="alBuscar($event)"
+        />
+      </div>
     </div>
-    <app-button variant="secondary" [disabled]="loading()" (click)="solicitar(false, true)"
-      >Actualizar</app-button
-    >
   </div>
   @if (error(); as mensaje) {
     <app-alert-banner
@@ -73,64 +85,129 @@
       }
     </app-alert-banner>
   }
-  <app-data-table
-    mobileMode="cards"
-    [columns]="columnas"
-    [leadingDecoration]="true"
-    [rows]="filas()"
-    [loading]="loading()"
-    [sort]="sort()"
-    (sortChange)="ordenar($event)"
-    [clickableRows]="true"
-    (rowClick)="abrir($event)"
-    caption="Semáforo de completitud de expedientes"
-    [activeKey]="drawerOpen() ? empleadoId() : null"
-    [emptyMessage]="
-      error()
-        ? 'No hay datos disponibles para mostrar.'
-        : 'No hay expedientes que coincidan con los filtros.'
-    "
-  >
-    <ng-template #cell let-row let-column="column" let-value="value">
-      @if (column.key === 'num_empleado') {
-        <app-row-flag
-          [tone]="row.estado"
-          [label]="'Estado del expediente: ' + etiquetasEstado[row.estado]"
-        />
-        {{ value }}
-      } @else if (column.key === 'nombre') {
-        <app-row-link
-          [ariaLabel]="'Ver campos faltantes de ' + row.nombre"
-          (click)="$event.stopPropagation(); abrir(row)"
+  <div class="ledger">
+    <!--
+      The four counters are the folder tabs of the sheet that follows: the
+      strip overlaps its top edge by one border width, the tabs carry no bottom
+      border, and the selected one takes the sheet's own fill, so tab and sheet
+      read as one surface. They stay a `group` of pressed buttons instead of a
+      `tablist`: they filter one listing, they do not swap panels.
+    -->
+    <div class="tabs" role="group" aria-label="Filtrar por estado del expediente">
+      @for (filtro of filtros; track filtro.label) {
+        <button
+          type="button"
+          class="tab is-{{ filtro.estado ?? 'todos' }}"
+          [class.is-active]="estado() === filtro.estado"
+          [attr.aria-pressed]="estado() === filtro.estado"
+          (click)="filtrar(filtro.estado)"
         >
-          {{ value }}
-        </app-row-link>
-      } @else if (column.key === 'campos_faltantes') {
-        <span class="missing-count">{{ value }}</span>
-      } @else {
-        {{ value }}
+          <span class="tab-title">{{ filtro.label }}</span>
+          <span class="tab-hint">{{ filtro.hint }}</span>
+          <strong class="tab-count">{{
+            loading() ? '—' : (respuesta()?.contadores?.[filtro.contador] ?? '—')
+          }}</strong>
+        </button>
       }
-    </ng-template>
-  </app-data-table>
-  @if (hayDatos()) {
-    <app-pagination
-      [rangeText]="rango()"
-      [pageLabel]="etiquetaPagina()"
-      [page]="pagina()"
-      [totalPages]="totalPaginasMax()"
-      [pageSize]="porPagina()"
-      [pageSizeOptions]="tamanos"
-      [disabled]="controlesDeshabilitados()"
-      [disableFirst]="primeraDeshabilitado()"
-      [disablePrev]="anteriorDeshabilitado()"
-      [disableNext]="siguienteDeshabilitado()"
-      [disableLast]="ultimaDeshabilitado()"
-      [jumpError]="errorPagina()"
-      (pageChange)="irA($event)"
-      (pageSizeChange)="cambiarTamanoPagina($event)"
-      (jumpSubmit)="irAPaginaValor($event)"
-    />
-  }
+    </div>
+    <!--
+      The sheet: one frame around the table and the band that closes it. The
+      tab strip sits on its top edge and the pager is the right half of its
+      foot, so nothing of the listing floats free of the paper it belongs to.
+    -->
+    <div class="sheet">
+      <app-data-table
+        variant="ledger"
+        [density]="densidad()"
+        mobileMode="cards"
+        [columns]="columnas"
+        [leadingDecoration]="true"
+        [rows]="filas()"
+        [loading]="loading()"
+        [sort]="sort()"
+        (sortChange)="ordenar($event)"
+        [clickableRows]="true"
+        (rowClick)="abrir($event)"
+        caption="Semáforo de completitud de expedientes"
+        [activeKey]="drawerOpen() ? empleadoId() : null"
+        [emptyMessage]="
+          error()
+            ? 'No hay datos disponibles para mostrar.'
+            : 'No hay expedientes que coincidan con los filtros.'
+        "
+      >
+        <ng-template #cell let-row let-column="column" let-value="value">
+          @if (column.key === 'num_empleado') {
+            <app-row-flag
+              [tone]="row.estado"
+              [label]="'Estado del expediente: ' + etiquetasEstado[row.estado]"
+            />
+            <span class="mono">{{ value }}</span>
+          } @else if (column.key === 'nombre') {
+            <app-row-link
+              [ariaLabel]="'Ver campos faltantes de ' + row.nombre"
+              (click)="$event.stopPropagation(); abrir(row)"
+            >
+              <span class="mono">{{ value }}</span>
+            </app-row-link>
+          } @else if (column.key === 'adscripcion') {
+            <!-- One cell, two lines: where the worker is posted, and the plaza. -->
+            <span class="stack">
+              <span class="stack-main">{{ row.adscripcion }}</span>
+              <span class="stack-sub">{{ row.plaza }}</span>
+            </span>
+          } @else if (column.key === 'campos_faltantes') {
+            <span class="completeness">
+              <span class="seal is-{{ row.estado }}">{{
+                etiquetasEstado[row.estado]
+              }}</span>
+              <span class="mono">{{ value }}</span>
+            </span>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+      </app-data-table>
+      <!--
+        The band that closes the sheet. How much room a row gets lives here
+        because it is a state of these rows, and the pager lives here because it
+        is the foot of this table, not a strip of the page. Three real buttons
+        in a group, each carrying `aria-pressed`: density is a state, not a link.
+      -->
+      <div class="sheet-foot">
+        <div class="density" role="group" aria-label="Densidad de la tabla">
+          @for (opcion of densidades; track opcion.id) {
+            <button
+              type="button"
+              [attr.aria-pressed]="densidad() === opcion.id"
+              (click)="cambiarDensidad(opcion.id)"
+            >
+              {{ opcion.label }}
+            </button>
+          }
+        </div>
+        @if (hayDatos()) {
+          <app-pagination
+            [rangeText]="rango()"
+            [pageLabel]="etiquetaPagina()"
+            [page]="pagina()"
+            [totalPages]="totalPaginasMax()"
+            [pageSize]="porPagina()"
+            [pageSizeOptions]="tamanos"
+            [disabled]="controlesDeshabilitados()"
+            [disableFirst]="primeraDeshabilitado()"
+            [disablePrev]="anteriorDeshabilitado()"
+            [disableNext]="siguienteDeshabilitado()"
+            [disableLast]="ultimaDeshabilitado()"
+            [jumpError]="errorPagina()"
+            (pageChange)="irA($event)"
+            (pageSizeChange)="cambiarTamanoPagina($event)"
+            (jumpSubmit)="irAPaginaValor($event)"
+          />
+        }
+      </div>
+    </div>
+  </div>
 </section>
 
 <!--

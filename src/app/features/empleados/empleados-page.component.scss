@@ -1,3 +1,5 @@
+@use '../../../styles/breakpoints' as bp;
+
 .page {
   display: flex;
   flex-direction: column;
@@ -176,4 +178,154 @@
   height: var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-accent);
+}
+
+// --- The sheet --------------------------------------------------------------
+
+// One frame around the table and the band that closes it: the same paper the
+// semáforo leaves on screen, so the two listings read as pages of one archive.
+// Unlike there, no strip of tabs overlaps the top edge, so all four corners keep
+// the card's radius. `overflow: hidden` clips the table's own card into the
+// frame and holds the band's fill inside those corners.
+.sheet {
+  display: grid;
+  min-width: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+// The table draws its own card; inside the sheet that card *is* the sheet. One
+// border of overlap on every side pulls its frame under the sheet's, so the edge
+// reads as a single hairline instead of a card inside a card, and the card's
+// bottom rule lands exactly on the rule that opens the band. `max-width` is
+// released because the negative margins would otherwise be clamped.
+.sheet app-data-table {
+  max-width: none;
+  margin: calc(-1 * var(--border-width));
+}
+
+// The band that closes the sheet: the density of the rows on one side, the pager
+// on the other. It starts clear of the ruled margin, like every row above, and
+// takes the same glass as the table.
+.sheet-foot {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-5) + var(--space-3));
+  border-top: var(--border-width) solid var(--color-border-default);
+  background: var(--color-surface-glass);
+}
+
+// The margin of the table stops at its last row; this segment carries it down to
+// the foot of the sheet, so the line runs the full height of the container. The
+// hairline of overshoot closes the seam with the rule above.
+.sheet-foot::before {
+  content: '';
+  position: absolute;
+  inset-block: calc(-1 * var(--border-width)) 0;
+  inset-inline-start: var(--space-5);
+  width: var(--border-width);
+  background: var(--color-border-default);
+}
+
+// The pager is the right half of the foot: it takes the room the density control
+// leaves and wraps inside it instead of pushing the band open.
+.sheet-foot app-pagination {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// --- Density control --------------------------------------------------------
+
+.density {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+}
+
+.density button {
+  min-height: var(--space-8);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+  cursor: pointer;
+}
+
+.density button[aria-pressed='true'] {
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
+}
+
+// --- Cells of the ledger ----------------------------------------------------
+
+// The number of a record and the name of its worker are typed, not typeset: the
+// employee number lines up on the character cell page after page.
+.mono {
+  font-family: var(--font-typewriter);
+  font-variant-numeric: tabular-nums;
+}
+
+// The state of the row, stamped: a double ring in the role of that state, a
+// small radius and uppercase typewriter.
+//
+// The ring carries the role; the word keeps the primary ink. The system already
+// measured `--color-state-success` and `--color-state-error` on the pale surface
+// of `light` and solved it the same way in `app-status-pill` (outline the word,
+// never fill it), so a 10px stamp does not reintroduce that failure.
+// `--border-width * 3` is the smallest width at which `double` still paints two
+// rules; at 2px it collapses to one.
+.seal {
+  padding: 1px var(--space-2);
+  border: calc(var(--border-width) * 3) double var(--seal-state);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font-family: var(--font-typewriter);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seal.is-activo {
+  --seal-state: var(--color-state-success);
+}
+
+.seal.is-baja {
+  --seal-state: var(--color-state-error);
+}
+
+// High contrast takes fills away, so the stamp may not depend on one: it is
+// restated as an outline.
+@media (forced-colors: active) {
+  .seal {
+    outline: calc(var(--border-width) * 2) solid CanvasText;
+    outline-offset: calc(-1 * var(--border-width) * 2);
+  }
+}
+
+@include bp.down(bp.$bp-sm) {
+  // No room for two halves: the pager drops under the density control and each
+  // one keeps its own wrapping.
+  .sheet-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  // The pager needs the whole width; the control does not.
+  .density {
+    align-self: start;
+  }
 }

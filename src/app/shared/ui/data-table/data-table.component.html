@@ -10,6 +10,7 @@
 <div
   #wrap
   class="wrap"
+  [class.is-ledger]="variant() === 'ledger'"
   [class.is-scroll]="mobileMode() === 'scroll'"
   [class.has-overflow]="canScrollX()"
   [class.can-scroll-left]="canScrollLeft()"
@@ -20,6 +21,9 @@
     #table
     class="table"
     [class.is-cards]="mobileMode() === 'cards'"
+    [class.is-ledger]="variant() === 'ledger'"
+    [class.is-compact]="density() === 'compact'"
+    [class.is-comfortable]="density() === 'comfortable'"
     [class.has-leading-decoration]="leadingDecoration()"
     [attr.aria-busy]="loading() ? 'true' : null"
   >

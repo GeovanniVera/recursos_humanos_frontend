@@ -193,6 +193,16 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
   };
 
+  /** The four folder tabs of the strip, in the order the screen declares them. */
+  const tabsDeFiltro = () =>
+    Array.from(root().querySelectorAll<HTMLButtonElement>('.page .tabs .tab'));
+
+  /** Titles of the tabs that are currently applied. */
+  const titulosActivos = () =>
+    tabsDeFiltro()
+      .filter((tab) => tab.getAttribute('aria-pressed') === 'true')
+      .map((tab) => tab.querySelector('.tab-title')?.textContent?.trim());
+
   /** Answers the two streams the record folder opens: the record and its log. */
   async function responderFicha(
     id = 7,
@@ -248,6 +258,32 @@ describe('SemaforoPage', () => {
     const ruta = shell?.children?.find((r) => r.path === 'semaforo-documentos');
     expect(await (ruta?.loadComponent as () => Promise<unknown>)()).toBe(SemaforoPage);
   });
+  it('adopts the shared letterhead with the copy of the screen', async () => {
+    await loaded();
+
+    const header = root().querySelector('app-page-header');
+    expect(header).not.toBeNull();
+
+    const normalize = (text: string | null | undefined) =>
+      (text ?? '').replace(/\s+/g, ' ').trim();
+
+    expect(normalize(header?.querySelector('.eyebrow')?.textContent)).toBe(
+      'Expedientes · Recursos Humanos',
+    );
+    expect(normalize(header?.querySelector('h1')?.textContent)).toBe('Semáforo de Completitud');
+    expect(normalize(header?.querySelector('.subtitle')?.textContent)).toBe(
+      'Identifica la información pendiente de cada expediente. Consulta los campos faltantes para conocer qué hace falta completar.',
+    );
+
+    // The way back is the page's one trailing action, projected into the header.
+    const back = header?.querySelector<HTMLAnchorElement>('.back');
+    expect(normalize(back?.textContent)).toBe('Volver al panel');
+    expect(back?.getAttribute('href')).toBe('/');
+
+    // The head owns the page's only h1; the screen keeps no second one.
+    expect(root().querySelectorAll('h1')).toHaveLength(1);
+  });
+
   it('requests the real contract once, initially without state filter', async () => {
     const req = request();
     expect(req.request.params.has('estado')).toBe(false);
@@ -256,12 +292,12 @@ describe('SemaforoPage', () => {
     await fixture.whenStable();
     http.expectNone((r) => r.url === URL);
   });
-  it('renders exactly five headers, in order, and no mail/edit actions', async () => {
+  it('renders exactly four headers, in order, and no mail/edit actions', async () => {
     await loaded();
     expect(
       Array.from(root().querySelectorAll('thead th')).map((e) => e.textContent?.trim()),
-    ).toEqual(['No.', 'Nombre', 'Adscripción', 'Plaza', 'Campos faltantes']);
-    expect(root().textContent).toContain('4 de 19');
+    ).toEqual(['No.', 'Nombre', 'Adscripción y plaza', 'Completitud']);
+    expect(root().textContent).toContain('4 / 19');
     expect(root().textContent).toContain('Sin adscripción');
     expect(root().textContent).toContain('Sin plaza');
     expect(root().querySelectorAll('tbody button')).toHaveLength(3);
@@ -279,9 +315,12 @@ describe('SemaforoPage', () => {
   });
   it('uses API counters instead of the three rows and labels all states', async () => {
     await loaded();
-    expect(Array.from(root().querySelectorAll('.filter strong')).map((e) => e.textContent)).toEqual(
-      ['127', '12', '35', '80'],
-    );
+    expect(Array.from(root().querySelectorAll('.tab-count')).map((e) => e.textContent)).toEqual([
+      '127',
+      '12',
+      '35',
+      '80',
+    ]);
     const flags = Array.from(root().querySelectorAll('tbody app-row-flag'));
     expect(flags.map((e) => e.querySelector('.visually-hidden')?.textContent?.trim())).toEqual([
       'Estado del expediente: Incompleto',
@@ -295,8 +334,236 @@ describe('SemaforoPage', () => {
       }),
     ).toEqual(['is-incompleto', 'is-casi-completo', 'is-completo']);
     expect(root().querySelectorAll('tbody .row-flag[aria-hidden="true"]')).toHaveLength(3);
-    for (const row of root().querySelectorAll('tbody tr')) expect(row.children).toHaveLength(5);
+    for (const row of root().querySelectorAll('tbody tr')) expect(row.children).toHaveLength(4);
   });
+  it('renders the four folder tabs with their hint and count', async () => {
+    await loaded();
+    const tabs = tabsDeFiltro();
+
+    expect(tabs).toHaveLength(4);
+    expect(tabs.map((tab) => tab.querySelector('.tab-title')?.textContent?.trim())).toEqual([
+      'Todos',
+      'Completos',
+      'Casi completos',
+      'Incompletos',
+    ]);
+    // The thresholds live on the tab that applies them: no second legend.
+    expect(tabs.map((tab) => tab.querySelector('.tab-hint')?.textContent?.trim())).toEqual([
+      'Expedientes evaluados',
+      'Sin pendientes',
+      'De 1 a 3 campos',
+      '4 campos o más',
+    ]);
+    expect(tabs.map((tab) => tab.querySelector('.tab-count')?.textContent?.trim())).toEqual([
+      '127',
+      '12',
+      '35',
+      '80',
+    ]);
+    expect(root().querySelector('.legend')).toBeNull();
+    // A group of pressed buttons, not a tablist: they filter one listing.
+    expect(root().querySelector('.page .tabs')?.getAttribute('role')).toBe('group');
+  });
+
+  it('marks the tab whose filter is applied', async () => {
+    await loaded();
+    expect(titulosActivos()).toEqual(['Todos']);
+
+    tabsDeFiltro()[1].click();
+    let req = request();
+    expect(req.request.params.get('estado')).toBe('completo');
+    req.flush(page());
+    await fixture.whenStable();
+
+    expect(titulosActivos()).toEqual(['Completos']);
+    expect(tabsDeFiltro()[1].classList.contains('is-active')).toBe(true);
+    expect(tabsDeFiltro()[0].classList.contains('is-active')).toBe(false);
+
+    // Back to the whole listing: the first tab takes the mark again.
+    tabsDeFiltro()[0].click();
+    req = request();
+    expect(req.request.params.has('estado')).toBe(false);
+    req.flush(page());
+    await fixture.whenStable();
+    expect(titulosActivos()).toEqual(['Todos']);
+  });
+
+  it('changes the density of the sheet from the segmented control', async () => {
+    await loaded();
+    const control = () =>
+      Array.from(root().querySelectorAll<HTMLButtonElement>('.density button'));
+    const table = () => root().querySelector<HTMLTableElement>('table')!;
+
+    expect(control().map((boton) => boton.textContent?.trim())).toEqual([
+      'Compacta',
+      'Estándar',
+      'Amplia',
+    ]);
+    expect(control().map((boton) => boton.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+      'false',
+    ]);
+    // `standard` is the historic padding, so it is not a class of its own.
+    expect(table().classList.contains('is-compact')).toBe(false);
+    expect(table().classList.contains('is-comfortable')).toBe(false);
+
+    control()[0].click();
+    await fixture.whenStable();
+    expect(table().classList.contains('is-compact')).toBe(true);
+    expect(control()[0].getAttribute('aria-pressed')).toBe('true');
+
+    control()[2].click();
+    await fixture.whenStable();
+    expect(table().classList.contains('is-comfortable')).toBe(true);
+    expect(table().classList.contains('is-compact')).toBe(false);
+
+    // Presentation only: no figure is re-asked for.
+    http.expectNone((r) => r.url === URL);
+  });
+
+  it('renders this listing as the ledger sheet through the opt-in variant', async () => {
+    await loaded();
+
+    expect(root().querySelector('.wrap')?.classList.contains('is-ledger')).toBe(true);
+    expect(root().querySelector('table')?.classList.contains('is-ledger')).toBe(true);
+  });
+
+  it('marks the search field with a decorative magnifier inside its own box', async () => {
+    await loaded();
+
+    const search = root().querySelector('.search');
+    const field = search?.querySelector('.field');
+    const icon = field?.querySelector<SVGElement>('svg.search-icon');
+    const input = field?.querySelector<HTMLInputElement>('#semaforo-buscar');
+
+    // The mark lives inside the field, ahead of the control it belongs to.
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect(icon?.querySelector('circle')).not.toBeNull();
+    expect(field?.firstElementChild).toBe(icon);
+    // It is decoration: the accessible name still comes from the label.
+    expect(input).not.toBeNull();
+    expect(search?.querySelector('label')?.getAttribute('for')).toBe('semaforo-buscar');
+
+    // One control in the toolbar, and the field is capped to a readable measure.
+    expect(root().querySelectorAll('.toolbar > *')).toHaveLength(1);
+    expect(root().querySelector('.toolbar .density')).toBeNull();
+  });
+
+  it('keeps the density control in the foot of the sheet, with its semantics', async () => {
+    await loaded();
+
+    const foot = root().querySelector('.ledger .sheet .sheet-foot');
+    const control = foot?.querySelector('.density');
+
+    expect(foot).not.toBeNull();
+    expect(control).not.toBeNull();
+    expect(root().querySelector('.toolbar .density')).toBeNull();
+    expect(control?.getAttribute('role')).toBe('group');
+    expect(control?.getAttribute('aria-label')).toBe('Densidad de la tabla');
+    expect(control?.querySelectorAll('button[aria-pressed]')).toHaveLength(3);
+  });
+
+  it('closes the sheet with the pager instead of hanging it after the table', async () => {
+    await loaded();
+
+    const sheet = root().querySelector('.ledger .sheet');
+
+    expect(sheet?.querySelector('app-data-table')).not.toBeNull();
+    expect(sheet?.querySelector('.sheet-foot app-pagination footer.pager')).not.toBeNull();
+    // Same controls as before, and none of them outside the paper.
+    expect(sheet?.querySelector('.sheet-foot .page-size-select')).not.toBeNull();
+    expect(sheet?.querySelector('.sheet-foot .jump-field')).not.toBeNull();
+    expect(root().querySelectorAll('.page > app-pagination')).toHaveLength(0);
+  });
+
+  it('refreshes the listing from the head and freezes while a load is in flight', async () => {
+    await loaded();
+
+    const actualizar = () =>
+      Array.from(root().querySelectorAll<HTMLButtonElement>('app-page-header button')).find(
+        (boton) => boton.textContent?.trim() === 'Actualizar',
+      ) as HTMLButtonElement;
+
+    // Beside the way back, in the head, and never the page's one primary action.
+    expect(actualizar()).toBeTruthy();
+    expect(actualizar().classList.contains('is-secondary')).toBe(true);
+    expect(actualizar().classList.contains('is-primary')).toBe(false);
+    expect(actualizar().closest('header')).not.toBeNull();
+
+    actualizar().click();
+    await fixture.whenStable();
+
+    // The query did not change: the refresh is forced anyway.
+    const req = request();
+    expect(req.request.params.get('pagina')).toBe('1');
+    expect(req.request.params.get('por_pagina')).toBe('25');
+    expect(actualizar().disabled).toBe(true);
+
+    req.flush(page());
+    await fixture.whenStable();
+    expect(actualizar().disabled).toBe(false);
+  });
+
+  it('stamps the state with an ink seal in its own role', async () => {
+    await loaded();
+    const seals = Array.from(root().querySelectorAll('tbody .seal'));
+
+    expect(seals.map((sello) => sello.textContent?.trim())).toEqual([
+      'Incompleto',
+      'Casi completo',
+      'Completo',
+    ]);
+    expect(seals.map((sello) => Array.from(sello.classList).find((c) => c.startsWith('is-')))).toEqual(
+      ['is-incompleto', 'is-casi_completo', 'is-completo'],
+    );
+  });
+
+  it('renders the adscripción and the plaza in one two-line cell', async () => {
+    await loaded();
+    const cells = Array.from(root().querySelectorAll('tbody tr')).map(
+      (tr) => tr.children[2] as HTMLElement,
+    );
+
+    expect(cells.map((cell) => cell.querySelector('.stack-main')?.textContent?.trim())).toEqual([
+      'Área A',
+      'Sin adscripción',
+      'Sin adscripción',
+    ]);
+    expect(cells.map((cell) => cell.querySelector('.stack-sub')?.textContent?.trim())).toEqual([
+      'Analista',
+      'Sin plaza',
+      'Sin plaza',
+    ]);
+    // The merge is the whole point: still four columns, not five.
+    expect(root().querySelectorAll('thead th')).toHaveLength(4);
+  });
+
+  it('types the employee number, the name and the fraction', async () => {
+    await loaded();
+    const celdas = root().querySelectorAll('tbody tr:first-child td');
+
+    expect(celdas[0].querySelector('.mono')?.textContent?.trim()).toBe('1000');
+    expect(celdas[1].querySelector('app-row-link .mono')?.textContent?.trim()).toBe('Ana Prueba');
+    expect(celdas[3].querySelector('.mono')?.textContent?.trim()).toBe('4 / 19');
+  });
+
+  it('right-aligns the completeness column and keeps its sort affordance', async () => {
+    await loaded();
+    const head = root().querySelectorAll('th')[3];
+
+    expect(head.classList.contains('is-end')).toBe(true);
+    expect(root().querySelectorAll('tbody tr:first-child td')[3].classList.contains('is-end')).toBe(
+      true,
+    );
+
+    head.querySelector<HTMLButtonElement>('button')?.click();
+    const req = request();
+    expect(req.request.params.get('ordenar_por')).toBe('campos_faltantes');
+    req.flush(page());
+  });
+
   it('filters server-side, resets page and avoids duplicate selection requests', async () => {
     await loaded();
     fixture.componentInstance.pagina.set(3);

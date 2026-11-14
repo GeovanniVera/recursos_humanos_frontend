@@ -117,69 +117,117 @@
   }
 
   <!--
-    The number and the name are the two cells with a shape of their own; the
-    projected renderer receives the row, the column and the value, so the table
-    stays generic. The state is not a column: it is the flag on the leading edge
-    of the number cell, which is why the table is asked for a leading decoration.
-    The name is a shared `app-row-link`: the row click is a pointer shortcut, and
-    the keyboard needs an element that already is a control.
+    The strip that would filter this listing by state — `Todos`, `Activos`,
+    `Bajas definitivas`, `Licencias` — belongs here, on the top edge of the
+    sheet. It is not built yet, and it is not faked: `GET /padron` accepts only
+    `buscar`, `pagina` and `por_pagina`, the wire model carries just
+    `Activo | Baja`, and the endpoint already answers with active workers only.
+    Counting states over the one page that was served would print figures that
+    contradict the rest of the padrón while the pager walks a server-side list.
+    It lands when the endpoint takes `estado` and sends the counters with it, so
+    nothing is rendered here in the meantime.
   -->
-  <app-data-table
-    mobileMode="cards"
-    [columns]="columnas"
-    [leadingDecoration]="true"
-    [rows]="filas()"
-    [loading]="cargandoInicial()"
-    [emptyMessage]="mensajeVacio()"
-    caption="Padrón de empleados"
-    rowKey="id"
-    [clickableRows]="true"
-    (rowClick)="abrirFicha($event)"
-  >
-    <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
-      @if (column.key === 'num_empleado') {
-        <!--
-          The roster only holds active employees, so the state column was
-          redundant: the flag says `Activo` or `Baja` and the component carries
-          the sentence for the screen reader.
-        -->
-        <app-row-flag
-          [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
-          [label]="'Estado: ' + row.estado"
-        />
-        {{ value }}
-      } @else if (column.key === 'nombre') {
-        <app-row-link
-          [ariaLabel]="'Ver la ficha de ' + value"
-          (click)="abrirFichaDesdeNombre($event, row)"
-        >
-          {{ value }}
-        </app-row-link>
-      } @else {
-        {{ value }}
-      }
-    </ng-template>
-  </app-data-table>
 
-  @if (hayDatos()) {
-    <app-pagination
-      [rangeText]="rango()"
-      [pageLabel]="etiquetaPagina()"
-      [page]="paginaActual()"
-      [totalPages]="totalPaginasMax()"
-      [pageSize]="porPagina()"
-      [pageSizeOptions]="tamanosPagina"
-      [disabled]="controlesDeshabilitados()"
-      [disableFirst]="primeraDeshabilitado()"
-      [disablePrev]="anteriorDeshabilitado()"
-      [disableNext]="siguienteDeshabilitado()"
-      [disableLast]="ultimaDeshabilitado()"
-      [jumpError]="errorPagina()"
-      (pageChange)="irA($event)"
-      (pageSizeChange)="cambiarTamanoPagina($event)"
-      (jumpSubmit)="irAPaginaValor($event)"
-    />
-  }
+  <!--
+    The sheet: one frame around the table and the band that closes it, the same
+    paper the semáforo leaves on screen, so the two listings read as pages of one
+    archive. Density and pager share the foot, because neither is a strip of the
+    page: both describe the listing they close.
+  -->
+  <div class="sheet">
+    <!--
+      The number and the name are the two cells with a shape of their own; the
+      projected renderer receives the row, the column and the value, so the table
+      stays generic. The state is still not a column — the roster is one list of
+      active workers — so it is written the way a ledger writes it: the lane on
+      the leading edge at a glance, and the stamp beside the typed number in
+      words. The name is a shared `app-row-link`: the row click is a pointer
+      shortcut, and the keyboard needs an element that already is a control.
+    -->
+    <app-data-table
+      variant="ledger"
+      [density]="densidad()"
+      mobileMode="cards"
+      [columns]="columnas"
+      [leadingDecoration]="true"
+      [rows]="filas()"
+      [loading]="cargandoInicial()"
+      [emptyMessage]="mensajeVacio()"
+      caption="Padrón de empleados"
+      rowKey="id"
+      [clickableRows]="true"
+      (rowClick)="abrirFicha($event)"
+    >
+      <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+        @if (column.key === 'num_empleado') {
+          <!--
+            The stamp is hidden from assistive tech on purpose: the flag already
+            announces the same state in a sentence, and one datum deserves one
+            reading. The stamp is the word, the lane is the glance.
+          -->
+          <app-row-flag
+            [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
+            [label]="'Estado: ' + row.estado"
+          />
+          <span
+            class="seal is-{{ row.estado === 'Activo' ? 'activo' : 'baja' }}"
+            aria-hidden="true"
+            >{{ row.estado }}</span
+          >
+          <span class="mono">{{ value }}</span>
+        } @else if (column.key === 'nombre') {
+          <app-row-link
+            [ariaLabel]="'Ver la ficha de ' + value"
+            (click)="abrirFichaDesdeNombre($event, row)"
+          >
+            <span class="mono">{{ value }}</span>
+          </app-row-link>
+        } @else {
+          {{ value }}
+        }
+      </ng-template>
+    </app-data-table>
+
+    <!--
+      The band that closes the sheet. How much room a row gets lives here because
+      it is a state of these rows; the pager lives here because it is the foot of
+      this table, not a strip of the page. Three real buttons in a group, each
+      carrying `aria-pressed`: density is a state, not a link.
+    -->
+    <div class="sheet-foot">
+      <div class="density" role="group" aria-label="Densidad de la tabla">
+        @for (opcion of densidades; track opcion.id) {
+          <button
+            type="button"
+            [attr.aria-pressed]="densidad() === opcion.id"
+            (click)="cambiarDensidad(opcion.id)"
+          >
+            {{ opcion.label }}
+          </button>
+        }
+      </div>
+
+      @if (hayDatos()) {
+        <app-pagination
+          [rangeText]="rango()"
+          [pageLabel]="etiquetaPagina()"
+          [page]="paginaActual()"
+          [totalPages]="totalPaginasMax()"
+          [pageSize]="porPagina()"
+          [pageSizeOptions]="tamanosPagina"
+          [disabled]="controlesDeshabilitados()"
+          [disableFirst]="primeraDeshabilitado()"
+          [disablePrev]="anteriorDeshabilitado()"
+          [disableNext]="siguienteDeshabilitado()"
+          [disableLast]="ultimaDeshabilitado()"
+          [jumpError]="errorPagina()"
+          (pageChange)="irA($event)"
+          (pageSizeChange)="cambiarTamanoPagina($event)"
+          (jumpSubmit)="irAPaginaValor($event)"
+        />
+      }
+    </div>
+  </div>
 </section>
 
 <!--

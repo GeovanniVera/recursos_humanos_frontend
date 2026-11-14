@@ -23,12 +23,15 @@ export interface Crumb {
 }
 
 /**
- * Mobile drawer trigger, clock, weekday and a navigable location trail.
+ * Head of the archive index: the location trail, the drawer's shortcut note and
+ * a stamped clock.
  *
  * The trail is derived from the route tree, not written by hand: every route that
  * declares `data.breadcrumb` adds a step, and its URL is rebuilt from the
  * accumulated segments. On mobile (`<= 767px`), a 44×44px menu button opens the
- * off-canvas sidebar drawer and receives focus back when the drawer closes.
+ * off-canvas sidebar drawer and receives focus back when the drawer closes; the
+ * shortcut note is not rendered there, because the drawer is the way in and not
+ * a key.
  */
 @Component({
   selector: 'app-topbar',
@@ -46,6 +49,16 @@ export class Topbar {
 
   readonly isMobile = this.sidebarState.isMobile;
   readonly mobileOpen = this.sidebarState.mobileOpen;
+
+  /**
+   * Whether to advertise the sidebar shortcut.
+   *
+   * Only on desktop: on mobile the rail is a drawer, and on tablet the collapse
+   * is forced by the breakpoint and the sidebar deliberately ignores the key -
+   * so between 768 and 1023 the note would be promoting a keystroke that does
+   * nothing.
+   */
+  readonly showShortcut = computed(() => !this.isMobile() && !this.sidebarState.isTablet());
 
   /** Home first, then every route that declares a breadcrumb label. */
   readonly crumbs = signal<readonly Crumb[]>(this.trailOf(this.router.routerState.snapshot.root));

@@ -15,7 +15,8 @@ import {
 import { SemaforoService } from '../../core/semaforo/semaforo.service';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
-import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { DataTable, TableColumn, TableDensity, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { PageHeader } from '../../shared/ui/page-header/page-header.component';
 import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
@@ -35,6 +36,7 @@ const SIN_DATO = '—';
     DataTable,
     EditarDrawer,
     FichaDrawer,
+    PageHeader,
     Pagination,
     RowFlag,
     RowLink,
@@ -102,27 +104,50 @@ export class SemaforoPage {
   readonly errorPagina = signal<string | null>(null);
   readonly tamanos = [10, 25, 50, 100];
   private readonly formato = new Intl.NumberFormat('es-MX');
+
+  /**
+   * The four filters, in the order the strip shows them.
+   *
+   * `hint` is the line that explains the state without a legend: the thresholds
+   * live on the tab that applies them, so the same rule is never printed twice.
+   */
   readonly filtros: {
     estado: EstadoExpediente | undefined;
     label: string;
+    hint: string;
     contador: 'total_evaluados' | 'completos' | 'casi_completos' | 'incompletos';
   }[] = [
-    { estado: undefined, label: 'Todos', contador: 'total_evaluados' },
-    { estado: 'completo', label: 'Completos', contador: 'completos' },
+    {
+      estado: undefined,
+      label: 'Todos',
+      hint: 'Expedientes evaluados',
+      contador: 'total_evaluados',
+    },
+    { estado: 'completo', label: 'Completos', hint: 'Sin pendientes', contador: 'completos' },
     {
       estado: 'casi_completo',
       label: 'Casi completos',
+      hint: 'De 1 a 3 campos',
       contador: 'casi_completos',
     },
-    { estado: 'incompleto', label: 'Incompletos', contador: 'incompletos' },
+    { estado: 'incompleto', label: 'Incompletos', hint: '4 campos o más', contador: 'incompletos' },
   ];
+
+  /** Row density of the sheet, chosen by the segmented control of its foot. */
+  readonly densidad = signal<TableDensity>('standard');
+
+  readonly densidades: readonly { id: TableDensity; label: string }[] = [
+    { id: 'compact', label: 'Compacta' },
+    { id: 'standard', label: 'Estándar' },
+    { id: 'comfortable', label: 'Amplia' },
+  ];
+
   readonly etiquetasEstado: Readonly<Record<string, string>> = ESTADOS_EXPEDIENTE;
   readonly columnas: readonly TableColumn[] = [
     { key: 'num_empleado', header: 'No.', sortable: true },
     { key: 'nombre', header: 'Nombre', sortable: true },
-    { key: 'area', header: 'Adscripción' },
-    { key: 'puesto', header: 'Plaza' },
-    { key: 'campos_faltantes', header: 'Campos faltantes', sortable: true },
+    { key: 'adscripcion', header: 'Adscripción y plaza' },
+    { key: 'campos_faltantes', header: 'Completitud', align: 'end', sortable: true },
   ];
   readonly sort = computed(() => ({
     key: this.orden(),
@@ -133,10 +158,10 @@ export class SemaforoPage {
       id: e.id,
       num_empleado: e.num_empleado,
       nombre: e.nombre,
-      area: e.area?.nombre ?? 'Sin adscripción',
-      puesto: e.puesto?.nombre ?? 'Sin plaza',
+      adscripcion: e.area?.nombre ?? 'Sin adscripción',
+      plaza: e.puesto?.nombre ?? 'Sin plaza',
       estado: e.semaforo.estado,
-      campos_faltantes: `${e.semaforo.campos_faltantes} de ${e.semaforo.total_campos}`,
+      campos_faltantes: `${e.semaforo.campos_faltantes} / ${e.semaforo.total_campos}`,
     })),
   );
   /**
@@ -256,6 +281,16 @@ export class SemaforoPage {
     this.estado.set(estado);
     this.pagina.set(1);
     this.solicitar();
+  }
+
+  /**
+   * Changes how much room a row gets.
+   *
+   * Density is presentation only: the rows on screen are the same page of the
+   * same answer, so nothing is re-queried and nothing scrolls away.
+   */
+  cambiarDensidad(densidad: TableDensity): void {
+    this.densidad.set(densidad);
   }
   ordenar(key: string): void {
     if (!['estado', 'num_empleado', 'nombre', 'campos_faltantes'].includes(key)) return;

@@ -1,0 +1,68 @@
+@use '../../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// Letterhead of a screen.
+//
+// Title block on the left, the action of the page on the right, and nothing
+// around them: no card, no rule of its own. The fold above belongs to the
+// topbar, and the content below belongs to the screen. Structure carries the
+// archive voice — a typed overline and a title — while every colour is a theme
+// role.
+// ---------------------------------------------------------------------------
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.identity {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+// An index label of the archive: typed, tracked out, uppercase.
+.eyebrow {
+  color: var(--color-text-overline);
+  font-family: var(--font-typewriter);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--color-text-primary);
+  font: var(--text-title);
+}
+
+// A readable measure, not the whole column: a 13px line that runs the width of
+// a wide monitor is scanned, not read.
+.subtitle {
+  max-width: 68ch;
+  color: var(--color-text-secondary);
+  font: var(--text-body);
+}
+
+// The slot has no box of its own: the projected action becomes a sibling of the
+// title block, so an empty slot never reserves a gap and a full one sits on the
+// right edge of the head.
+.actions {
+  display: contents;
+}
+
+@include bp.down(bp.$bp-sm) {
+  // No room for two columns: the action drops under the title and takes the
+  // width of the row.
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

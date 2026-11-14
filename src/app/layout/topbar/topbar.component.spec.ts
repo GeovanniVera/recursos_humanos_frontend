@@ -6,6 +6,44 @@ import { Topbar } from './topbar.component';
 @Component({ selector: 'app-test-leaf', template: '' })
 class TestLeaf {}
 
+/**
+ * Runs `body` with the viewport reported as mobile, then hands `matchMedia` back
+ * to jsdom.
+ *
+ * `isMobile()` is read from `SidebarStateService` when the bar is built, so the
+ * testing module has to be assembled inside the swapped window.
+ */
+async function inMobileViewport(body: () => Promise<void>): Promise<void> {
+  const original = window.matchMedia;
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) =>
+      ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList,
+  });
+
+  try {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Topbar],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    await body();
+  } finally {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: original,
+    });
+  }
+}
+
 describe('Topbar', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -93,26 +131,7 @@ describe('Topbar', () => {
   });
 
   it('renders a 44x44 mobile menu toggle when viewport is <= 767px', async () => {
-    const original = window.matchMedia;
-    Object.defineProperty(window, 'matchMedia', {
-      configurable: true,
-      writable: true,
-      value: (query: string) =>
-        ({
-          matches: query === '(max-width: 767px)',
-          media: query,
-          addEventListener: () => undefined,
-          removeEventListener: () => undefined,
-        }) as unknown as MediaQueryList,
-    });
-
-    try {
-      TestBed.resetTestingModule();
-      await TestBed.configureTestingModule({
-        imports: [Topbar],
-        providers: [provideRouter([])],
-      }).compileComponents();
-
+    await inMobileViewport(async () => {
       const fixture = TestBed.createComponent(Topbar);
       await fixture.whenStable();
       const element = fixture.nativeElement as HTMLElement;
@@ -128,12 +147,47 @@ describe('Topbar', () => {
 
       expect(btn?.getAttribute('aria-expanded')).toBe('true');
       expect(btn?.getAttribute('aria-label')).toBe('Cerrar menú');
-    } finally {
-      Object.defineProperty(window, 'matchMedia', {
-        configurable: true,
-        writable: true,
-        value: original,
-      });
+    });
+  });
+
+  it('prints the drawer shortcut as a note on desktop', async () => {
+    const fixture = TestBed.createComponent(Topbar);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+
+    const note = element.querySelector<HTMLElement>('.shortcut');
+    expect(note?.tagName).toBe('P');
+    expect(note?.textContent?.trim()).toBe('Archivero: Ctrl+B');
+    // A note, not a control: the shortcut itself lives in the drawer.
+    expect(element.querySelector('button')).toBeNull();
+  });
+
+  it('drops the shortcut note in mobile mode, where the drawer is the way in', async () => {
+    await inMobileViewport(async () => {
+      const fixture = TestBed.createComponent(Topbar);
+      await fixture.whenStable();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('.shortcut')).toBeNull();
+      expect(element.textContent).not.toContain('Ctrl+B');
+      // The trigger is the way in, and it stays.
+      expect(element.querySelector('button.menu-btn')).not.toBeNull();
+    });
+  });
+
+  it('marks the current step as typed, unlike its ancestors', async () => {
+    const fixture = TestBed.createComponent(Topbar);
+    await TestBed.inject(Router).navigateByUrl('/empleados/activos');
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+
+    const current = element.querySelector<HTMLElement>('.crumb.is-current');
+    expect(current?.classList.contains('is-typed')).toBe(true);
+    expect(current?.getAttribute('aria-current')).toBe('page');
+
+    // Only the page you are on answers in the archive voice.
+    for (const ancestor of Array.from(element.querySelectorAll('.crumb.is-link'))) {
+      expect(ancestor.classList.contains('is-typed')).toBe(false);
     }
   });
 

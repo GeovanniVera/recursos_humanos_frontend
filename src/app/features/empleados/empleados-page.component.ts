@@ -12,7 +12,12 @@ import { PadronError } from '../../core/padron/padron.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
-import { DataTable, TableColumn, TableRow } from '../../shared/ui/data-table/data-table.component';
+import {
+  DataTable,
+  TableColumn,
+  TableDensity,
+  TableRow,
+} from '../../shared/ui/data-table/data-table.component';
 import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
@@ -141,6 +146,21 @@ export class EmpleadosPage {
 
   /** Sizes offered by the page-size control. */
   readonly tamanosPagina = TAMANOS_PAGINA;
+
+  /**
+   * Room a row gets, chosen by the segmented control of the sheet's foot.
+   *
+   * Presentation only: the rows on screen are the page already served, so this
+   * never re-queries and never resets the page.
+   */
+  readonly densidad = signal<TableDensity>('standard');
+
+  /** The three settings the control offers, in the order the strip shows them. */
+  readonly densidades: readonly { id: TableDensity; label: string }[] = [
+    { id: 'compact', label: 'Compacta' },
+    { id: 'standard', label: 'Estándar' },
+    { id: 'comfortable', label: 'Amplia' },
+  ];
 
   /** Logical page on screen. */
   readonly paginaActual = this.store.pagina;
@@ -450,6 +470,16 @@ export class EmpleadosPage {
 
     this.errorPagina.set(null);
     this.store.cambiarPorPagina(valor);
+  }
+
+  /**
+   * Changes how much room a row gets.
+   *
+   * Density is presentation of the same page of the same cached block, so this
+   * is a repaint and not a query: no block is dropped and no page resets.
+   */
+  cambiarDensidad(densidad: TableDensity): void {
+    this.densidad.set(densidad);
   }
 
   /**

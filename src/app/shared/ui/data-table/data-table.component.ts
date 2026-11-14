@@ -19,6 +19,25 @@ import {
 export type TableMobileMode = 'cards' | 'scroll';
 
 /**
+ * Surface treatment of the table.
+ *
+ * `plain` is the historic glass card and the default, so a caller that never
+ * sets the input keeps the exact markup and the exact pixels it has today.
+ * `ledger` is the official sheet: a ruled left margin, dashed row rules, a
+ * banded head and a square corner where a tab strip sits on the top edge.
+ */
+export type TableVariant = 'plain' | 'ledger';
+
+/**
+ * Vertical breathing room of a row.
+ *
+ * `standard` is the historic padding, so it changes nothing for an existing
+ * caller. The three values travel to the cells through one custom property:
+ * `compact` is one spacing step tighter, `comfortable` one step looser.
+ */
+export type TableDensity = 'compact' | 'standard' | 'comfortable';
+
+/**
  * One column of the table.
  *
  * `key` is the property name read from each row; `header` is the copy of the
@@ -78,6 +97,22 @@ export class DataTable {
   readonly activeKey = input<string | number | null>(null);
   /** Name of the field that identifies a row. */
   readonly rowKey = input('id');
+
+  /**
+   * Surface treatment. `plain` (default) is the glass card every existing screen
+   * renders; `ledger` adds the rules of an official sheet. Opt-in on purpose:
+   * the roster and the catalog are byte-identical while nobody asks for it.
+   */
+  readonly variant = input<TableVariant>('plain');
+
+  /**
+   * Vertical padding of a row, through one custom property.
+   *
+   * `standard` (default) resolves to the padding the table has always used, so
+   * an existing caller renders exactly as before; only a caller that sets
+   * `compact` or `comfortable` moves the cells.
+   */
+  readonly density = input<TableDensity>('standard');
 
   /**
    * Turns the rows into an affordance: the pointer cursor that says "this row

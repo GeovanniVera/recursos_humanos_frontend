@@ -213,14 +213,16 @@ function escribir(fixture: ComponentFixture<EmpleadosPage>, termino: string): vo
 /**
  * Body rows, each as the visible text of its cells.
  *
- * The sentence of the leading flag lives in a `.visually-hidden` span inside the
- * first cell, so it is dropped here: this helper reads what the eye sees.
+ * Two decorations are dropped here: the sentence of the leading flag, which lives
+ * in a `.visually-hidden` span inside the first cell, and the ink seal of the
+ * state. Both are asserted by their own tests; this helper is about the data the
+ * row carries, so a cell reads `12345` and not `Activo12345`.
  */
 function filas(fixture: ComponentFixture<EmpleadosPage>): string[][] {
   return Array.from(host(fixture).querySelectorAll('tbody tr')).map((fila) =>
     Array.from(fila.querySelectorAll('td')).map((celda) => {
       const visible = celda.cloneNode(true) as HTMLElement;
-      visible.querySelectorAll('.visually-hidden').forEach((nodo) => nodo.remove());
+      visible.querySelectorAll('.visually-hidden, .seal').forEach((nodo) => nodo.remove());
       return visible.textContent?.trim() ?? '';
     }),
   );
@@ -369,6 +371,87 @@ describe('EmpleadosPage', () => {
     const baja = cuerpo[1].querySelector('app-row-flag');
     expect(baja?.querySelector('.row-flag')?.classList.contains('is-baja')).toBe(true);
     expect(baja?.querySelector('.visually-hidden')?.textContent?.trim()).toBe('Estado: Baja');
+  });
+
+  it('stamps the state of the row with an ink seal in the role of that state', async () => {
+    const fixture = await render();
+    await responder(fixture, respuesta([ANA, LUIS]));
+
+    const sellos = Array.from(host(fixture).querySelectorAll('tbody .seal'));
+
+    expect(sellos.map((sello) => sello.textContent?.trim())).toEqual(['Activo', 'Baja']);
+    // The ring carries the state; the word keeps the primary ink, which is how
+    // the semáforo solved the same contrast problem on the light theme.
+    expect(
+      sellos.map((sello) => Array.from(sello.classList).find((clase) => clase.startsWith('is-'))),
+    ).toEqual(['is-activo', 'is-baja']);
+    // The flag already announces the state in a sentence, so the visible stamp
+    // stays out of the accessibility tree instead of being read twice.
+    expect(sellos.map((sello) => sello.getAttribute('aria-hidden'))).toEqual(['true', 'true']);
+  });
+
+  it('renders the roster as the ledger sheet through the opt-in variant', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    expect(host(fixture).querySelector('.wrap')?.classList.contains('is-ledger')).toBe(true);
+    expect(host(fixture).querySelector('table')?.classList.contains('is-ledger')).toBe(true);
+  });
+
+  it('keeps the density control in the foot of the sheet and changes the density', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const control = (): HTMLButtonElement[] =>
+      Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('.sheet-foot .density button'));
+    const tabla = (): HTMLTableElement => host(fixture).querySelector<HTMLTableElement>('table')!;
+
+    expect(control().map((opcion) => opcion.textContent?.trim())).toEqual([
+      'Compacta',
+      'Estándar',
+      'Amplia',
+    ]);
+    expect(control().map((opcion) => opcion.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+      'false',
+    ]);
+    // `standard` is the padding the table always had, so it is not a class.
+    expect(tabla().classList.contains('is-compact')).toBe(false);
+    expect(tabla().classList.contains('is-comfortable')).toBe(false);
+
+    control()[0].click();
+    await fixture.whenStable();
+    expect(tabla().classList.contains('is-compact')).toBe(true);
+    expect(control()[0].getAttribute('aria-pressed')).toBe('true');
+
+    control()[2].click();
+    await fixture.whenStable();
+    expect(tabla().classList.contains('is-comfortable')).toBe(true);
+    expect(tabla().classList.contains('is-compact')).toBe(false);
+
+    // Presentation of the page already in the buffer: nothing is re-asked for.
+    expect(peticiones().length).toBe(0);
+    expect(filas(fixture).length).toBe(20);
+  });
+
+  it('closes the sheet with the pager instead of hanging it after the table', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const hoja = host(fixture).querySelector('.sheet');
+
+    expect(hoja?.querySelector('app-data-table')).not.toBeNull();
+    expect(hoja?.querySelector('.sheet-foot app-pagination footer.pager')).not.toBeNull();
+    // The whole buffered pager travels with it: the size selector, the jump
+    // field and the range line are the same controls, only re-parented.
+    expect(hoja?.querySelector('.sheet-foot .page-size-select')).not.toBeNull();
+    expect(hoja?.querySelector('.sheet-foot .jump-field')).not.toBeNull();
+    expect(hoja?.querySelector('.sheet-foot .pager-range')?.textContent?.trim()).toBe(
+      'Mostrando 1–20 de 250',
+    );
+    // Nothing of the listing hangs outside the paper it belongs to.
+    expect(host(fixture).querySelectorAll('.page > app-pagination')).toHaveLength(0);
   });
 
   it('asks for 100 records and serves five logical pages out of that block', async () => {
