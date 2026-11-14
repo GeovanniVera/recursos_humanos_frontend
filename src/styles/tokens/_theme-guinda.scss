@@ -78,5 +78,12 @@
     radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
     linear-gradient(125deg, var(--guinda-canvas-hi) 0%, var(--guinda-600) 50%, var(--guinda-canvas-lo) 100%);
 
+  // Paper world: the desk the folder rests on, the ink that sits on that desk,
+  // and the action colour. Everything else about paper lives in `_paper.scss`.
+  --color-desk: var(--guinda-850);
+  --color-paper-ink: var(--gold-200);
+  --color-paper-action: var(--gold-400);
+  --color-paper-action-ink: var(--guinda-900);
+
   color-scheme: dark;
 }

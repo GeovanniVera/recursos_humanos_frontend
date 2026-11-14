@@ -86,5 +86,12 @@
   --shadow-md: 0 14px 34px rgba(74, 10, 29, 0.12);
   --shadow-lg: 0 20px 44px rgba(74, 10, 29, 0.18);
 
+  // Paper world: see `_paper.scss`. The warm grey desk is what makes the warm
+  // sheet read as paper instead of as a white card on white.
+  --color-desk: var(--paper-desk);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-action: var(--paper-ink);
+  --color-paper-action-ink: var(--paper-sheet);
+
   color-scheme: light;
 }

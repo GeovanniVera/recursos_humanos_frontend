@@ -1,0 +1,94 @@
+// ---------------------------------------------------------------------------
+// Paper world
+//
+// The expediente is the one surface of the system with its own vocabulary: a
+// manila folder over a desk, a warm sheet inside, ink written on it. It is not
+// glass, and it does not try to be.
+//
+// Most of these roles live at `:root` on purpose. A sheet is the same sheet in
+// guinda, light and dark; what changes with the theme is the desk it rests on,
+// the ink that sits on that desk, and the action colour — those four are
+// declared per theme.
+//
+// Geometry that carries the metaphor is deliberately NOT expressed with the
+// global `--space-*` scale. A 46 px gutter is not "six spaces": it is the width
+// of a ruled margin, and snapping it to 24 px flattens the reference into a
+// card. Those measurements live in the component as plain pixels, which the
+// style contract allows — it polices colour, radius, shadow and motion, not
+// lengths. Radii and shadows that the metaphor depends on are tokens here.
+// ---------------------------------------------------------------------------
+
+:root {
+  // --- The sheet ---------------------------------------------------------
+  --color-paper: var(--paper-sheet);
+  // Body copy on the sheet.
+  --color-paper-text: var(--paper-text);
+  // Field labels and the folio line.
+  --color-paper-muted: var(--paper-muted);
+  // The dotted rule under a value.
+  --color-paper-line: var(--paper-line);
+  // A value nobody has typed yet.
+  --color-paper-empty: var(--paper-empty);
+  // Titles and typed values. Fixed navy: the sheet keeps its own ink even when
+  // the desk around it turns light or dark.
+  --color-paper-value: var(--paper-ink);
+
+  // --- The folder --------------------------------------------------------
+  --color-manila: var(--manila-300);
+  // An unselected tab sits a shade under the cover.
+  --color-manila-dark: var(--manila-500);
+  --color-manila-edge: var(--manila-700);
+  --color-manila-ink: var(--manila-ink);
+
+  // --- The seal ----------------------------------------------------------
+  --color-stamp: var(--stamp-600);
+  --color-stamp-ok: var(--stamp-ok);
+  --color-stamp-on: var(--white);
+  // The red margin rule of the sheet, faint enough to read as printed.
+  --color-stamp-soft: rgba(179, 38, 30, 0.35);
+
+  // --- Backdrops ---------------------------------------------------------
+  // Warm scrim, not the guinda one: the folder casts onto a desk, not onto
+  // the application chrome.
+  --color-paper-scrim: rgba(20, 16, 10, 0.5);
+  // The transient highlight when a missing field is jumped to.
+  --color-paper-flash: rgba(253, 176, 70, 0.7);
+
+  // --- Radii -------------------------------------------------------------
+  // Smaller than the glass scale by design: paper and manila have crisp
+  // corners, and the ten-pixel radius family would read as a card.
+  --radius-paper-xs: 4px;
+  --radius-paper-sm: 6px;
+  --radius-paper-md: 8px;
+  --radius-paper-lg: 9px;
+  --radius-paper-xl: 14px;
+
+  // --- Type --------------------------------------------------------------
+  // The expediente speaks with a typewriter mono and a condensed sans, the two
+  // families the reference is built on. They are scoped to this world: the rest
+  // of the system keeps Sora and JetBrains Mono.
+  --font-paper: 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif;
+  --font-paper-mono: 'Courier Prime', 'Courier New', Courier, monospace;
+
+  // --- Proportions -------------------------------------------------------
+  // The ruled margin of the sheet, and the indent that keeps text clear of it.
+  --paper-gutter: 46px;
+  --paper-indent: 34px;
+
+  // --- Elevation and texture ---------------------------------------------
+  // Three stacked sheets: a hard lip, a second lip, then the drop.
+  --shadow-paper-sheet:
+    0 2px 0 #e8e0cc,
+    0 5px 0 -1px #f3edda,
+    0 6px 8px rgba(0, 0, 0, 0.25);
+  --shadow-paper-cover: 0 8px 18px rgba(0, 0, 0, 0.25);
+  --shadow-paper-drawer: -12px 0 40px rgba(0, 0, 0, 0.35);
+  --shadow-paper-panel: -10px 0 30px rgba(0, 0, 0, 0.45);
+  --shadow-paper-clip: 1px 1px 0 rgba(0, 0, 0, 0.2);
+  // The grain of the manila cover.
+  --paper-cover-texture: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.05) 0 2px,
+    rgba(0, 0, 0, 0.025) 2px 4px
+  );
+}

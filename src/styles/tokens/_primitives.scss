@@ -50,6 +50,25 @@
   --rose-100: #f7ecee;
   --rose-300: #d9b8c0;
 
+  // Paper world — raw values of the expediente. The sheet is warm, not white,
+  // and it does not change with the theme: a sheet is a sheet in guinda, light
+  // and dark. What changes is the desk and the ink that sits on it.
+  --paper-sheet: #fffef9;
+  --paper-text: #2a2622;
+  --paper-muted: #7a6f62;
+  --paper-line: #d9d2c3;
+  --paper-empty: #a89e8d;
+  --paper-desk: #e7e3dc;
+  --paper-desk-dark: #1c1b19;
+  --paper-ink: #1d2a44;
+  --paper-ink-dark: #a9bbe6;
+  --manila-300: #d8b676;
+  --manila-500: #bf9a57;
+  --manila-700: #a07e3e;
+  --manila-ink: #4a3a1c;
+  --stamp-600: #b3261e;
+  --stamp-ok: #1f6b45;
+
   // White with alpha — glass surfaces and borders
   --white-a05: rgba(255, 255, 255, 0.05);
   --white-a08: rgba(255, 255, 255, 0.08);

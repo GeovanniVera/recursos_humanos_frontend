@@ -70,5 +70,12 @@
     radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
     linear-gradient(125deg, var(--dark-canvas-hi) 0%, var(--guinda-900) 50%, var(--dark-canvas-lo) 100%);
 
+  // Paper world: see `_paper.scss`. On dark the ink turns cool and the action
+  // picks up the manila, exactly as the reference does.
+  --color-desk: var(--paper-desk-dark);
+  --color-paper-ink: var(--paper-ink-dark);
+  --color-paper-action: var(--manila-300);
+  --color-paper-action-ink: var(--paper-desk-dark);
+
   color-scheme: dark;
 }
