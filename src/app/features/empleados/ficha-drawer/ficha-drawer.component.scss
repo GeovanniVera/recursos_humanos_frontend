@@ -409,6 +409,10 @@
   color: var(--color-stamp-ok);
 }
 
+.stamp.is-warn {
+  color: var(--color-stamp-warn);
+}
+
 .stamp.is-bad {
   color: var(--color-stamp);
 }
@@ -458,7 +462,9 @@
 // Loading and failure
 // ---------------------------------------------------------------------------
 
-.skeleton {
+// The loading block and the failure block are the same column of paper.
+.skeleton,
+.state {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -474,13 +480,6 @@
 
 .line.is-short {
   width: 58%;
-}
-
-.state {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-left: var(--paper-indent);
 }
 
 .state-title {

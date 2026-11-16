@@ -128,7 +128,7 @@
             class="control area"
             rows="4"
             [attr.maxlength]="maxNota"
-            [class.is-invalid]="errorDe('nota') !== null"
+            [class.is-invalid]="errorDe(campoNota()) !== null"
             [attr.aria-describedby]="descripcionNota()"
             [value]="nota()"
             (input)="escribirNota($event)"
@@ -141,8 +141,8 @@
             <span id="panel-nota-contador">{{ nota().length }} / {{ maxNota }}</span>
           </div>
 
-          @if (errorDe('nota'); as error) {
-            <p class="error" id="error-nota" role="alert">{{ error }}</p>
+          @if (errorDe(campoNota()); as error) {
+            <p class="error" [id]="'error-' + campoNota()" role="alert">{{ error }}</p>
           }
 
           @if (errorGeneral(); as fallo) {
@@ -184,43 +184,166 @@
           <span class="label">Fecha de baja</span>
           <p class="dato">desde {{ fechaBaja() }}</p>
 
-          <label class="label" for="panel-nota">Nota</label>
+          <label class="label" for="panel-nota">Nota de reactivación</label>
           <textarea
             id="panel-nota"
-            name="nota"
+            name="nota_reactivacion"
             class="control area"
             rows="4"
             [attr.maxlength]="maxNota"
-            [attr.aria-describedby]="'panel-nota-contador'"
+            [class.is-invalid]="errorDe(campoNota()) !== null"
+            [attr.aria-describedby]="descripcionNota()"
             [value]="nota()"
             (input)="escribirNota($event)"
           ></textarea>
 
           <div class="nota-meta">
-            <span>La fecha de reingreso la fija el servidor al confirmar.</span>
+            <!-- The date is the server's: the contract forbids sending it. -->
+            <span>La fecha de reactivación la fija el servidor al confirmar.</span>
             <span id="panel-nota-contador">{{ nota().length }} / {{ maxNota }}</span>
           </div>
 
+          @if (errorDe(campoNota()); as error) {
+            <p class="error" [id]="'error-' + campoNota()" role="alert">{{ error }}</p>
+          }
+
+          @if (errorGeneral(); as fallo) {
+            <p class="error" role="alert">{{ fallo }}</p>
+          }
+
           <div class="acciones">
-            <button type="button" class="action" (click)="intentarVolver()">Cancelar</button>
-            <!--
-              The endpoint does not exist yet, so the button is honest: it is
-              there, it is disabled, and the sentence below says why. Nothing is
-              faked and no local state is mutated to look like a success.
-            -->
-            <button
-              type="button"
-              class="action is-solid"
-              disabled
-              aria-describedby="reactivacion-pendiente"
-            >
-              Reactivar
+            <button type="button" class="action" (click)="intentarVolver()">
+              {{ etiquetaSecundaria() }}
             </button>
+
+            <!--
+              After a `409` the worker cannot be reactivated in this state: the
+              submit disappears so the only move left is the way out.
+            -->
+            @if (!conflicto()) {
+              <button
+                type="button"
+                class="action is-solid"
+                [disabled]="!puedeReactivar()"
+                (click)="reactivar()"
+              >
+                Reactivar
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @case ('reingreso') {
+        <div class="form">
+          <p class="aviso">{{ avisoReingreso }}</p>
+
+          <p class="quien">{{ quien() }}</p>
+
+          <span class="label">Motivo</span>
+          <p class="dato">{{ motivoActual() }}</p>
+
+          <span class="label">Fecha de baja</span>
+          <p class="dato">desde {{ fechaBaja() }}</p>
+
+          <label class="label" for="panel-area">Nueva adscripción</label>
+          <select
+            id="panel-area"
+            name="area_id"
+            class="control"
+            [disabled]="cargandoCatalogo()"
+            [class.is-invalid]="errorDe('area_id') !== null"
+            [attr.aria-describedby]="idDeError('area_id')"
+            (change)="elegirArea($event)"
+          >
+            <option value="" [selected]="areaId() === null">
+              {{ cargandoCatalogo() ? 'Cargando áreas…' : 'Elige un área' }}
+            </option>
+            @for (area of areasAsignables(); track area.id) {
+              <option [value]="area.id" [selected]="areaId() === area.id">
+                {{ area.nombre }}
+              </option>
+            }
+          </select>
+
+          @if (errorDe('area_id'); as error) {
+            <p class="error" id="error-area_id" role="alert">{{ error }}</p>
+          }
+
+          <label class="label" for="panel-puesto">Nueva plaza</label>
+          <!--
+            The post belongs to the area, so it stays closed until one is
+            chosen. The backend re-checks the pair and answers `422` in
+            `puesto_id` when they disagree.
+          -->
+          <select
+            id="panel-puesto"
+            name="puesto_id"
+            class="control"
+            [disabled]="cargandoCatalogo() || areaId() === null"
+            [class.is-invalid]="errorDe('puesto_id') !== null"
+            [attr.aria-describedby]="idDeError('puesto_id')"
+            (change)="elegirPuesto($event)"
+          >
+            <option value="" [selected]="puestoId() === null">
+              {{ areaId() === null ? 'Elige primero un área' : 'Elige una plaza' }}
+            </option>
+            @for (puesto of puestosDelArea(); track puesto.id) {
+              <option [value]="puesto.id" [selected]="puestoId() === puesto.id">
+                {{ puesto.nombre }}
+              </option>
+            }
+          </select>
+
+          @if (errorDe('puesto_id'); as error) {
+            <p class="error" id="error-puesto_id" role="alert">{{ error }}</p>
+          }
+
+          <label class="label" for="panel-nota">Nota de reingreso</label>
+          <textarea
+            id="panel-nota"
+            name="nota_reingreso"
+            class="control area"
+            rows="4"
+            [attr.maxlength]="maxNota"
+            [class.is-invalid]="errorDe(campoNota()) !== null"
+            [attr.aria-describedby]="descripcionNota()"
+            [value]="nota()"
+            (input)="escribirNota($event)"
+          ></textarea>
+
+          <div class="nota-meta">
+            <span>La fecha de reingreso y la categoría se fijan en el servidor.</span>
+            <span id="panel-nota-contador">{{ nota().length }} / {{ maxNota }}</span>
           </div>
 
-          <p class="pendiente" id="reactivacion-pendiente">
-            La reactivación todavía no está disponible: el endpoint aún no existe.
-          </p>
+          @if (errorDe(campoNota()); as error) {
+            <p class="error" [id]="'error-' + campoNota()" role="alert">{{ error }}</p>
+          }
+
+          @if (errorCatalogo(); as fallo) {
+            <p class="error" role="alert">{{ fallo }}</p>
+            <button type="button" class="action" (click)="reintentarCatalogo()">Reintentar</button>
+          } @else if (errorGeneral(); as fallo) {
+            <p class="error" role="alert">{{ fallo }}</p>
+          }
+
+          <div class="acciones">
+            <button type="button" class="action" (click)="intentarVolver()">
+              {{ etiquetaSecundaria() }}
+            </button>
+
+            @if (!conflicto()) {
+              <button
+                type="button"
+                class="action is-solid"
+                [disabled]="!puedeReingresar()"
+                (click)="reingresar()"
+              >
+                Reingresar
+              </button>
+            }
+          </div>
         </div>
       }
 

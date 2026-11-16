@@ -12,6 +12,10 @@ const URL_FICHA = `${environment.apiBaseUrl}/empleados/${EMPLEADO_ID}`;
 const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
 const URL_MOTIVOS = `${environment.apiBaseUrl}/catalogos/motivos-baja`;
 const URL_BAJA = `${URL_FICHA}/baja`;
+const URL_REACTIVAR = `${URL_FICHA}/reactivar`;
+const URL_REINGRESO = `${URL_FICHA}/reingreso`;
+const URL_AREAS = `${environment.apiBaseUrl}/catalogos/areas`;
+const URL_PUESTOS = `${environment.apiBaseUrl}/catalogos/puestos`;
 
 /**
  * Catalog of the two authorised kinds plus a third one the screen must hide:
@@ -28,7 +32,7 @@ const MOTIVOS: readonly MotivoBaja[] = [
 const HISTORIAL: readonly HistorialBaja[] = [
   {
     id: 31,
-    tipo: 'definitiva',
+    tipo: 'baja_definitiva',
     motivo_id: 1,
     motivo: 'Baja definitiva',
     motivo_clave: 'BAJA_DEFINITIVA',
@@ -87,20 +91,29 @@ const FICHA_INACTIVA: FichaEmpleado = {
     antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
   },
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 3,
-    nivel_estudios: 'Licenciatura',
-    escuela_procedencia: 'UNAM',
-    generacion: '2012-2016',
+  actualizado_en: '2026-01-01T00:00:00+00:00',
+  edicion: {
+    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
   },
+  grados_academicos: [
+    {
+      id: 1,
+      nivel_estudios_id: 3,
+      nivel_estudios: 'Licenciatura',
+      titulo_o_carrera: 'Licenciatura en Sistemas',
+      escuela_procedencia: 'UNAM',
+      generacion: '2012-2016',
+      cedula_profesional: null,
+      es_maximo: true,
+    },
+  ],
+  empleos_externos: [],
   experiencia: {
     exp_publico_anios: 5,
     exp_privado_anios: 3,
-    trabaja_otro_lugar: 'No',
-    trabaja_otro_donde: null,
   },
   gestion_interna: {
-    activo: false,
+    estatus: 'licencia',
     fecha_baja: '2026-11-11',
     motivo_baja: 'Licencia por incapacidad',
     nota_baja: 'Licencia por incapacidad temporal',
@@ -138,20 +151,29 @@ const FICHA: FichaEmpleado = {
     antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
   },
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 3,
-    nivel_estudios: 'Licenciatura',
-    escuela_procedencia: 'UNAM',
-    generacion: '2012-2016',
+  actualizado_en: '2026-01-01T00:00:00+00:00',
+  edicion: {
+    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
   },
+  grados_academicos: [
+    {
+      id: 1,
+      nivel_estudios_id: 3,
+      nivel_estudios: 'Licenciatura',
+      titulo_o_carrera: 'Licenciatura en Sistemas',
+      escuela_procedencia: 'UNAM',
+      generacion: '2012-2016',
+      cedula_profesional: null,
+      es_maximo: true,
+    },
+  ],
+  empleos_externos: [],
   experiencia: {
     exp_publico_anios: 5,
     exp_privado_anios: 3,
-    trabaja_otro_lugar: 'No',
-    trabaja_otro_donde: null,
   },
   gestion_interna: {
-    activo: true,
+    estatus: 'activo',
     fecha_baja: null,
     motivo_baja: null,
     nota_baja: null,
@@ -592,7 +614,7 @@ describe('FichaDrawer', () => {
       ...FICHA,
       gestion_interna: {
         ...FICHA.gestion_interna,
-        activo: false,
+        estatus: 'licencia',
         motivo_baja: 'Licencia por incapacidad',
         fecha_baja: '2026-11-11',
         nota_baja: 'Licencia por incapacidad temporal',
@@ -606,7 +628,7 @@ describe('FichaDrawer', () => {
     tab(fixture, 'Estado').click();
     await fixture.whenStable();
 
-    expect(stamp(fixture)?.textContent?.trim()).toBe('LICENCIA');
+    expect(stamp(fixture)?.textContent?.trim()).toBe('EN LICENCIA');
     // The three fields of the baja explain the state, so they come first.
     expect(valueOf(fixture, 'Fecha de baja')).toBe('11 de noviembre de 2026');
     expect(valueOf(fixture, 'Motivo')).toBe('Licencia por incapacidad');
@@ -1263,12 +1285,12 @@ describe('FichaDrawer', () => {
     // The seal is pressed again, and the roster-facing action replaced the one
     // that opened the annex.
     expect(stamp(fixture)?.classList.contains('is-slam')).toBe(true);
-    expect(stamp(fixture)?.textContent?.trim()).toBe('LICENCIA');
+    expect(stamp(fixture)?.textContent?.trim()).toBe('EN LICENCIA');
     expect(boton(fixture, 'Dar de baja')).toBeUndefined();
     expect(boton(fixture, 'Reactivar')).toBeDefined();
   });
 
-  it('opens the reactivation form of an inactive worker, with the confirm disabled', async () => {
+  it('opens the reactivation form of a worker on leave, with the confirm disabled', async () => {
     const fixture = await abrir();
     await responder(fixture, FICHA_INACTIVA, [HISTORIAL[1]]);
     await irAEstado(fixture);
@@ -1284,32 +1306,44 @@ describe('FichaDrawer', () => {
 
     const confirmar = accionPanel(fixture, 'Reactivar');
     expect(confirmar?.disabled).toBe(true);
-    expect(panelDe(fixture)?.textContent).toContain('el endpoint aún no existe');
 
-    // Nothing is faked: no request left the screen.
-    expect(httpMock.match(URL_BAJA).length).toBe(0);
+    // Nothing is faked: no request left the screen while the note is empty.
+    expect(httpMock.match(URL_REACTIVAR).length).toBe(0);
   });
 
-  it('warns that a definitive termination cannot be reopened from here', async () => {
+  it('sends a definitive termination to the re-entry form, never to reactivation', async () => {
     const fixture = await abrir();
-    // A termination that closed the post, with a label that is not a leave and
-    // a log that has nothing open: the only fact left is the motive.
     await responder(
       fixture,
       {
         ...FICHA_INACTIVA,
-        gestion_interna: { ...FICHA_INACTIVA.gestion_interna, motivo_baja: 'Baja definitiva' },
+        gestion_interna: {
+          ...FICHA_INACTIVA.gestion_interna,
+          estatus: 'baja_definitiva',
+          motivo_baja: 'Baja definitiva',
+        },
       },
       [HISTORIAL[0]],
     );
     await irAEstado(fixture);
 
-    boton(fixture, 'Reactivar')?.click();
+    // A closed relationship is not reactivated from here.
+    expect(boton(fixture, 'Reactivar')).toBeUndefined();
+    boton(fixture, 'Reingresar')?.click();
     await fixture.whenStable();
 
-    // The absence log says `definitiva`, not `licencia`, so the sentence changes.
-    expect(panelDe(fixture)?.textContent).toContain('relación laboral');
-    expect(panelDe(fixture)?.textContent).toContain('tiene que autorizarlo la institución');
+    expect(panelDe(fixture)?.classList.contains('is-open')).toBe(true);
+    expect(panelDe(fixture)?.textContent).toContain('reabre el mismo expediente');
+
+    // The two catalogs of the assignment, asked once each.
+    httpMock.expectOne(URL_AREAS).flush({
+      data: [{ id: 3, padre_id: null, nombre: 'Área A', asignable: true, activo: true }],
+    });
+    httpMock.expectOne(URL_PUESTOS).flush({ data: [] });
+    await fixture.whenStable();
+
+    // Reactivation is never attempted for a definitive termination.
+    expect(httpMock.match(URL_REACTIVAR).length).toBe(0);
   });
 
   it('shows the pending state of the assignment history instead of rows', async () => {

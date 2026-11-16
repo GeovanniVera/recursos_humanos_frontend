@@ -12,23 +12,35 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
+import { AreaCatalogo, PuestoCatalogo } from '../../../../core/catalogos/catalogos.models';
+import { CatalogosService } from '../../../../core/catalogos/catalogos.service';
 import {
   BajaEmpleadoRequest,
   BajaError,
   MotivoBaja,
+  ReingresarEmpleadoPayload,
+  ReactivarEmpleadoPayload,
 } from '../../../../core/empleados/baja.models';
 import { BajaService } from '../../../../core/empleados/baja.service';
 import { FichaEmpleado, HistorialBaja } from '../../../../core/empleados/ficha.models';
 
 /**
- * The four destinations of the second level of the record.
+ * The three acts of the second level that speak to the server, plus the two
+ * destinations that are still read-only.
  *
- * Two of them speak to the server (the absence log and the termination); the
- * other two are the shape of the screen the day their endpoints exist, and say
- * so instead of faking a list or a request.
+ * `baja`, `reactivacion` and `reingreso` are the lifecycle; `historial-bajas`
+ * and `adscripciones` are lists. Nothing here fakes a request.
  */
-export type VistaFicha = 'historial-bajas' | 'baja' | 'reactivacion' | 'adscripciones';
+export type VistaFicha =
+  | 'historial-bajas'
+  | 'baja'
+  | 'reactivacion'
+  | 'reingreso'
+  | 'adscripciones';
+
+/** The act a failure belongs to, which decides the sentence the user reads. */
+type Acto = 'baja' | 'reactivacion' | 'reingreso';
 
 /**
  * Own copy of the layer. Every failure below is a different situation for the
@@ -40,21 +52,57 @@ export type VistaFicha = 'historial-bajas' | 'baja' | 'reactivacion' | 'adscripc
  */
 const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MESSAGE_ACCESS = 'Tu acceso ya no está vigente. Vuelve a iniciar sesión.';
-const MESSAGE_PERMISSION = 'No tienes permisos para dar de baja.';
 const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
-const MESSAGE_SERVER = 'No pudimos registrar la baja. Intenta más tarde.';
 const MESSAGE_MOTIVOS = 'No pudimos cargar los motivos. Cierra y vuelve a abrir.';
+const MESSAGE_CATALOGO = 'No pudimos cargar las áreas y plazas. Cierra y vuelve a abrir.';
+
+/** `403` of a role that lacks the capability of the act it is trying to perform. */
+const PERMISO_DEL_ACTO: Readonly<Record<Acto, string>> = {
+  baja: 'No tienes permisos para dar de baja.',
+  reactivacion: 'No tienes permisos para reactivar trabajadores.',
+  reingreso: 'No tienes permisos para reingresar trabajadores.',
+};
+
+/**
+ * `403` of the assignment catalogs.
+ *
+ * They are not part of the lifecycle matrix: `GET /catalogos/areas` and
+ * `GET /catalogos/puestos` are gated by `E-13`, so a role that may re-enter a
+ * worker is not necessarily allowed to read them. The sentence names the
+ * capability instead of blaming the session.
+ */
+const MESSAGE_PERMISO_CATALOGO =
+  'No tienes permisos para consultar las áreas y plazas: ese catálogo exige el caso E-13.';
+
+/** `500` of each act, used only when the body brings no sentence of its own. */
+const SERVIDOR_DEL_ACTO: Readonly<Record<Acto, string>> = {
+  baja: 'No pudimos registrar la baja. Intenta más tarde.',
+  reactivacion: 'No pudimos registrar la reactivación. Intenta más tarde.',
+  reingreso: 'No pudimos registrar el reingreso. Intenta más tarde.',
+};
 
 /** Fallback of a `409` whose body carries no sentence. */
-const MESSAGE_CONFLICT = 'El trabajador ya está dado de baja.';
+const CONFLICTO_DEL_ACTO: Readonly<Record<Acto, string>> = {
+  baja: 'El trabajador ya está dado de baja.',
+  reactivacion: 'El trabajador no se puede reactivar en su estado actual.',
+  reingreso: 'El trabajador no se puede reingresar en su estado actual.',
+};
+
 /** The POST answers the route's own 404 when the worker no longer exists. */
 const MESSAGE_GONE = 'Ese trabajador ya no existe. Cierra el panel y recarga la lista.';
 
-/** Both limits are the contract's, not a guess: `nota` is `max:1000`. */
+/** Both limits are the contract's, not a guess: the three notes are `max:1000`. */
 const MAX_NOTA = 1000;
 
 /** Fields of the request that have a control on screen, for a `422`. */
-const CAMPOS_CONOCIDOS = ['motivo_id', 'nota'] as const;
+const CAMPOS_CONOCIDOS = [
+  'motivo_id',
+  'nota',
+  'nota_reactivacion',
+  'area_id',
+  'puesto_id',
+  'nota_reingreso',
+] as const;
 
 /**
  * The only two motives a termination from this screen may use.
@@ -104,6 +152,7 @@ interface EntradaHistorial {
 })
 export class FichaPanel {
   private readonly bajaService = inject(BajaService);
+  private readonly catalogos = inject(CatalogosService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Whether the panel is over the folder. False still renders it, out of view. */
@@ -126,9 +175,6 @@ export class FichaPanel {
 
   /** Sentence of the log's last failure, or `null`. */
   readonly errorHistorial = input<string | null>(null);
-
-  /** Whether the open period is a leave, as the folder already reads it. */
-  readonly esLicencia = input(false);
 
   /** Folio of the record, printed as the foot of every annex. */
   readonly folio = input('0000');
@@ -172,6 +218,24 @@ export class FichaPanel {
   /** `true` when leaving would throw away a typed note. */
   readonly descartable = signal(false);
 
+  /** Areas offered by the re-entry form, or `null` until the first read. */
+  readonly areas = signal<readonly AreaCatalogo[] | null>(null);
+
+  /** Posts offered by the re-entry form, or `null` until the first read. */
+  readonly puestos = signal<readonly PuestoCatalogo[] | null>(null);
+
+  /** `true` while the assignment catalogs are in flight. */
+  readonly cargandoCatalogo = signal(false);
+
+  /** Sentence of a catalog failure, or `null`. */
+  readonly errorCatalogo = signal<string | null>(null);
+
+  /** Chosen area of the re-entry, or `null`. */
+  readonly areaId = signal<number | null>(null);
+
+  /** Chosen post of the re-entry, or `null`. */
+  readonly puestoId = signal<number | null>(null);
+
   /** Upper bound of the note, for the live counter. */
   readonly maxNota = MAX_NOTA;
 
@@ -190,6 +254,8 @@ export class FichaPanel {
         return 'Formato de baja';
       case 'reactivacion':
         return 'Formato de reactivación';
+      case 'reingreso':
+        return 'Formato de reingreso';
       case 'adscripciones':
         return 'Historial de adscripciones';
       default:
@@ -213,8 +279,44 @@ export class FichaPanel {
 
   /** Whether the open destination is a form, which is what can be discarded. */
   protected readonly esFormulario = computed(
-    () => this.vista() === 'baja' || this.vista() === 'reactivacion',
+    () =>
+      this.vista() === 'baja' ||
+      this.vista() === 'reactivacion' ||
+      this.vista() === 'reingreso',
   );
+
+  /**
+   * Whether the worker is on a leave instead of terminated.
+   *
+   * The record's `estatus` is the fact; the absence log is the history that
+   * explains it. Reading the state here and not from the log removes the old
+   * fallback on the motive's text, which could disagree with the enum.
+   */
+  protected readonly esLicencia = computed(
+    () => this.ficha()?.gestion_interna.estatus === 'licencia',
+  );
+
+  /** Areas the re-entry may assign: active ones that actually hold staff. */
+  protected readonly areasAsignables = computed<readonly AreaCatalogo[]>(() =>
+    (this.areas() ?? []).filter((area) => area.activo && area.asignable),
+  );
+
+  /**
+   * Posts of the chosen area.
+   *
+   * The catalog sends every post with the areas it belongs to, so the narrow is
+   * a filter and not a second request. The backend re-checks the pair anyway.
+   */
+  protected readonly puestosDelArea = computed<readonly PuestoCatalogo[]>(() => {
+    const areaId = this.areaId();
+    if (areaId === null) {
+      return [];
+    }
+
+    return (this.puestos() ?? []).filter(
+      (puesto) => puesto.activo && puesto.areas.some((area) => area.id === areaId),
+    );
+  });
 
   /** The two kinds this screen may ask for, with the labels the backend sends. */
   protected readonly opciones = computed<readonly MotivoBaja[]>(() =>
@@ -239,6 +341,44 @@ export class FichaPanel {
   );
 
   /**
+   * Client gate of the reactivation: only the note.
+   *
+   * No motive is asked here — the period being reopened is already recorded and
+   * the server keeps its motive and its start date.
+   */
+  protected readonly puedeReactivar = computed(
+    () => !this.enviando() && this.nota().trim().length > 0,
+  );
+
+  /**
+   * Client gate of the re-entry: an area, the post of that area and the note.
+   *
+   * The pair is checked again by the server; this only spares a request that
+   * cannot succeed.
+   */
+  protected readonly puedeReingresar = computed(
+    () =>
+      !this.enviando() &&
+      this.areaId() !== null &&
+      this.puestoId() !== null &&
+      this.nota().trim().length > 0,
+  );
+
+  /**
+   * Name of the note field of the open act.
+   *
+   * The three acts validate the note under their own key, so the counter and
+   * the inline message have to follow the act and not a fixed name.
+   */
+  protected readonly campoNota = computed(() =>
+    this.vista() === 'baja'
+      ? 'nota'
+      : this.vista() === 'reactivacion'
+        ? 'nota_reactivacion'
+        : 'nota_reingreso',
+  );
+
+  /**
    * Label of the secondary action.
    *
    * After a `409` the only useful move is leaving, so the button says so out
@@ -248,11 +388,15 @@ export class FichaPanel {
 
   /** Accessible description of the note: its counter first, then its error. */
   protected readonly descripcionNota = computed(() =>
-    this.errorDe('nota') === null ? 'panel-nota-contador' : 'panel-nota-contador error-nota',
+    this.errorDe(this.campoNota()) === null
+      ? 'panel-nota-contador'
+      : `panel-nota-contador error-${this.campoNota()}`,
   );
 
   /** Sentence of the alert, whichever source it came from. */
-  protected readonly errorGeneral = computed(() => this.mensaje() ?? this.errorMotivos());
+  protected readonly errorGeneral = computed(
+    () => this.mensaje() ?? this.errorMotivos() ?? this.errorCatalogo(),
+  );
 
   /** The log, already formatted: dates as `dd/mm/aaaa`, type in the operator's words. */
   protected readonly historial = computed<readonly EntradaHistorial[]>(() =>
@@ -279,13 +423,23 @@ export class FichaPanel {
    * What a reactivation would mean, which depends on how the worker left.
    *
    * A leave returns the worker to the roster; a definitive termination closed
-   * the relationship, and only the institution can authorise a re-entry.
+   * the relationship and needs a re-entry, which is its own form. The folder
+   * only opens this view for a leave, so the second sentence is a guard.
    */
   protected readonly avisoReactivacion = computed(() =>
     this.esLicencia()
       ? 'La reactivación devuelve al trabajador al padrón de activos y le restablece el acceso al sistema.'
-      : 'La baja definitiva cerró la relación laboral: un reingreso no se reabre desde esta pantalla, tiene que autorizarlo la institución.',
+      : 'La baja definitiva no se reactiva: requiere un reingreso con nueva adscripción.',
   );
+
+  /**
+   * What a re-entry would mean.
+   *
+   * It reopens the same file with the same employee number: the relationship
+   * with the institution never ended, only the assignment did.
+   */
+  protected readonly avisoReingreso =
+    'El reingreso reabre el mismo expediente, con el mismo número de empleado, y exige una nueva adscripción.';
 
   /**
    * Tracks the open/closed transition.
@@ -316,6 +470,10 @@ export class FichaPanel {
       if (this.vista() === 'baja') {
         this.cargarMotivos();
       }
+
+      if (this.vista() === 'reingreso') {
+        this.cargarCatalogosReingreso();
+      }
     });
   }
 
@@ -331,10 +489,32 @@ export class FichaPanel {
     this.olvidarError('motivo_id');
   }
 
+  /**
+   * Reads the chosen area of the re-entry.
+   *
+   * A different area is a different set of posts, so the post chosen for the
+   * previous one is dropped instead of travelling with a pair the server would
+   * refuse.
+   */
+  protected elegirArea(evento: Event): void {
+    const valor = (evento.target as HTMLSelectElement).value;
+    this.areaId.set(valor === '' ? null : Number(valor));
+    this.puestoId.set(null);
+    this.olvidarError('area_id');
+    this.olvidarError('puesto_id');
+  }
+
+  /** Reads the chosen post of the re-entry. */
+  protected elegirPuesto(evento: Event): void {
+    const valor = (evento.target as HTMLSelectElement).value;
+    this.puestoId.set(valor === '' ? null : Number(valor));
+    this.olvidarError('puesto_id');
+  }
+
   /** Writes the note and forgets the message the previous failure left on it. */
   protected escribirNota(evento: Event): void {
     this.nota.set((evento.target as HTMLTextAreaElement).value);
-    this.olvidarError('nota');
+    this.olvidarError(this.campoNota());
   }
 
   /**
@@ -361,6 +541,12 @@ export class FichaPanel {
   /** Keeps the draft: the banner disappears and the form stays as it was. */
   protected seguirEditando(): void {
     this.descartable.set(false);
+  }
+
+  /** Asks for the assignment catalogs again, after a failure. */
+  protected reintentarCatalogo(): void {
+    this.errorCatalogo.set(null);
+    this.cargarCatalogosReingreso();
   }
 
   /** Message of a field, or `null`. The messages are shown joined, verbatim. */
@@ -407,7 +593,87 @@ export class FichaPanel {
           this.reiniciar();
           this.bajaRegistrada.emit();
         },
-        error: (error: unknown) => this.manejarError(error),
+        error: (error: unknown) => this.manejarError(error, 'baja'),
+      });
+  }
+
+  /**
+   * Sends the reactivation of a leave.
+   *
+   * The body carries only the note: the date is the server's, and the period
+   * being reopened already has its motive. A definitive termination is not
+   * sent here — the folder opens the re-entry form for it instead.
+   */
+  protected reactivar(): void {
+    const id = this.empleadoId();
+    const nota = this.nota().trim();
+
+    if (id === null || nota === '' || this.enviando()) {
+      return;
+    }
+
+    const datos: ReactivarEmpleadoPayload = { nota_reactivacion: nota };
+
+    this.enviando.set(true);
+    this.mensaje.set(null);
+    this.errores.set({});
+    this.conflicto.set(false);
+
+    this.bajaService
+      .reactivar(id, datos)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.enviando.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.reiniciar();
+          this.bajaRegistrada.emit();
+        },
+        error: (error: unknown) => this.manejarError(error, 'reactivacion'),
+      });
+  }
+
+  /**
+   * Sends the re-entry after a definitive termination.
+   *
+   * `area_id` and `puesto_id` are the new assignment; the start date and the
+   * CCT category are derived by the server and never sent, exactly as the
+   * contract demands.
+   */
+  protected reingresar(): void {
+    const id = this.empleadoId();
+    const areaId = this.areaId();
+    const puestoId = this.puestoId();
+    const nota = this.nota().trim();
+
+    if (id === null || areaId === null || puestoId === null || nota === '' || this.enviando()) {
+      return;
+    }
+
+    const datos: ReingresarEmpleadoPayload = {
+      area_id: areaId,
+      puesto_id: puestoId,
+      nota_reingreso: nota,
+    };
+
+    this.enviando.set(true);
+    this.mensaje.set(null);
+    this.errores.set({});
+    this.conflicto.set(false);
+
+    this.bajaService
+      .reingresar(id, datos)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.enviando.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.reiniciar();
+          this.bajaRegistrada.emit();
+        },
+        error: (error: unknown) => this.manejarError(error, 'reingreso'),
       });
   }
 
@@ -454,9 +720,49 @@ export class FichaPanel {
       });
   }
 
+  /**
+   * Reads the catalogs of the re-entry, once per instance.
+   *
+   * The two lists are one request pair because the form cannot work with only
+   * one of them: the post is chosen inside the area. A failure leaves nothing
+   * cached, so the next open asks again.
+   */
+  private cargarCatalogosReingreso(): void {
+    if (this.areas() !== null && this.puestos() !== null) {
+      return;
+    }
+    if (this.cargandoCatalogo()) {
+      return;
+    }
+
+    this.cargandoCatalogo.set(true);
+    this.errorCatalogo.set(null);
+
+    forkJoin({
+      areas: this.catalogos.areas(),
+      puestos: this.catalogos.puestos(),
+    })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.cargandoCatalogo.set(false)),
+      )
+      .subscribe({
+        next: ({ areas, puestos }) => {
+          this.areas.set(areas);
+          this.puestos.set(puestos);
+        },
+        error: (error: unknown) => {
+          const status = error instanceof HttpErrorResponse ? error.status : 0;
+          this.errorCatalogo.set(status === 403 ? MESSAGE_PERMISO_CATALOGO : MESSAGE_CATALOGO);
+        },
+      });
+  }
+
   /** Clears the draft and the previous failures of a new attempt. */
   private reiniciar(): void {
     this.motivoId.set(null);
+    this.areaId.set(null);
+    this.puestoId.set(null);
     this.nota.set('');
     this.errores.set({});
     this.mensaje.set(null);
@@ -469,7 +775,7 @@ export class FichaPanel {
     const etiqueta =
       baja.tipo === 'licencia'
         ? 'Licencia'
-        : baja.tipo === 'definitiva'
+        : baja.tipo === 'baja_definitiva'
           ? 'Baja definitiva'
           : (baja.motivo?.trim() ?? 'Baja');
 
@@ -479,9 +785,10 @@ export class FichaPanel {
   /**
    * Places every `422` message where the user can act on it.
    *
-   * `nota` and `motivo_id` sit next to their own control; a message that names
-   * any other field has no control to sit beside, so it goes to the alert —
-   * dropping it would hide the only explanation the backend gave.
+   * The note, the motive, the area and the post sit next to their own control;
+   * a message that names any other field has no control to sit beside, so it
+   * goes to the alert — dropping it would hide the only explanation the
+   * backend gave.
    */
   private manejarValidacion(
     errores: Record<string, string[]> | undefined,
@@ -505,8 +812,8 @@ export class FichaPanel {
     return sueltos.length > 0 ? sueltos.join(' ') : null;
   }
 
-  /** Maps a failure of the termination to the messages the user reads. */
-  private manejarError(error: unknown): void {
+  /** Maps a failure of one act to the messages the user reads. */
+  private manejarError(error: unknown, acto: Acto): void {
     const status = error instanceof HttpErrorResponse ? error.status : 0;
     const cuerpo = error instanceof HttpErrorResponse ? (error.error as BajaError | null) : null;
     const codigo = typeof cuerpo?.codigo === 'string' ? cuerpo.codigo : null;
@@ -520,15 +827,17 @@ export class FichaPanel {
         this.mensaje.set(MESSAGE_SESSION);
         return;
       case 403:
-        // A revoked access destroys the token on the backend; a role without
-        // `E-05` keeps it. The two need different sentences.
-        this.mensaje.set(codigo === 'permiso_denegado' ? MESSAGE_PERMISSION : MESSAGE_ACCESS);
+        // A revoked access destroys the token on the backend; a role without the
+        // capability of the act keeps it. The two need different sentences.
+        this.mensaje.set(codigo === 'permiso_denegado' ? PERMISO_DEL_ACTO[acto] : MESSAGE_ACCESS);
         return;
       case 409:
-        // Already terminated: the sentence is the endpoint's, and it is shown as
-        // it arrives. The panel stays open, with nothing left to submit.
+        // Wrong state for this act (`trabajador_ya_inactivo`,
+        // `trabajador_no_dado_de_baja`, `reingreso_requerido`,
+        // `usa_reactivacion`): the sentence is the endpoint's, and it is shown
+        // as it arrives. The panel stays open, with nothing left to submit.
         this.conflicto.set(true);
-        this.mensaje.set(mensajeBackend ?? MESSAGE_CONFLICT);
+        this.mensaje.set(mensajeBackend ?? CONFLICTO_DEL_ACTO[acto]);
         return;
       case 404:
         // The route's own 404 (`No query results for model…`), not the ficha's
@@ -539,7 +848,7 @@ export class FichaPanel {
         this.manejarValidacion(cuerpo?.errors, mensajeLaravel);
         return;
       case 500:
-        this.mensaje.set(mensajeBackend ?? MESSAGE_SERVER);
+        this.mensaje.set(mensajeBackend ?? SERVIDOR_DEL_ACTO[acto]);
         return;
       default:
         this.mensaje.set(MESSAGE_CONNECTION);

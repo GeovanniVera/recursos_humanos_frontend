@@ -164,7 +164,11 @@ interface FilaFicha {
 /** The seal of a sheet: the word, and whether it reads well or badly. */
 interface Sello {
   texto: string;
-  tono: 'ok' | 'mal';
+  /**
+   * `ok` for a healthy state, `aviso` for one that is neither healthy nor
+   * closed (a leave), `mal` for a terminated one.
+   */
+  tono: 'ok' | 'aviso' | 'mal';
 }
 
 /**
@@ -315,11 +319,13 @@ export class FichaDrawer {
   /**
    * Whether the termination can be asked for right now.
    *
-   * The same rule the `Estado` sheet reads: a worker who is not active has
-   * nothing to terminate, and a record still travelling cannot be acted on.
+   * The same rule the `Estado` sheet reads: only an active worker can be
+   * terminated, and a record still travelling cannot be acted on. A leave is
+   * reactivated and a definitive termination is re-entered, never terminated
+   * twice.
    */
   protected readonly puedeDarBaja = computed(
-    () => !this.loading() && this.ficha()?.gestion_interna.activo === true,
+    () => !this.loading() && this.ficha()?.gestion_interna.estatus === 'activo',
   );
 
   /** Count on the action that opens the log, empty while the log is travelling. */
@@ -509,15 +515,23 @@ export class FichaDrawer {
     };
   });
 
-  /** The seal of the employment state, which is not the state of the file. */
+  /**
+   * The seal of the employment state, which is not the state of the file.
+   *
+   * The three states are explicit: an active worker is healthy, a leave is open
+   * but still part of the institution, and a definitive termination closed the
+   * relationship. Colouring a leave like a termination would tell the operator
+   * the wrong story.
+   */
   private readonly selloEstado = computed<Sello>(() => {
-    const gestion = this.ficha()?.gestion_interna;
-
-    if (gestion === undefined || gestion.activo) {
-      return { texto: 'ACTIVO', tono: 'ok' };
+    switch (this.ficha()?.gestion_interna.estatus) {
+      case 'licencia':
+        return { texto: 'EN LICENCIA', tono: 'aviso' };
+      case 'baja_definitiva':
+        return { texto: 'BAJA DEFINITIVA', tono: 'mal' };
+      default:
+        return { texto: 'ACTIVO', tono: 'ok' };
     }
-
-    return { texto: this.esLicencia() ? 'LICENCIA' : 'BAJA', tono: 'mal' };
   });
 
   constructor() {
@@ -692,13 +706,18 @@ export class FichaDrawer {
   }
 
   /**
-   * A termination just landed.
+   * An act of the lifecycle just landed: a termination, a reactivation or a
+   * re-entry.
    *
    * The annex closes, the record is read again — the state, the seal and the
-   * presence log all changed — and the roster is told, because the endpoint
-   * filters inactive workers out and the row has to disappear.
+   * history all changed — and the page that owns the roster is told, because
+   * the row it shows now has a different state.
+   *
+   * The output keeps the name `bajaRegistrada` it shipped with: the pages and
+   * their specs already listen to it, and renaming it is a roster-wide change
+   * that belongs to the listing migration, not here.
    */
-  protected alRegistrarBaja(): void {
+  protected alActualizarCicloVida(): void {
     const id = this.empleadoId();
 
     this.vistaL2.set(null);
@@ -872,19 +891,35 @@ export class FichaDrawer {
   });
 
   private readonly filasFormacion = computed<readonly FilaFicha[]>(() => {
-    const estudios = this.ficha()?.estudios;
-    const experiencia = this.ficha()?.experiencia;
+    const ficha = this.ficha();
+    const experiencia = ficha?.experiencia;
+    // La ficha muestra el grado máximo de la carpeta; si la carpeta no marcó
+    // ninguno, el primero (que el backend ordena por jerarquía) es la mejor
+    // respuesta disponible.
+    const grados = ficha?.grados_academicos ?? [];
+    const maximo = grados.find((grado) => grado.es_maximo) ?? grados[0] ?? null;
+    const externos = ficha?.empleos_externos ?? [];
 
     return [
       this.subtitulo('Estudios'),
-      this.filaTexto('Nivel de estudios', estudios?.nivel_estudios ?? null, 'nivel_estudios'),
-      this.filaTexto('Generación', estudios?.generacion ?? null, 'generacion'),
-      this.filaTexto('Escuela de procedencia', estudios?.escuela_procedencia ?? null, 'escuela_procedencia', true),
+      this.filaTexto('Nivel de estudios', maximo?.nivel_estudios ?? null, 'nivel_estudios'),
+      this.filaTexto('Generación', maximo?.generacion ?? null, 'generacion'),
+      this.filaTexto(
+        'Escuela de procedencia',
+        maximo?.escuela_procedencia ?? null,
+        'escuela_procedencia',
+        true,
+      ),
       this.subtitulo('Experiencia laboral'),
       this.filaNumero('Sector público', experiencia?.exp_publico_anios ?? null),
       this.filaNumero('Sector privado', experiencia?.exp_privado_anios ?? null),
-      this.filaTexto('¿Trabaja en otro lugar?', experiencia?.trabaja_otro_lugar ?? null),
-      this.filaTexto('¿Dónde?', experiencia?.trabaja_otro_donde ?? null),
+      this.filaTexto('¿Trabaja en otro lugar?', externos.length > 0 ? 'Sí' : 'No'),
+      this.filaTexto(
+        '¿Dónde?',
+        externos.length > 0
+          ? externos.map((empleo) => empleo.institucion_o_empresa).join(', ')
+          : null,
+      ),
     ];
   });
 
@@ -894,7 +929,7 @@ export class FichaDrawer {
 
     // The three fields of a baja explain the state, so they come first and only
     // when there is one: an active worker is not a worker with empty baja data.
-    if (gestion !== undefined && !gestion.activo) {
+    if (gestion !== undefined && gestion.estatus !== 'activo') {
       filas.push(
         this.filaFecha('Fecha de baja', gestion.fecha_baja),
         this.filaTexto('Motivo', gestion.motivo_baja),
@@ -1012,24 +1047,6 @@ export class FichaDrawer {
     }
     return claves.map((clave) => clave.trim()).filter((clave) => clave !== '');
   }
-
-  /**
-   * Whether the worker is on a leave instead of terminated.
-   *
-   * The open period of the absence log is the fact; `motivo_baja` is the label
-   * the backend prints on the record, and it is read only when the log did not
-   * arrive or has nothing open. The annex reads the same answer to choose the
-   * sentence of its reactivation form.
-   */
-  protected readonly esLicencia = computed(() => {
-    const vigente = this.bajas().find((baja) => baja.vigente);
-    if (vigente !== undefined) {
-      return vigente.tipo === 'licencia';
-    }
-
-    const motivo = this.ficha()?.gestion_interna.motivo_baja ?? '';
-    return /licencia/i.test(motivo);
-  });
 
   private clearCloseTimer(): void {
     if (this.closeTimer !== null) {

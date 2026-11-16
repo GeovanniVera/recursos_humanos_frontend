@@ -141,6 +141,7 @@
               <span
                 class="stamp"
                 [class.is-ok]="stamp.tono === 'ok'"
+                [class.is-warn]="stamp.tono === 'aviso'"
                 [class.is-bad]="stamp.tono === 'mal'"
                 [class.is-slam]="golpeSello()"
                 >{{ stamp.texto }}</span
@@ -278,7 +279,7 @@
               </div>
             } @else if (tabActiva() === 'estado') {
               <div class="foot-actions">
-                @if (registro.gestion_interna.activo) {
+                @if (registro.gestion_interna.estatus === 'activo') {
                   <button
                     type="button"
                     class="action is-danger"
@@ -287,13 +288,26 @@
                   >
                     Dar de baja
                   </button>
-                } @else {
+                } @else if (registro.gestion_interna.estatus === 'licencia') {
                   <button
                     type="button"
                     class="action is-solid"
                     (click)="abrirVista('reactivacion', $event)"
                   >
                     Reactivar
+                  </button>
+                } @else {
+                  <!--
+                    A definitive termination is terminal: it is not reactivated,
+                    it is re-entered with a new assignment. Sending it to
+                    `/reactivar` would only earn a `409 reingreso_requerido`.
+                  -->
+                  <button
+                    type="button"
+                    class="action is-solid"
+                    (click)="abrirVista('reingreso', $event)"
+                  >
+                    Reingresar
                   </button>
                 }
 
@@ -326,11 +340,10 @@
       [bajas]="bajas()"
       [cargandoHistorial]="cargandoBajas()"
       [errorHistorial]="errorBajas()?.mensaje ?? null"
-      [esLicencia]="esLicencia()"
       [folio]="folio()"
       (volver)="cerrarVista()"
       (reintentarHistorial)="reintentarBajas()"
-      (bajaRegistrada)="alRegistrarBaja()"
+      (bajaRegistrada)="alActualizarCicloVida()"
     />
   </div>
 </app-drawer>
