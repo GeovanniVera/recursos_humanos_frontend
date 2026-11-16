@@ -7,10 +7,9 @@
 // not a window over it.
 //
 // The structure is the approved one; the *palette* is the system's. Every
-// surface, line and ink is a themed role, so the drawer answers `guinda`, `light`
-// and `dark` the way the rest of the shell does: the sheet is the overlay
-// surface, its rules are the default border, the marked destination is the
-// primary action, and the gold only appears where the accent belongs.
+// surface, line and ink is one of the drawer's own `--color-sidebar-*` roles, so
+// the drawer answers every theme through them: a theme may paint the rail a
+// colour the page is not, and then the page ink would be unreadable on it.
 //
 // Geometry stays in pixels where the metaphor needs it: the fold of the sheet
 // is a 1px rule and the toggle is a 32px clip hanging over the edge.
@@ -30,13 +29,12 @@
   // Visible, not hidden: the collapse control is a disc that hangs over the
   // right edge. The list clips itself, so nothing escapes the sheet.
   overflow: visible;
-  // The edge is the sheet's own line; the fill is the densest overlay surface,
-  // the same one a modal uses, because the drawer has to hold text over the
-  // canvas it covers.
-  border: var(--border-width) solid var(--color-border-default);
+  // The edge is the sheet's own line; the fill is the drawer surface, because
+  // the rail has to hold text over the canvas it covers.
+  border: var(--border-width) solid var(--color-sidebar-line);
   border-radius: var(--radius-lg);
-  background: var(--color-surface-overlay);
-  color: var(--color-text-primary);
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-ink);
   box-shadow: var(--shadow-lg);
   // The shared `.enter-drawer` keyframe offsets the panel to the right, which
   // is right for a floating card. A left-edge drawer enters from its own edge,
@@ -58,7 +56,7 @@
   padding-bottom: var(--space-3);
   // The fold of the sheet: the header is written above it, the destinations
   // below.
-  border-bottom: var(--border-width) dashed var(--color-border-default);
+  border-bottom: var(--border-width) dashed var(--color-sidebar-line);
 }
 
 // A round clip hanging over the right edge, on the fold. Small on purpose — it
@@ -76,10 +74,13 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  border: var(--border-width) solid var(--color-border-default);
+  border: var(--border-width) solid var(--color-sidebar-line);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-glass);
-  color: var(--color-text-primary);
+  // The disc is glass, not the rail itself: it has to read as a raised object
+  // hanging over the fold, so it takes the theme's glass fill rather than the
+  // fill it is drawn on.
+  background: var(--color-sidebar-glass);
+  color: var(--color-sidebar-ink);
   cursor: pointer;
   transform: translate(50%, 50%);
   transition: background var(--motion-fast) var(--motion-ease);
@@ -93,22 +94,20 @@
   border-radius: var(--radius-pill);
 }
 
-// The same lift a destination gets under the pointer: the border role read as
-// a fill, one step above the sheet.
+// The same lift a destination gets under the pointer: the rail's line role read
+// as a fill, one step above the sheet.
 .toggle:hover {
-  background: var(--color-border-default);
+  background: var(--color-sidebar-line);
 }
 
 // The seal red does not exist on the sheet any more, so the local ring is the
 // themed one — the same ring the rest of the shell draws.
 .toggle:focus-visible,
-.item:focus-visible,
-.rail-link:focus-visible {
+.item:focus-visible {
   outline-color: var(--color-focus-ring);
 }
 
-.chevron,
-.item-chevron {
+.chevron {
   flex: none;
   width: var(--space-5);
   height: var(--space-5);
@@ -137,10 +136,10 @@
   left: 0;
   z-index: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-action-primary);
+  background: var(--color-sidebar-active);
   // The inner hairline is the double rule of a seal: it tells a stamped row
   // from a merely filled one.
-  outline: var(--border-width) dashed var(--color-action-sheen);
+  outline: var(--border-width) dashed var(--color-sidebar-sheen);
   outline-offset: -5px;
   opacity: 0;
   pointer-events: none;
@@ -172,7 +171,7 @@
 // The index label of a drawer, not a heading: typed, tracked out, overline.
 .section-label {
   padding-inline: var(--space-3);
-  color: var(--color-text-overline);
+  color: var(--color-sidebar-overline);
   font-family: var(--font-typewriter);
   font-size: 10px;
   font-weight: 700;
@@ -183,7 +182,7 @@
 // In the rail the label has no room and no meaning; the dashes of its rule keep
 // the two groups told apart.
 .section-rule {
-  border-top: var(--border-width) dashed var(--color-border-default);
+  border-top: var(--border-width) dashed var(--color-sidebar-line);
 }
 
 .list {
@@ -209,7 +208,7 @@
   border: none;
   border-radius: var(--radius-sm);
   background: var(--transparent);
-  color: var(--color-text-primary);
+  color: var(--color-sidebar-ink);
   font: var(--text-nav-item);
   text-align: left;
   text-decoration: none;
@@ -217,14 +216,9 @@
   transition: background var(--motion-fast) var(--motion-ease);
 }
 
-// The border role read as a fill: the row lifts one step off the sheet.
+// The line role read as a fill: the row lifts one step off the sheet.
 .item:hover:not(.is-active) {
-  background: var(--color-border-default);
-}
-
-// Branch labels are heavier than their children: that weight is the hierarchy.
-.item.is-branch {
-  font: var(--text-nav-branch);
+  background: var(--color-sidebar-line);
 }
 
 .icon {
@@ -239,13 +233,13 @@
 // until it is measured the row still reads as that same action colour used as
 // ink, so no frame ever paints ink on a fill that is not there.
 .item.is-active {
-  color: var(--color-action-primary);
+  color: var(--color-sidebar-active);
   font-family: var(--font-typewriter);
   font-weight: 700;
 }
 
 .nav.has-pill .item.is-active {
-  color: var(--color-action-on-primary);
+  color: var(--color-sidebar-active-ink);
 }
 
 .item.is-active .icon {
@@ -254,51 +248,6 @@
 
 .item-label {
   flex: 1 1 auto;
-}
-
-.item-chevron.is-open {
-  transform: rotate(180deg);
-}
-
-// Child list of a branch. Smooth grid accordion keeps the panel in the tree
-// while animating open/closed without magic fixed heights; closed panels become
-// `inert` and invisible at the end of the close transition.
-.submenu-panel {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    grid-template-rows var(--motion-fast) var(--motion-ease),
-    opacity var(--motion-fast) var(--motion-ease),
-    visibility var(--motion-fast) step-end;
-}
-
-.submenu-panel.is-open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  visibility: visible;
-  transition-timing-function: var(--motion-ease), var(--motion-ease), step-start;
-}
-
-.submenu-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-
-// A dashed guide runs down the group like the margin of a record, so the
-// nesting is legible at a glance.
-.sublist {
-  display: flex;
-  flex-direction: column;
-  margin: 0 0 0 var(--space-5);
-  padding: var(--space-1) 0 0 var(--space-3);
-  border-left: var(--border-width) dashed var(--color-border-default);
-  list-style: none;
-}
-
-.is-child {
-  color: var(--color-text-secondary);
 }
 
 :host(.is-collapsed) {
@@ -325,57 +274,19 @@
 .footer {
   flex: none;
   padding-top: var(--space-3);
-  border-top: var(--border-width) dashed var(--color-border-default);
+  border-top: var(--border-width) dashed var(--color-sidebar-line);
 }
 
-// A slip next to the rail: the children of a branch, and the name of whatever
-// the pointer rests on. Both are overlay surfaces, because both float over the
-// canvas instead of sitting on the sheet.
-.rail-popover,
+// A slip next to the rail: the name of whatever the pointer rests on. It is an
+// overlay surface, because it floats over the canvas instead of the sheet.
 .rail-tooltip {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 30;
-  border: var(--border-width) solid var(--color-border-default);
-  background: var(--color-surface-overlay);
-  color: var(--color-text-primary);
-}
-
-.rail-popover {
-  padding: var(--space-1);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-}
-
-.rail-sublist {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rail-link {
-  display: flex;
-  align-items: center;
-  min-height: var(--space-8);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-primary);
-  font: var(--text-nav-item);
-  text-decoration: none;
-  transition: background var(--motion-fast) var(--motion-ease);
-}
-
-.rail-link:hover,
-.rail-link.is-active {
-  background: var(--color-border-default);
-}
-
-.rail-link.is-active {
-  font-family: var(--font-typewriter);
-  font-weight: 700;
+  border: var(--border-width) solid var(--color-sidebar-line);
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-ink);
 }
 
 .rail-tooltip {
@@ -395,10 +306,10 @@
   width: var(--space-8);
   height: var(--space-8);
   padding: 0;
-  border: var(--border-width) solid var(--color-border-default);
+  border: var(--border-width) solid var(--color-sidebar-line);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-glass);
-  color: var(--color-text-primary);
+  background: var(--color-sidebar-glass);
+  color: var(--color-sidebar-ink);
   cursor: pointer;
 }
 
@@ -420,25 +331,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .submenu-panel {
-    transition-property: opacity, visibility;
-  }
-
   // No travel of any kind: the stamp stops sliding and simply marks the row.
   .pill-indicator {
     display: none;
   }
 
   .item.is-active {
-    background: var(--color-action-primary);
-    color: var(--color-action-on-primary);
+    background: var(--color-sidebar-active);
+    color: var(--color-sidebar-active-ink);
   }
 
-  .item-chevron,
   .item,
   .icon,
-  .toggle,
-  .rail-link {
+  .toggle {
     transition: none;
   }
 }

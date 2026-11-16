@@ -61,15 +61,6 @@ function navAnchors(fixture: ComponentFixture<Sidebar>): HTMLAnchorElement[] {
   return Array.from(host(fixture).querySelectorAll<HTMLAnchorElement>('#sidebar-nav a'));
 }
 
-/** The `Empleados` branch control: a button, it opens, it does not navigate. */
-function branchToggle(fixture: ComponentFixture<Sidebar>): HTMLButtonElement {
-  const button = host(fixture).querySelector<HTMLButtonElement>('#sidebar-nav button.is-branch');
-  if (button === null) {
-    throw new Error('No branch toggle rendered');
-  }
-  return button;
-}
-
 function footer(fixture: ComponentFixture<Sidebar>): HTMLElement {
   const element = host(fixture).querySelector<HTMLElement>('footer');
   if (element === null) {
@@ -136,23 +127,23 @@ describe('Sidebar', () => {
     TestBed.resetTestingModule();
   });
 
-  it('renders the branch and every destination of the expanded drawer', async () => {
+  it('renders every destination of the expanded drawer', async () => {
     const fixture = await createSidebar();
     const links = navAnchors(fixture);
 
+    // One link per screen: the employees branch is no longer a branch, because
+    // every status lives in the same listing.
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/',
-      '/empleados/activos',
-      '/empleados/baja',
+      '/empleados',
       '/semaforo-documentos',
       '/admin/catalogos',
       '/ajustes',
     ]);
     expect(links[0].textContent).toContain('Dashboard');
-    expect(links[1].textContent).toContain('Empleados Activos');
-    expect(links[2].textContent).toContain('Empleados Baja');
+    expect(links[1].textContent?.trim()).toBe('Empleados');
     // The product owner's spelling, verbatim: no accent on `Semaforo`.
-    expect(links[3].textContent?.trim()).toBe('Semáforo de documentos');
+    expect(links[2].textContent?.trim()).toBe('Semáforo de documentos');
   });
 
   it('names the two groups of the archive and labels each list with its section', async () => {
@@ -181,45 +172,6 @@ describe('Sidebar', () => {
     expect(host(fixture).querySelectorAll('.section-label').length).toBe(0);
     // One rule per group keeps the two drawers told apart without a label.
     expect(host(fixture).querySelectorAll('.section-rule').length).toBe(2);
-  });
-
-  it('opens the Empleados branch by default and collapses it on demand', async () => {
-    const fixture = await createSidebar();
-    const toggle = branchToggle(fixture);
-
-    expect(toggle.tagName).toBe('BUTTON');
-    expect(toggle.getAttribute('type')).toBe('button');
-    expect(toggle.textContent).toContain('Empleados');
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(toggle.getAttribute('aria-controls')).toBe('submenu-empleados');
-    expect(host(fixture).querySelector('#submenu-empleados')).not.toBeNull();
-
-    toggle.click();
-    await fixture.whenStable();
-
-    const submenu = host(fixture).querySelector<HTMLElement>('#submenu-empleados');
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(submenu).not.toBeNull();
-    expect(submenu?.classList.contains('is-open')).toBe(false);
-    expect(submenu?.hasAttribute('inert')).toBe(true);
-    expect(submenu?.getAttribute('aria-hidden')).toBe('true');
-    // The branch, the dashboard, the traffic light and the system entries stay reachable.
-    expect(navAnchors(fixture).filter((link) => link.closest('[inert]') === null).length).toBe(4);
-  });
-
-  it('hangs the children of a branch from a dashed guide, only while the branch is open', async () => {
-    const fixture = await createSidebar();
-    const guide = host(fixture).querySelector<HTMLElement>('#submenu-empleados .sublist');
-
-    expect(guide).not.toBeNull();
-    expect(guide?.closest('#submenu-empleados')).not.toBeNull();
-    // The children are lighter than their branch and carry no icon of their own.
-    expect(guide?.querySelectorAll('.item.is-child').length).toBe(2);
-
-    // Folded into the rail, the branch nests nothing: no guide exists at all.
-    TestBed.inject(SidebarStateService).setCollapsed(true);
-    await fixture.whenStable();
-    expect(host(fixture).querySelector('.sublist')).toBeNull();
   });
 
   it('flips aria-expanded and collapses the host when the floating toggle is pressed', async () => {
@@ -294,76 +246,24 @@ describe('Sidebar', () => {
     expect(host(fixture).querySelector('app-brand-logos .caption')).toBeNull();
   });
 
-  it('keeps an accessible name on the rail, where the branch opens a popover', async () => {
+  it('keeps an accessible name on the rail, where every destination is a link', async () => {
     const fixture = await createSidebar();
     TestBed.inject(SidebarStateService).setCollapsed(true);
     await fixture.whenStable();
 
     const links = navAnchors(fixture);
-    // Home, the traffic light and the two system entries: the branch is a
-    // button, because 76px cannot nest a list.
+    // All five are links now: nothing in the rail nests a list any more.
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/',
+      '/empleados',
       '/semaforo-documentos',
       '/admin/catalogos',
       '/ajustes',
     ]);
 
-    const branch = branchToggle(fixture);
-    expect(branch.getAttribute('aria-label')).toBe('Empleados');
-    expect(branch.getAttribute('title')).toBe('Empleados');
-    expect(branch.getAttribute('aria-expanded')).toBe('false');
-    expect(host(fixture).querySelector('#submenu-empleados')).toBeNull();
-  });
-
-  it('opens the branch popover next to the rail, lists the children, and closes on Escape and on navigation', async () => {
-    const fixture = await createSidebar();
-    TestBed.inject(SidebarStateService).setCollapsed(true);
-    await fixture.whenStable();
-
-    const branch = branchToggle(fixture);
-    branch.click();
-    await settle();
-
-    const popover = host(fixture).querySelector<HTMLElement>('#rail-submenu-empleados');
-    expect(popover).not.toBeNull();
-    expect(branch.getAttribute('aria-expanded')).toBe('true');
-    expect(branch.getAttribute('aria-controls')).toBe('rail-submenu-empleados');
-    expect(popover?.getAttribute('role')).toBe('group');
-    expect(popover?.getAttribute('aria-label')).toBe('Empleados');
-    expect(
-      Array.from(popover!.querySelectorAll('a')).map((link) => link.getAttribute('href')),
-    ).toEqual(['/empleados/activos', '/empleados/baja']);
-    // The keyboard lands on the first child, so the popover is reachable without a mouse.
-    expect(popover!.querySelector('a')).toBe(document.activeElement);
-
-    // Escape closes it and hands the focus back to the button that opened it.
-    host(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await fixture.whenStable();
-    expect(host(fixture).querySelector('#rail-submenu-empleados')).toBeNull();
-    expect(branch.getAttribute('aria-expanded')).toBe('false');
-
-    // Navigating away closes it too.
-    branch.click();
-    await settle();
-    host(fixture)
-      .querySelector<HTMLAnchorElement>('#rail-submenu-empleados a')
-      ?.click();
-    await fixture.whenStable();
-    expect(host(fixture).querySelector('#rail-submenu-empleados')).toBeNull();
-  });
-
-  it('dismisses the branch popover on an outside pointerdown', async () => {
-    const fixture = await createSidebar();
-    TestBed.inject(SidebarStateService).setCollapsed(true);
-    await fixture.whenStable();
-
-    branchToggle(fixture).click();
-    await settle();
-    expect(host(fixture).querySelector('#rail-submenu-empleados')).not.toBeNull();
-
-    document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
-    await fixture.whenStable();
+    const empleados = links[1];
+    expect(empleados.getAttribute('aria-label')).toBe('Empleados');
+    expect(empleados.getAttribute('title')).toBe('Empleados');
     expect(host(fixture).querySelector('#rail-submenu-empleados')).toBeNull();
   });
 
@@ -595,8 +495,11 @@ describe('Sidebar', () => {
       const tabletFixture = await createSidebar();
       expect(host(tabletFixture).classList.contains('is-collapsed')).toBe(true);
       expect(host(tabletFixture).querySelector('.toggle')).toBeNull();
-      // The rail folds the branch into a button that opens the popover.
-      expect(branchToggle(tabletFixture).getAttribute('aria-expanded')).toBe('false');
+      // The rail keeps the same destinations as links, with an accessible name.
+      expect(
+        navAnchors(tabletFixture).map((link) => link.getAttribute('href')),
+      ).toEqual(['/', '/empleados', '/semaforo-documentos', '/admin/catalogos', '/ajustes']);
+      expect(navAnchors(tabletFixture)[1].getAttribute('aria-label')).toBe('Empleados');
       expect(localStorage.getItem('utn-rh.sidebar-collapsed')).toBe('false');
 
       mode = 'mobile';

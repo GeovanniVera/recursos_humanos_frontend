@@ -87,12 +87,6 @@ export class Sidebar {
   readonly isMobile = this.sidebarState.isMobile;
   readonly mobileOpen = this.sidebarState.mobileOpen;
 
-  /**
-   * State of the `Empleados` branch. Starts open so the hierarchy is visible on
-   * first paint: a collapsed branch would hide two of the three destinations.
-   */
-  readonly submenuOpen = signal(true);
-
   /** Sliding pill indicator coordinates and visibility (`nav`). */
   readonly pillTop = signal(0);
   readonly pillLeft = signal(0);
@@ -102,25 +96,6 @@ export class Sidebar {
 
   /** Accessible tooltip state shown next to the 76px collapsed rail. */
   readonly railTooltip = signal<RailTooltipState | null>(null);
-
-  /** `true` while the rail popover of the `Empleados` branch is open. */
-  readonly railSubmenuOpen = signal(false);
-
-  /** Position of that popover, in host coordinates. */
-  readonly railSubmenuTop = signal(0);
-  readonly railSubmenuLeft = signal(0);
-
-  /** Mirrors the router URL, so the rail branch can mark itself active. */
-  private readonly currentUrl = signal(this.router.url);
-
-  /**
-   * `true` while any destination of the employees branch is on screen. In the
-   * rail the branch is a button, not a link, so `routerLinkActive` cannot carry
-   * the state for it.
-   */
-  readonly empleadosActive = computed(() => this.currentUrl().startsWith('/empleados'));
-
-  private readonly railPopoverPanel = viewChild<ElementRef<HTMLElement>>('railPopover');
 
   private readonly navPillGroup: PillGroupState = {
     top: this.pillTop,
@@ -134,32 +109,26 @@ export class Sidebar {
 
   private scheduleTimer: ReturnType<typeof setTimeout> | null = null;
   private focusTimer: ReturnType<typeof setTimeout> | null = null;
-  private popoverTimer: ReturnType<typeof setTimeout> | null = null;
   private hoverTarget: HTMLElement | null = null;
   private focusTarget: HTMLElement | null = null;
-  private railSubmenuAnchor: HTMLElement | null = null;
 
   constructor() {
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => {
-        this.currentUrl.set(this.router.url);
         if (this.isMobile() && this.mobileOpen()) {
           this.sidebarState.closeMobile();
         }
-        // A popover lives one navigation: the destination is on screen now.
-        this.resetRailPopover();
         this.schedulePillUpdate(false);
       });
 
-    // Recalculate indicator geometry immediately whenever sidebar width/mode changes,
-    // and dismiss any rail tooltip or popover once expanded or inside the mobile drawer.
+    // Recalculate indicator geometry immediately whenever sidebar width/mode
+    // changes, and dismiss the rail tooltip once expanded or on mobile.
     effect(() => {
       const isRail = this.collapsed() && !this.isMobile();
       this.mobileOpen();
       if (!isRail) {
         this.hideTooltip();
-        this.resetRailPopover();
       }
       this.schedulePillUpdate(true);
     });
@@ -176,16 +145,6 @@ export class Sidebar {
         }, 0);
       }
     });
-
-    // A click anywhere outside the open popover and its branch button closes it.
-    // `pointerdown` and not `click`: the list has to be gone before the click
-    // lands on whatever the person aimed at next.
-    if (typeof document !== 'undefined') {
-      document.addEventListener('pointerdown', this.handleOutsidePointer, true);
-      this.destroyRef.onDestroy(() => {
-        document.removeEventListener('pointerdown', this.handleOutsidePointer, true);
-      });
-    }
 
     afterNextRender(() => {
       this.syncPillPosition(true);
@@ -260,59 +219,9 @@ export class Sidebar {
     this.mobileClose.emit();
   }
 
-  /** Opens or closes the `Empleados` branch. */
-  toggleSubmenu(): void {
-    this.submenuOpen.update((open) => !open);
-    this.schedulePillUpdate(false);
-  }
-
-  /**
-   * Opens the rail popover of the `Empleados` branch next to the button that
-   * was pressed, or closes it.
-   *
-   * The list is rendered by the host and not inside the nav: the navigation is
-   * the scroll container, and a popover born inside it would be clipped by it.
-   */
-  toggleRailSubmenu(event: MouseEvent): void {
-    if (this.railSubmenuOpen()) {
-      this.closeRailSubmenu();
-      return;
-    }
-
-    const hostEl = this.elementRef.nativeElement as HTMLElement;
-    const hostRect = hostEl.getBoundingClientRect();
-    const anchorRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-
-    this.railSubmenuAnchor = event.currentTarget as HTMLElement;
-    this.railSubmenuTop.set(anchorRect.top - hostRect.top);
-    this.railSubmenuLeft.set((hostRect.width > 0 ? hostRect.width : 76) + 10);
-    this.railSubmenuOpen.set(true);
-    this.hideTooltip();
-
-    // The popover *is* the branch, so the keyboard enters it instead of stalling
-    // on a button that only shows a list.
-    this.popoverTimer = setTimeout(() => {
-      this.railPopoverPanel()?.nativeElement.querySelector<HTMLElement>('a')?.focus();
-      this.popoverTimer = null;
-    }, 0);
-  }
-
-  /** Closes the rail popover, handing the focus back to the branch on request. */
-  closeRailSubmenu(restoreFocus = false): void {
-    if (!this.railSubmenuOpen()) {
-      return;
-    }
-    const anchor = this.railSubmenuAnchor;
-    this.resetRailPopover();
-    if (restoreFocus) {
-      anchor?.focus();
-    }
-  }
-
-  /** `Escape` on the drawer: the tooltip and the popover both leave. */
+  /** `Escape` on the drawer: the tooltip leaves with it. */
   onEscape(): void {
     this.hideTooltip();
-    this.closeRailSubmenu(true);
   }
 
   /** Captures clicks on nav items to trigger pill animation and auto-close mobile drawer. */
@@ -436,34 +345,6 @@ export class Sidebar {
     return element.closest('input, textarea, select, [contenteditable]') !== null;
   }
 
-  /** Drops the rail popover without asking whether it was open. */
-  private resetRailPopover(): void {
-    this.railSubmenuOpen.set(false);
-    this.railSubmenuAnchor = null;
-    if (this.popoverTimer !== null) {
-      clearTimeout(this.popoverTimer);
-      this.popoverTimer = null;
-    }
-  }
-
-  /** Document-level `pointerdown`, kept as a field so it can be removed again. */
-  private readonly handleOutsidePointer = (event: Event): void => {
-    if (!this.railSubmenuOpen()) {
-      return;
-    }
-    const target = event.target as Node | null;
-    if (target === null) {
-      return;
-    }
-    if (this.railPopoverPanel()?.nativeElement.contains(target)) {
-      return;
-    }
-    if (this.railSubmenuAnchor?.contains(target)) {
-      return;
-    }
-    this.resetRailPopover();
-  };
-
   private isFocusVisible(element: HTMLElement): boolean {
     try {
       return element.matches(':focus-visible');
@@ -505,10 +386,6 @@ export class Sidebar {
     if (this.focusTimer !== null) {
       clearTimeout(this.focusTimer);
       this.focusTimer = null;
-    }
-    if (this.popoverTimer !== null) {
-      clearTimeout(this.popoverTimer);
-      this.popoverTimer = null;
     }
   }
 
