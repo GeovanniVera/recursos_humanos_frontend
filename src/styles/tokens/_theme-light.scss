@@ -37,6 +37,9 @@
   --color-text-secondary: var(--guinda-600);
   // Deep guinda, never gold: gold as text fails contrast on white.
   --color-text-overline: var(--guinda-500);
+  // Page-heading ink, separate from body copy so a theme can colour headings
+  // without recolouring prose.
+  --color-text-heading: var(--guinda-ink);
 
   // Login V2 dedicated semantic tokens
   --login-vino: var(--vino-institutional);
@@ -92,6 +95,17 @@
   --color-paper-ink: var(--guinda-ink);
   --color-paper-action: var(--guinda-500);
   --color-paper-action-ink: var(--white);
+
+  // The drawer owns its own ink because a theme may paint it a colour the page
+  // is not.
+  --color-sidebar-bg: var(--color-surface-overlay);
+  --color-sidebar-glass: var(--color-surface-glass);
+  --color-sidebar-ink: var(--color-text-primary);
+  --color-sidebar-line: var(--color-border-default);
+  --color-sidebar-overline: var(--color-text-overline);
+  --color-sidebar-active: var(--color-action-primary);
+  --color-sidebar-active-ink: var(--color-action-on-primary);
+  --color-sidebar-sheen: var(--color-action-sheen);
 
   color-scheme: light;
 }

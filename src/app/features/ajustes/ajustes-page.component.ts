@@ -9,6 +9,7 @@ const THEME_LABELS: Record<Theme, string> = {
   guinda: 'Guinda',
   light: 'Claro',
   dark: 'Oscuro',
+  verde: 'Verde militar',
 };
 
 /** One line per theme so the choice is not made on a colour swatch alone. */
@@ -16,13 +17,14 @@ const THEME_HINTS: Record<Theme, string> = {
   guinda: 'Fondo guinda institucional, texto blanco y acentos dorados.',
   light: 'Fondo blanco y texto guinda profundo. El más legible con mucha luz.',
   dark: 'Fondo casi negro y acento dorado. El más descansado con poca luz.',
+  verde: 'Fondo crema, navegación verde militar y texto grafito. Sobrio y de bajo contraste visual.',
 };
 
 /**
  * Appearance settings, reachable at `/ajustes`.
  *
  * The screen owns no colour of its own: every value it shows is a token, and
- * the previews of the three themes are rendered by scoping the target theme
+ * the previews of the four themes are rendered by scoping the target theme
  * onto the preview element. The theme files key their declarations off
  * `[data-theme='…']`, an attribute selector that matches any element, so a
  * preview can resolve the tokens of a theme that is not the active one without
@@ -39,7 +41,7 @@ export class AjustesPage {
   /** Active theme. */
   readonly theme = this.themeService.theme;
 
-  /** The three interchangeable themes, in the order they are presented. */
+  /** The four interchangeable themes, in the order they are presented. */
   readonly themes = this.themeService.themes;
 
   /** Visible label of the active theme, for the status line. */

@@ -54,6 +54,9 @@
   // The institutional red, not a borrowed stamp red.
   --color-stamp: var(--guinda-400);
   --color-stamp-ok: var(--mint-700);
+  // A leave: the worker is still part of the institution, so it is neither the
+  // healthy mint nor the institutional red of a termination.
+  --color-stamp-warn: var(--amber-700);
   --color-stamp-on: var(--white);
   // The red margin rule of the sheet: the same red, faint enough to read as
   // printed.

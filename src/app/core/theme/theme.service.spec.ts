@@ -45,4 +45,14 @@ describe('ThemeService', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe('guinda');
     expect(document.documentElement.getAttribute('data-theme')).toBe('guinda');
   });
+
+  it('knows the verde theme and restores it from storage', async () => {
+    localStorage.setItem(STORAGE_KEY, 'verde');
+
+    const service = TestBed.inject(ThemeService);
+    TestBed.tick();
+
+    expect(service.theme()).toBe('verde');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('verde');
+  });
 });

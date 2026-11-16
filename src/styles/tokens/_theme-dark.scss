@@ -35,6 +35,9 @@
   --color-text-primary: var(--rose-100);
   --color-text-secondary: var(--rose-300);
   --color-text-overline: var(--gold-400);
+  // Page-heading ink, separate from body copy so a theme can colour headings
+  // without recolouring prose.
+  --color-text-heading: var(--rose-100);
 
   // Actions
   --color-action-primary: var(--gold-400);
@@ -76,6 +79,17 @@
   --color-paper-ink: var(--gold-200);
   --color-paper-action: var(--gold-400);
   --color-paper-action-ink: var(--guinda-950);
+
+  // The drawer owns its own ink because a theme may paint it a colour the page
+  // is not.
+  --color-sidebar-bg: var(--color-surface-overlay);
+  --color-sidebar-glass: var(--color-surface-glass);
+  --color-sidebar-ink: var(--color-text-primary);
+  --color-sidebar-line: var(--color-border-default);
+  --color-sidebar-overline: var(--color-text-overline);
+  --color-sidebar-active: var(--color-action-primary);
+  --color-sidebar-active-ink: var(--color-action-on-primary);
+  --color-sidebar-sheen: var(--color-action-sheen);
 
   color-scheme: dark;
 }

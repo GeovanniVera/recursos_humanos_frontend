@@ -23,7 +23,12 @@
       (function () {
         try {
           var stored = localStorage.getItem('utn-rh.theme');
-          if (stored === 'guinda' || stored === 'light' || stored === 'dark') {
+          if (
+            stored === 'guinda' ||
+            stored === 'light' ||
+            stored === 'dark' ||
+            stored === 'verde'
+          ) {
             document.documentElement.setAttribute('data-theme', stored);
           }
         } catch (error) {

@@ -1,0 +1,120 @@
+// ---------------------------------------------------------------------------
+// Theme: verde
+//
+// The institutional paper world stays exactly where it is: same sheet, same
+// folder, same seal. What changes is the ink around it. This theme re-inks the
+// expediente in graphite and military green so nothing on the screen still
+// reads as guinda, and it paints the rail a green the page is not.
+//
+// Semantic roles only. Every value resolves to a primitive.
+// ---------------------------------------------------------------------------
+
+[data-theme='verde'] {
+  // Semáforo filter fills. Error keeps the institutional red: it is a signal,
+  // not a brand colour, and it must not go green.
+  --color-semaforo-filter-incompleto: var(--guinda-400);
+  --color-semaforo-filter-incompleto-ink: var(--white);
+  --color-semaforo-filter-casi-completo: var(--amber-400);
+  --color-semaforo-filter-casi-completo-ink: var(--guinda-900);
+  --color-semaforo-filter-completo: var(--verde-600);
+  --color-semaforo-filter-completo-ink: var(--white);
+
+  // Surfaces
+  --color-bg-canvas: var(--crema-100);
+  --color-surface-glass: var(--crema-a72);
+  --color-surface-overlay: var(--crema-a94);
+  --color-surface-ghost: var(--transparent);
+  --color-skeleton-sheen: linear-gradient(90deg, var(--transparent) 0%, var(--white-a72) 50%, var(--transparent) 100%);
+
+  // Lines
+  --color-border-default: var(--crema-300);
+  --color-border-ghost: var(--transparent);
+
+  // Text
+  --color-text-primary: var(--grafito-900);
+  --color-text-secondary: var(--grafito-700);
+  --color-text-overline: var(--verde-600);
+  --color-text-heading: var(--verde-600);
+
+  // Actions
+  --color-action-primary: var(--verde-600);
+  --color-action-on-primary: var(--white);
+  // Sheen over the deep green fill: a light veil, never the green itself.
+  --color-action-sheen: var(--white-a20);
+
+  // Accent
+  --color-accent: var(--verde-600);
+  --color-accent-ink: var(--white);
+
+  // States. The fills are deep in this theme, so their glyph ink is white.
+  --color-state-error: var(--guinda-400);
+  --color-state-error-ink: var(--white);
+  --color-state-success: var(--mint-700);
+  --color-state-info: var(--sky-700);
+  --color-state-warning: var(--amber-700);
+  --color-state-success-ink: var(--white);
+  --color-state-info-ink: var(--white);
+  --color-state-warning-ink: var(--white);
+
+  // Overlays and focus
+  --color-scrim: var(--verde-a60);
+  --color-focus-ring: rgba(75, 94, 59, 0.25);
+
+  // Canvas: cream that brightens toward the upper right and settles into a
+  // beige wash at the bottom centre. The gradient is shaped like the guinda one
+  // — one glow, one wash, one diagonal — so the glass panels refract the same
+  // way they do in every other theme.
+  --canvas-glow: rgba(75, 94, 59, 0.1);
+  --canvas-wash: rgba(75, 94, 59, 0.06);
+  --canvas-gradient:
+    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
+    linear-gradient(158deg, var(--verde-canvas-hi) 0%, var(--verde-canvas-lo) 100%);
+
+  // Elevation. Graphite-tinted instead of guinda-tinted: a green sheet casting
+  // a red shadow reads as a printing mistake.
+  --shadow-sm: 0 8px 28px rgba(31, 31, 31, 0.06);
+  --shadow-md: 0 14px 34px rgba(31, 31, 31, 0.12);
+  --shadow-lg: 0 20px 44px rgba(31, 31, 31, 0.18);
+
+  // Sidebar. The rail is the one surface painted a colour the page is not, so
+  // it owns its ink: cream on green would fail as body text, and the page ink
+  // (graphite) is unreadable on a green sheet.
+  --color-sidebar-bg: var(--verde-600);
+  // One step above the rail: the disc and the mobile close button have to
+  // read as raised objects, and a cream veil at this size disappears.
+  --color-sidebar-glass: var(--verde-500);
+  --color-sidebar-ink: var(--crema-100);
+  --color-sidebar-line: var(--crema-a20);
+  --color-sidebar-overline: var(--verde-100);
+  --color-sidebar-active: var(--crema-100);
+  --color-sidebar-active-ink: var(--verde-700);
+  --color-sidebar-sheen: var(--verde-300);
+
+  // Paper world (see `_paper.scss`). The sheet stays ivory, but its ink, rules
+  // and seal are re-inked in graphite and green: leaving the guinda defaults
+  // would make the expediente read as a brand of its own inside this theme.
+  --color-desk: var(--crema-200);
+  --color-paper-ink: var(--grafito-900);
+  --color-paper-action: var(--verde-600);
+  --color-paper-action-ink: var(--white);
+  --color-paper-text: var(--grafito-900);
+  --color-paper-muted: var(--grafito-500);
+  --color-paper-line: var(--crema-400);
+  --color-paper-empty: var(--grafito-500);
+  --color-paper-value: var(--grafito-900);
+  --color-manila: var(--gold-400);
+  --color-manila-dark: var(--gold-600);
+  --color-manila-edge: var(--gold-600);
+  --color-manila-ink: var(--grafito-900);
+  --color-stamp: var(--verde-600);
+  --color-stamp-ok: var(--mint-700);
+  --color-stamp-warn: var(--amber-700);
+  --color-stamp-soft: var(--verde-a14);
+  // The scrim the folder casts, and the marker swipe when a missing field is
+  // jumped to. Both are global paper roles, so this theme restates them.
+  --color-paper-scrim: var(--verde-a60);
+  --color-paper-flash: var(--verde-a45);
+
+  color-scheme: light;
+}

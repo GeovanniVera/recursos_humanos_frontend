@@ -204,3 +204,49 @@
   --backdrop-sweep-color: rgba(232, 199, 102, 0.18);
   --backdrop-particle-color: rgba(245, 229, 180, 0.55);
 }
+
+// ---------------------------------------------------------------------------
+// `verde` theme primitives
+//
+// The institutional palette is guinda and gold; this block adds a second, calm
+// field — military green over cream, with graphite as the ink. It is a raw-value
+// block like the rest of the file: raw values only, never consumed by a
+// component.
+// ---------------------------------------------------------------------------
+
+:root {
+  // Military green scale — the brand accent of the `verde` theme.
+  --verde-950: #1b2315;
+  --verde-900: #26311d;
+  --verde-800: #313f26;
+  --verde-700: #3d4d30;
+  --verde-600: #4b5e3b; // base given by the brief
+  --verde-500: #5c7149;
+  --verde-400: #728a5c;
+  --verde-300: #94a883;
+  --verde-200: #b8c7ab;
+  --verde-100: #d8e2ce;
+  --verde-50: #eef3e8;
+
+  // Cream, beige and graphite — the neutral field of the `verde` theme.
+  --crema-50: #fdfbf6;
+  --crema-100: #f8f5ed; // general background, given by the brief
+  --crema-200: #f0ebdd;
+  --crema-300: #e5dfd2; // borders and dividers, given by the brief
+  --crema-400: #d9cfba;
+  --grafito-900: #1f1f1f; // primary text, given by the brief
+  --grafito-700: #4a4a46;
+  --grafito-500: #6e6e68;
+
+  // Cream with alpha — rules and washes over the sidebar and the canvas.
+  --crema-a20: rgba(248, 245, 237, 0.2);
+  --crema-a72: rgba(253, 251, 246, 0.72);
+  --crema-a94: rgba(253, 251, 246, 0.94);
+  --verde-a14: rgba(75, 94, 59, 0.14);
+  --verde-a45: rgba(75, 94, 59, 0.45);
+  --verde-a60: rgba(38, 49, 29, 0.6);
+
+  // Canvas stops of the `verde` theme.
+  --verde-canvas-hi: #fcfaf4;
+  --verde-canvas-lo: #efe9da;
+}
