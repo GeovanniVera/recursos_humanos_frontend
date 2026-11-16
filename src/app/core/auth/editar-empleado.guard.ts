@@ -8,4 +8,4 @@ export const puedeEditarEmpleado = (rol: string | null): boolean =>
 
 export const editarEmpleadoGuard: CanActivateFn = () =>
   puedeEditarEmpleado(inject(AuthService).rol()) ||
-  inject(Router).createUrlTree(['/empleados/activos']);
+  inject(Router).createUrlTree(['/empleados']);

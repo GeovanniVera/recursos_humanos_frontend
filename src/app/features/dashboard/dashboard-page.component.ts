@@ -167,11 +167,20 @@ export class DashboardPage {
    * that lists the metric. The layers close first so a blocked navigation never
    * leaves a modal floating over the panel.
    */
-  ir(ruta: string): void {
+  /**
+   * Navigates to the screen behind a card, closing every layer first.
+   *
+   * `queryParams` is how a card opens a filter of the destination instead of its
+   * default view: the listing of employees is one screen with four tabs, so the
+   * baja card asks for its tab instead of a second address.
+   */
+  ir(ruta: string, queryParams?: Record<string, string>): void {
     this.accesoActivos.set(false);
     this.accesoBaja.set(false);
     this.detalleAbierto.set(false);
-    void this.router.navigate([ruta]);
+    void (queryParams
+      ? this.router.navigate([ruta], { queryParams })
+      : this.router.navigate([ruta]));
   }
 
   /** Maps an HTTP failure to the sentence and the action the user gets. */

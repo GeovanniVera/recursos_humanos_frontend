@@ -1,14 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
 import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmpleadoRegistrado } from '../../core/empleados/alta.models';
+import { EmpleadosBufferStore } from '../../core/empleados/empleados-buffer.store';
 import { FichaEmpleado } from '../../core/empleados/ficha.models';
-import { PadronBufferStore } from '../../core/padron/padron-buffer.store';
-import { PadronError } from '../../core/padron/padron.models';
+import { ESTATUS_INICIAL, ETIQUETA_ESTATUS, SUBTITULO_ESTATUS, TITULO_ESTATUS } from '../../core/empleados/estatus-ui';
+import { EmpleadoListadoError, FiltroEstatus } from '../../core/empleados/listado.models';
 import { validarBusqueda } from '../../core/padron/validacion-busqueda';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
@@ -19,7 +20,7 @@ import {
   TableRow,
 } from '../../shared/ui/data-table/data-table.component';
 import { Pagination } from '../../shared/ui/pagination/pagination.component';
-import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
+import { RowFlag, RowFlagTone } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { AltaDrawer } from './alta-drawer/alta-drawer.component';
@@ -32,7 +33,9 @@ import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
  * "something went wrong" would throw away that distinction.
  */
 const MENSAJE_SESION = 'Tu sesión venció. Vuelve a iniciar sesión.';
-const MENSAJE_PERMISO = 'No tienes permisos para consultar el padrón.';
+const MENSAJE_PERMISO = 'No tienes permisos para consultar el listado de empleados.';
+const MENSAJE_PERMISO_BUSQUEDA =
+  'No tienes permisos para buscar en el listado: la búsqueda exige el caso E-12.';
 const MENSAJE_SERVICIO = 'El servicio no está disponible. Reintenta en unos segundos.';
 const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 /** Throttle without a number from the backend: there is no countdown to show. */
@@ -53,42 +56,59 @@ const TAMANOS_PAGINA = [10, 20, 50, 100] as const;
 const SIN_DATO = '—';
 
 /**
+ * `dd/mm/aaaa`, formatted in UTC.
+ *
+ * The API sends a calendar day (`YYYY-MM-DD`) and it is parsed at UTC midnight;
+ * formatting it in a local zone west of UTC would print the previous day.
+ */
+const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/**
+ * Tone each status paints, as the suffix of the stamp class.
+ *
+ * `baja` is the tone the ink already knows for a closed relationship; a leave
+ * has its own, because a licence is not a termination.
+ */
+const TONO_ESTATUS: Readonly<Record<Exclude<FiltroEstatus, 'todos'>, string>> = {
+  activo: 'activo',
+  licencia: 'licencia',
+  baja_definitiva: 'baja',
+};
+
+/**
  * What the alert offers the user.
  * - `reintentar`: another request may succeed (server, network or throttle).
  * - `iniciar-sesion`: the token is gone, retrying is pointless.
  * - `ninguna`: the answer is final until the user changes the criteria.
  */
-type PadronErrorAction = 'reintentar' | 'iniciar-sesion' | 'ninguna';
+type ListadoErrorAction = 'reintentar' | 'iniciar-sesion' | 'ninguna';
 
-/** Failure of the roster, already translated into copy and into an action. */
-interface FallaPadron {
+/** Failure of the listing, already translated into copy and into an action. */
+interface FallaListado {
   /** HTTP status, or `0` when the request never reached the server. */
   status: number;
   /** Sentence the user reads. */
   mensaje: string;
   /** Contract code from the body (`permiso_denegado`, …), when there is one. */
   codigo: string | null;
-  accion: PadronErrorAction;
+  accion: ListadoErrorAction;
   /** Seconds the API asked to wait after a `429`; `null` when it sent no number. */
   segundos: number | null;
 }
 
-/**
- * A tab of the roster's state strip.
- *
- * `id` is the value the pending contract will send as `estado`
- * (`?estado=todos|activo|baja_definitiva|licencia`), so the day the backend takes
- * it this array is the query and not a translation table.
- */
+/** A tab of the listing's state strip. */
 interface FiltroEstado {
-  id: 'todos' | 'activo' | 'baja_definitiva' | 'licencia';
+  id: FiltroEstatus;
   label: string;
-  /** Whether `GET /padron` can answer this filter today. */
-  disponible: boolean;
 }
 
 /**
- * Active employees, reachable at `/empleados/activos`.
+ * Employees of the institution, reachable at `/empleados`.
  *
  * Paging has two levels. The user sees 20 rows at a time; the store asks the
  * backend for 100 records per request and serves five logical pages out of that
@@ -96,8 +116,9 @@ interface FiltroEstado {
  * sixth page fetches the next block once.
  *
  * The screen owns the controls and the presentation. The list, the cache, the
- * page/block math and the cancellation live in `PadronBufferStore`, so this
- * component only maps rows, errors and counts to the design system.
+ * page/block math, the status filter and the cancellation live in
+ * `EmpleadosBufferStore`, so this component only maps rows, errors and counts to
+ * the design system.
  *
  * The page lives in `?pagina=` so a deep link and the browser's back button
  * work. The search term deliberately does not: the backend avoids writing it
@@ -121,10 +142,10 @@ interface FiltroEstado {
   styleUrl: './empleados-page.component.scss',
   // One buffer per visit: filter, page and cached blocks are not shared with a
   // second tab or with a later visit to the screen.
-  providers: [PadronBufferStore],
+  providers: [EmpleadosBufferStore],
 })
 export class EmpleadosPage {
-  private readonly store = inject(PadronBufferStore);
+  private readonly store = inject(EmpleadosBufferStore);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
@@ -179,24 +200,34 @@ export class EmpleadosPage {
   /**
    * The four state tabs, in the order the strip shows them.
    *
-   * Only `activo` is operable today: the endpoint takes `buscar`, `pagina` and
-   * `por_pagina`, its wire model carries only `Activo | Baja`, and it already
-   * answers with active workers alone. The other three are drawn so the mechanic
-   * can be judged, and they carry `aria-disabled` plus the reason until the
-   * contract lands — see the comment on the strip in the template.
+   * All four are operable: `GET /api/empleados` filters on `estatus` in SQL and
+   * counts the filtered set, so the range line and the pager always describe the
+   * list on screen. The counts of the strip stay empty on purpose — the
+   * endpoint returns the total of the filter, not one figure per status, and a
+   * number derived from another filter would be a lie.
    */
   readonly filtrosEstado: readonly FiltroEstado[] = [
-    { id: 'todos', label: 'Todos', disponible: false },
-    { id: 'activo', label: 'Activos', disponible: true },
-    { id: 'baja_definitiva', label: 'Bajas definitivas', disponible: false },
-    { id: 'licencia', label: 'Licencias', disponible: false },
+    { id: 'todos', label: 'Todos' },
+    { id: 'activo', label: 'Activos' },
+    { id: 'baja_definitiva', label: 'Bajas definitivas' },
+    { id: 'licencia', label: 'Licencias' },
   ];
 
   /**
-   * Filter the strip has pressed. It only moves among the tabs the endpoint can
-   * answer, which today means it stays on `activo`.
+   * Filter the strip has pressed.
+   *
+   * It starts on `activo` because this screen lives at `/empleados`: the
+   * route names the default view, and the other three are a press away. The
+   * value is mirrored into `?estatus=` so a deep link opens the same tab and the
+   * breadcrumb can name it.
    */
-  readonly estadoFiltro = signal<FiltroEstado['id']>('activo');
+  readonly estadoFiltro = signal<FiltroEstatus>(ESTATUS_INICIAL);
+
+  /** Heading of the sheet, which follows the filter. */
+  readonly titulo = computed(() => TITULO_ESTATUS[this.estadoFiltro()]);
+
+  /** One sentence that says what the current filter is showing. */
+  readonly subtitulo = computed(() => SUBTITULO_ESTATUS[this.estadoFiltro()]);
 
   /** Logical page on screen. */
   readonly paginaActual = this.store.pagina;
@@ -266,22 +297,37 @@ export class EmpleadosPage {
   private paginaEnUrl = 1;
 
   /** Failure mapped to copy and to the action the alert offers. */
-  readonly falla = computed<FallaPadron | null>(() => this.describirError(this.store.error()));
-
-  /** Columns of the roster, in the order the canvas lists them. */
-  readonly columnas: readonly TableColumn[] = [
-    { key: 'num_empleado', header: 'Núm. empleado', align: 'end' },
-    { key: 'nombre', header: 'Nombre' },
-    { key: 'area', header: 'Área' },
-  ];
+  readonly falla = computed<FallaListado | null>(() => this.describirError(this.store.error()));
 
   /**
-   * Rows of the table, flattened to the printable fields plus the state.
+   * Columns of the listing, in the order the canvas lists them.
+   *
+   * The status is its own column now that the listing holds three of them: the
+   * number used to carry the stamp inside it, which pushed the figure and left
+   * the rest of the row empty. The date joins only when the list can hold a
+   * terminated worker — on `activo` it would be a column of dashes.
+   */
+  readonly columnas = computed<readonly TableColumn[]>(() => {
+    const columnas: TableColumn[] = [
+      { key: 'num_empleado', header: 'Núm. empleado', align: 'end', width: '11rem' },
+      { key: 'nombre', header: 'Nombre' },
+      { key: 'area', header: 'Área' },
+      { key: 'estatus', header: 'Estado', width: '14rem' },
+    ];
+
+    if (this.estadoFiltro() !== 'activo') {
+      columnas.push({ key: 'fecha_baja', header: 'Fecha de baja', width: '11rem' });
+    }
+
+    return columnas;
+  });
+
+  /**
+   * Rows of the table, flattened to the printable fields.
    *
    * The table takes plain records on purpose, so the domain shape stops here:
    * an employee with no area arrives as `null` and leaves as the placeholder the
-   * column shows. `estado` stays in the payload although it is not a column: the
-   * leading flag of the row is painted from it.
+   * column shows.
    */
   readonly filas = computed<readonly TableRow[]>(() =>
     this.store.filas().map((empleado) => ({
@@ -289,18 +335,122 @@ export class EmpleadosPage {
       num_empleado: empleado.num_empleado,
       nombre: empleado.nombre,
       area: empleado.area?.nombre ?? SIN_DATO,
-      estado: empleado.estado,
+      estatus: empleado.estatus,
+      fecha_baja: empleado.fecha_baja,
     })),
   );
+
+  /**
+   * Tone of the lane and of the stamp of a row.
+   *
+   * The table hands rows as plain records, so the value is narrowed here instead
+   * of in the template: an unknown status falls back to the terminated tone,
+   * which is the state that asks for the most care.
+   */
+  tonoDe(fila: TableRow): RowFlagTone {
+    const estatus = fila['estatus'];
+    return estatus === 'licencia' ? 'licencia' : estatus === 'activo' ? 'activo' : 'baja';
+  }
+
+  /** Word the stamp of a row prints for its status. */
+  etiquetaDe(fila: TableRow): string {
+    const estatus = fila['estatus'];
+    return estatus === 'licencia'
+      ? ETIQUETA_ESTATUS.licencia
+      : estatus === 'activo'
+        ? ETIQUETA_ESTATUS.activo
+        : ETIQUETA_ESTATUS.baja_definitiva;
+  }
+
+  /**
+   * Sentence the lane announces for assistive tech.
+   *
+   * The lane is decoration; this is what a screen reader hears at the start of
+   * the row. The stamp in `Estado` stays out of the accessibility tree so the
+   * same datum is not read twice, exactly like the traffic light.
+   */
+  descripcionDe(fila: TableRow): string {
+    const estatus = fila['estatus'];
+    if (estatus === 'baja_definitiva' && typeof fila['fecha_baja'] === 'string') {
+      return `Estado: baja definitiva, desde ${fila['fecha_baja']}`;
+    }
+    return `Estado: ${this.etiquetaDe(fila).toLowerCase()}`;
+  }
+
+  /**
+   * Calendar day of the termination, as the cell prints it.
+   *
+   * `timeZone: 'UTC'` is not decoration: the API sends a calendar day and the
+   * date is parsed at UTC midnight, so formatting it in a local zone west of UTC
+   * would print the day before. An active worker has no date, and the cell says
+   * so with the same placeholder the rest of the table uses.
+   */
+  fechaDe(fila: TableRow): string {
+    const valor = fila['fecha_baja'];
+    if (typeof valor !== 'string' || valor.trim() === '') {
+      return SIN_DATO;
+    }
+
+    const fecha = new Date(`${valor.trim()}T00:00:00Z`);
+    return Number.isNaN(fecha.getTime()) ? valor.trim() : FORMATO_FECHA.format(fecha);
+  }
+
+  /**
+   * Figure the strip prints per tab, already flattened by status.
+   *
+   * The endpoint counts the universe the search narrowed, without the status
+   * filter, so all four figures describe the same list the sheet is paging. A
+   * missing answer reads as `0` here and the caller decides whether to print a
+   * placeholder instead of a figure.
+   */
+  private readonly figurasPorEstatus = computed<Readonly<Record<FiltroEstatus, number>>>(() => {
+    const contadores = this.store.contadores();
+    return {
+      todos: contadores?.total ?? 0,
+      activo: contadores?.activo ?? 0,
+      licencia: contadores?.licencia ?? 0,
+      baja_definitiva: contadores?.baja_definitiva ?? 0,
+    };
+  });
+
+  /** Figure the tab prints, or the placeholder while the first answer travels. */
+  contadorDe(filtro: FiltroEstado): string {
+    if (this.store.contadores() === null) {
+      return SIN_DATO;
+    }
+    return this.formato.format(this.figurasPorEstatus()[filtro.id]);
+  }
+
+  /** Accessible name of the tab: the label the eye reads plus the figure. */
+  etiquetaTab(filtro: FiltroEstado): string {
+    if (this.store.contadores() === null) {
+      return `${filtro.label}: contando…`;
+    }
+
+    const total = this.figurasPorEstatus()[filtro.id];
+    return `${filtro.label}: ${this.formato.format(total)} ${total === 1 ? 'empleado' : 'empleados'}`;
+  }
 
   /** Emptiness has three causes, and the message has to name the right one. */
   readonly mensajeVacio = computed(() => {
     if (this.falla() !== null && !this.hayDatos()) {
-      return 'No se pudo cargar el padrón.';
+      return 'No se pudo cargar el listado.';
     }
-    return this.store.buscar().trim().length > 0
-      ? 'No hay empleados que coincidan con la búsqueda.'
-      : 'Todavía no hay empleados activos.';
+
+    if (this.store.buscar().trim().length > 0) {
+      return 'No hay empleados que coincidan con la búsqueda.';
+    }
+
+    switch (this.estadoFiltro()) {
+      case 'todos':
+        return 'Todavía no hay empleados registrados.';
+      case 'licencia':
+        return 'No hay empleados en licencia.';
+      case 'baja_definitiva':
+        return 'No hay empleados con baja definitiva.';
+      default:
+        return 'Todavía no hay empleados activos.';
+    }
   });
 
   /** `Mostrando 1–20 de 250`. */
@@ -350,14 +500,21 @@ export class EmpleadosPage {
 
   constructor() {
     const paginaUrl = this.route.snapshot.queryParamMap.get('pagina');
+    const estatusUrl = this.route.snapshot.queryParamMap.get('estatus');
     const paginaInicial = this.paginaDeUrl(paginaUrl);
-    this.paginaEnUrl = paginaInicial;
-    this.store.iniciar(paginaInicial);
+    const estatusInicial = this.estatusDeUrl(estatusUrl);
 
-    // Normalize a page the URL invented (`0`, `abc`, `06`). A valid value is
-    // left untouched so opening the screen does not add a history entry.
-    if (paginaUrl !== null && String(paginaInicial) !== paginaUrl) {
-      void this.sincronizarUrl(paginaInicial, true);
+    this.paginaEnUrl = paginaInicial;
+    this.estadoFiltro.set(estatusInicial);
+    this.store.iniciar(paginaInicial, estatusInicial);
+
+    // Normalize a value the URL invented (`pagina=abc`, `estatus=otro`). A valid
+    // one is left untouched so opening the screen does not add a history entry.
+    const paginaInvalida = paginaUrl !== null && String(paginaInicial) !== paginaUrl;
+    const estatusInvalido = estatusUrl !== null && estatusInicial !== estatusUrl;
+
+    if (paginaInvalida || estatusInvalido) {
+      void this.sincronizarUrl(paginaInicial, estatusInicial, true);
     }
 
     this.terminos
@@ -366,7 +523,7 @@ export class EmpleadosPage {
 
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => this.alCambiarUrl(params.get('pagina')));
+      .subscribe((params) => this.alCambiarUrl(params));
 
     // A page change that came from the buffer (cache hit or a new block) has to
     // reach the URL. The guard keeps the query subscription from echoing it.
@@ -376,7 +533,7 @@ export class EmpleadosPage {
         return;
       }
       this.paginaEnUrl = pagina;
-      void this.sincronizarUrl(pagina, false);
+      void this.sincronizarUrl(pagina, this.estadoFiltro(), false);
     });
 
     // A failed jump must not leave the URL naming a page the screen never
@@ -388,7 +545,7 @@ export class EmpleadosPage {
       const visible = this.store.pagina();
       if (visible !== this.paginaEnUrl) {
         this.paginaEnUrl = visible;
-        void this.sincronizarUrl(visible, true);
+        void this.sincronizarUrl(visible, this.estadoFiltro(), true);
       }
     });
 
@@ -521,17 +678,28 @@ export class EmpleadosPage {
   /**
    * Presses a state filter of the strip.
    *
-   * The three tabs that await the contract are ignored instead of filtering the
-   * loaded rows: a client-side filter would count and page a slice of one block
-   * as if it were the whole padrón, and the range line and the pager would lie.
-   * `activo` is the list this screen already shows, so pressing it changes
-   * nothing and sends no request.
+   * The filter lands on the server, never on the rows already loaded: this
+   * screen pages against a buffered list, so filtering or counting what is on
+   * screen would make the range line and the pager lie about the rest. The store
+   * treats the status as part of the request identity, so a new one drops the
+   * cached blocks and starts at the first page.
+   *
+   * The tab is written into `?estatus=` for two reasons: a deep link reopens the
+   * same list, and the breadcrumb — which reads the URL, not this component —
+   * can name the tab that is actually on screen.
    */
   filtrarEstado(filtro: FiltroEstado): void {
-    if (!filtro.disponible) {
+    if (this.espera() > 0 || filtro.id === this.estadoFiltro()) {
       return;
     }
+
+    this.errorPagina.set(null);
     this.estadoFiltro.set(filtro.id);
+    // The new result set starts at the first page; recording it here keeps the
+    // page effect from firing a second navigation for the same move.
+    this.paginaEnUrl = 1;
+    this.store.aplicarFiltro(filtro.id);
+    void this.sincronizarUrl(1, filtro.id, false);
   }
 
   /**
@@ -570,13 +738,14 @@ export class EmpleadosPage {
   }
 
   /**
-   * Asks for the roster again after a termination.
+   * Asks for the listing again after an act of the lifecycle.
    *
-   * The endpoint filters `activo = true AND fecha_baja IS NULL`, so the worker
-   * that was just terminated has to disappear. The refresh keeps the current
-   * rows while the new block travels.
+   * The row the drawer acted on may have changed status. If the new status no
+   * longer matches the filter on screen the backend drops it from this list; if
+   * it still matches, the row comes back updated. Either way the answer is the
+   * server's, so the block is read again while the current rows stay put.
    */
-  alRegistrarBaja(): void {
+  alActualizarCicloVida(): void {
     this.errorPagina.set(null);
     this.store.recargar();
   }
@@ -654,7 +823,7 @@ export class EmpleadosPage {
   }
 
   /** Maps an HTTP failure to the sentence and the action the user gets. */
-  private describirError(error: unknown): FallaPadron | null {
+  private describirError(error: unknown): FallaListado | null {
     if (error === null) {
       return null;
     }
@@ -663,20 +832,6 @@ export class EmpleadosPage {
     const codigo = this.codigoDe(error);
 
     switch (status) {
-      case 400: {
-        // Our client-side mirror should catch the term before it travels, but a
-        // stricter backend is still possible. Its sentence is the one to show,
-        // and the typed term stays in the field.
-        const cuerpo =
-          error instanceof HttpErrorResponse ? (error.error as PadronError | null) : null;
-        return {
-          status,
-          mensaje: cuerpo?.mensaje ?? MENSAJE_PARAMETROS,
-          codigo,
-          accion: 'ninguna',
-          segundos: null,
-        };
-      }
       case 401:
         return {
           status,
@@ -685,14 +840,38 @@ export class EmpleadosPage {
           accion: 'iniciar-sesion',
           segundos: null,
         };
-      case 403:
+      case 403: {
+        // The capability layer does not destroy the token, so this is "no
+        // permission", not "session over". A denied search is a different
+        // capability (E-12) than a denied listing (E-01), and the message says
+        // which one the user can ask for.
+        const buscando = this.store.buscar().trim().length > 0;
         return {
           status,
-          mensaje: MENSAJE_PERMISO,
+          mensaje: buscando ? MENSAJE_PERMISO_BUSQUEDA : MENSAJE_PERMISO,
           codigo,
           accion: 'ninguna',
           segundos: null,
         };
+      }
+      case 422: {
+        // Laravel's default envelope: a general sentence plus the messages of
+        // each field. The first one names the offending parameter, which is what
+        // the operator needs to correct.
+        const cuerpo =
+          error instanceof HttpErrorResponse ? (error.error as EmpleadoListadoError | null) : null;
+        const primero = cuerpo?.errors === undefined
+          ? undefined
+          : Object.values(cuerpo.errors)[0]?.[0];
+
+        return {
+          status,
+          mensaje: primero ?? cuerpo?.message ?? MENSAJE_PARAMETROS,
+          codigo,
+          accion: 'ninguna',
+          segundos: null,
+        };
+      }
       case 429: {
         // The backend says how long to wait; adopt its number instead of a guess.
         const segundos = this.segundosDeEspera(error);
@@ -731,7 +910,7 @@ export class EmpleadosPage {
     if (!(error instanceof HttpErrorResponse)) {
       return null;
     }
-    const cuerpo = error.error as PadronError | null;
+    const cuerpo = error.error as EmpleadoListadoError | null;
     return typeof cuerpo?.codigo === 'string' ? cuerpo.codigo : null;
   }
 
@@ -740,7 +919,7 @@ export class EmpleadosPage {
     if (!(error instanceof HttpErrorResponse)) {
       return null;
     }
-    const cuerpo = error.error as PadronError | null;
+    const cuerpo = error.error as EmpleadoListadoError | null;
     const segundos = cuerpo?.reintentar_en_segundos;
     return typeof segundos === 'number' && segundos > 0 ? segundos : null;
   }
@@ -797,20 +976,40 @@ export class EmpleadosPage {
     return Number.isInteger(pagina) && pagina >= 1 ? pagina : 1;
   }
 
-  /** Reacts to the browser's back/forward and to programmatic URL changes. */
-  private alCambiarUrl(valor: string | null): void {
-    const pagina = this.paginaDeUrl(valor);
+  /**
+   * Reads `?estatus=` defensively: anything outside the contract is the default.
+   *
+   * An unknown value is not a state, and letting it through would ask the server
+   * for a 422 the screen could have avoided.
+   */
+  private estatusDeUrl(valor: string | null): FiltroEstatus {
+    return valor === 'todos' || valor === 'licencia' || valor === 'baja_definitiva'
+      ? valor
+      : ESTATUS_INICIAL;
+  }
 
-    if (pagina === this.store.pagina()) {
-      this.paginaEnUrl = pagina;
+  /** Reacts to the browser's back/forward and to programmatic URL changes. */
+  private alCambiarUrl(params: ParamMap): void {
+    if (this.espera() > 0) {
+      // Navigation stays frozen during a 429 wait, so a history move must not
+      // leave the URL naming a list the screen cannot fetch yet.
+      this.paginaEnUrl = this.store.pagina();
+      void this.sincronizarUrl(this.paginaEnUrl, this.estadoFiltro(), true);
       return;
     }
 
-    if (this.espera() > 0) {
-      // Navigation stays frozen during a 429 wait, so a history move must not
-      // leave the URL naming a page the screen cannot fetch yet.
-      this.paginaEnUrl = this.store.pagina();
-      void this.sincronizarUrl(this.paginaEnUrl, true);
+    const estatus = this.estatusDeUrl(params.get('estatus'));
+
+    if (estatus !== this.estadoFiltro()) {
+      this.errorPagina.set(null);
+      this.estadoFiltro.set(estatus);
+      this.store.aplicarFiltro(estatus);
+    }
+
+    const pagina = this.paginaDeUrl(params.get('pagina'));
+
+    if (pagina === this.store.pagina()) {
+      this.paginaEnUrl = pagina;
       return;
     }
 
@@ -820,13 +1019,23 @@ export class EmpleadosPage {
   }
 
   /**
-   * Writes the page into `?pagina=`. Page 1 removes the param entirely, so the
-   * canonical URL of the screen stays clean.
+   * Writes the page and the status into the URL.
+   *
+   * Both defaults are removed rather than serialised: page 1 and the `activo`
+   * tab are what the bare `/empleados` already means, so the canonical
+   * address of the screen stays clean.
    */
-  private sincronizarUrl(pagina: number, reemplazar: boolean): Promise<boolean> {
+  private sincronizarUrl(
+    pagina: number,
+    estatus: FiltroEstatus,
+    reemplazar: boolean,
+  ): Promise<boolean> {
     return this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { pagina: pagina === 1 ? null : pagina },
+      queryParams: {
+        pagina: pagina === 1 ? null : pagina,
+        estatus: estatus === ESTATUS_INICIAL ? null : estatus,
+      },
       queryParamsHandling: 'merge',
       replaceUrl: reemplazar,
     });

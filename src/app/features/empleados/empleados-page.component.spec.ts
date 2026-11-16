@@ -10,13 +10,13 @@ import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { FormularioCatalogos } from '../../core/empleados/alta.models';
 import { FichaEmpleado } from '../../core/empleados/ficha.models';
-import { EmpleadoPadron, PadronResponse } from '../../core/padron/padron.models';
+import { EmpleadoListadoItem, EmpleadoListadoResponse, ContadoresEstatus } from '../../core/empleados/listado.models';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { AltaDrawer } from './alta-drawer/alta-drawer.component';
 import { EmpleadosPage } from './empleados-page.component';
 import { FichaDrawer } from './ficha-drawer/ficha-drawer.component';
 
-const URL_PADRON = `${environment.apiBaseUrl}/padron`;
+const URL_EMPLEADOS = `${environment.apiBaseUrl}/empleados`;
 const URL_FICHA = `${environment.apiBaseUrl}/empleados`;
 const URL_FORMULARIO = `${environment.apiBaseUrl}/empleados/formulario`;
 
@@ -33,9 +33,9 @@ const CATALOGOS: FormularioCatalogos = {
   niveles_estudios: [],
   estados_civiles: [],
   tipos_personal: ['Sindicalizado'],
+  trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
   sexos: ['Masculino', 'Femenino'],
   tipos_jornada: ['Matutina'],
-  trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };
 
 /**
@@ -89,20 +89,29 @@ function fichaDe(id: number, nombre: string): FichaEmpleado {
       antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
     },
     contacto: { correo_institucional: 'persona@utn.edu.mx' },
-    estudios: {
-      nivel_estudios_id: 3,
-      nivel_estudios: 'Licenciatura',
-      escuela_procedencia: 'UNAM',
-      generacion: '2012-2016',
+    actualizado_en: '2026-01-01T00:00:00+00:00',
+    edicion: {
+      campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
     },
+    grados_academicos: [
+      {
+        id: 1,
+        nivel_estudios_id: 3,
+        nivel_estudios: 'Licenciatura',
+        titulo_o_carrera: 'Licenciatura en Sistemas',
+        escuela_procedencia: 'UNAM',
+        generacion: '2012-2016',
+        cedula_profesional: null,
+        es_maximo: true,
+      },
+    ],
+    empleos_externos: [],
     experiencia: {
       exp_publico_anios: 5,
       exp_privado_anios: 3,
-      trabaja_otro_lugar: 'No',
-      trabaja_otro_donde: null,
     },
     gestion_interna: {
-      activo: true,
+      estatus: 'activo',
       fecha_baja: null,
       motivo_baja: null,
       nota_baja: null,
@@ -116,40 +125,63 @@ function fichaDe(id: number, nombre: string): FichaEmpleado {
   };
 }
 
-const ANA: EmpleadoPadron = {
+const ANA: EmpleadoListadoItem = {
   id: 1,
   num_empleado: '12345',
   nombre: 'Ana Martínez',
   area: { id: 3, nombre: 'Área A' },
-  estado: 'Activo',
+  estatus: 'activo',
+  fecha_baja: null,
 };
 
-const LUIS: EmpleadoPadron = {
+const LUIS: EmpleadoListadoItem = {
   id: 2,
   num_empleado: '12346',
   nombre: 'Luis Ramírez',
   area: null,
-  estado: 'Baja',
+  estatus: 'baja_definitiva',
+  fecha_baja: '2026-11-11',
+};
+
+const EVA: EmpleadoListadoItem = {
+  id: 3,
+  num_empleado: '12347',
+  nombre: 'Eva Torres',
+  area: { id: 3, nombre: 'Área A' },
+  estatus: 'licencia',
+  fecha_baja: '2026-10-01',
 };
 
 function rango(desde: number, hasta: number): number[] {
   return Array.from({ length: hasta - desde + 1 }, (_, index) => desde + index);
 }
 
-function empleado(id: number): EmpleadoPadron {
+function empleado(id: number): EmpleadoListadoItem {
   return {
     id,
     num_empleado: String(10000 + id),
     nombre: `Empleado ${id}`,
     area: null,
-    estado: 'Activo',
+    estatus: 'activo',
+    fecha_baja: null,
   };
 }
 
 /** One answer of the endpoint. `total` is the size of the whole filtered set. */
-function respuesta(datos: EmpleadoPadron[], total = datos.length, pagina = 1): PadronResponse {
+function respuesta(
+  datos: EmpleadoListadoItem[],
+  total = datos.length,
+  pagina = 1,
+  contadores?: Partial<ContadoresEstatus>,
+): EmpleadoListadoResponse {
+  const porEstatus = { activo: 0, licencia: 0, baja_definitiva: 0 };
+  for (const fila of datos) {
+    porEstatus[fila.estatus] += 1;
+  }
+
   return {
     datos,
+    contadores: { total, ...porEstatus, ...contadores },
     meta: {
       pagina,
       por_pagina: 100,
@@ -161,7 +193,7 @@ function respuesta(datos: EmpleadoPadron[], total = datos.length, pagina = 1): P
 }
 
 /** A full block of 100 records, as the two-level pager asks for it. */
-function bloqueDe(pagina: number, total: number, desde: number, hasta: number): PadronResponse {
+function bloqueDe(pagina: number, total: number, desde: number, hasta: number): EmpleadoListadoResponse {
   return respuesta(rango(desde, hasta).map(empleado), total, pagina);
 }
 
@@ -222,7 +254,7 @@ function filas(fixture: ComponentFixture<EmpleadosPage>): string[][] {
   return Array.from(host(fixture).querySelectorAll('tbody tr')).map((fila) =>
     Array.from(fila.querySelectorAll('td')).map((celda) => {
       const visible = celda.cloneNode(true) as HTMLElement;
-      visible.querySelectorAll('.visually-hidden, .seal').forEach((nodo) => nodo.remove());
+      visible.querySelectorAll('.visually-hidden').forEach((nodo) => nodo.remove());
       return visible.textContent?.trim() ?? '';
     }),
   );
@@ -294,13 +326,13 @@ describe('EmpleadosPage', () => {
 
   /** Every request the screen sent to the endpoint and has not been answered yet. */
   function peticiones(): TestRequest[] {
-    return httpMock.match((request) => request.url === URL_PADRON);
+    return httpMock.match((request) => request.url === URL_EMPLEADOS);
   }
 
   /** Answers the single request in flight with one block. */
   async function responder(
     fixture: ComponentFixture<EmpleadosPage>,
-    cuerpo: PadronResponse,
+    cuerpo: EmpleadoListadoResponse,
   ): Promise<TestRequest> {
     const abiertas = peticiones();
     expect(abiertas.length).toBe(1);
@@ -313,16 +345,16 @@ describe('EmpleadosPage', () => {
     return host(fixture).querySelector('.pager-range')?.textContent?.trim() ?? '';
   }
 
-  it('renders one row per employee with the three columns of the roster', async () => {
+  it('renders one row per employee with the columns of the listing', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
-    expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área']);
+    expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área', 'Estado']);
 
     const cuerpo = filas(fixture);
     expect(cuerpo.length).toBe(2);
-    expect(cuerpo[0]).toEqual(['12345', 'Ana Martínez', 'Área A']);
-    expect(cuerpo[1]).toEqual(['12346', 'Luis Ramírez', '—']);
+    expect(cuerpo[0]).toEqual(['12345', 'Ana Martínez', 'Área A', 'Activo']);
+    expect(cuerpo[1]).toEqual(['12346', 'Luis Ramírez', '—', 'Baja definitiva']);
   });
 
   it('opens the registration folder from the header instead of leaving the roster', async () => {
@@ -352,49 +384,119 @@ describe('EmpleadosPage', () => {
     expect(paneles[1].querySelector('#num_empleado')).not.toBeNull();
   });
 
-  it('shows the placeholder for a missing area and the state as a leading flag', async () => {
+  it('prints the number alone and the state in a column of its own', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
     const cuerpo = host(fixture).querySelectorAll('tbody tr');
-    const area = cuerpo[1].querySelectorAll('td')[2];
-    expect(area.textContent?.trim()).toBe('—');
 
-    // The flag is the first thing in the number cell, and the table is asked for
-    // the positioned cell that lets it anchor there instead of the viewport.
-    expect(
-      host(fixture).querySelector('.table')?.classList.contains('has-leading-decoration'),
-    ).toBe(true);
-    expect(cuerpo[0].querySelector('td')?.firstElementChild?.tagName.toLowerCase()).toBe(
-      'app-row-flag',
-    );
+    // The area with no record reads as the placeholder, not as an empty cell.
+    expect(cuerpo[1].querySelectorAll('td')[2].textContent?.trim()).toBe('—');
 
-    const activo = cuerpo[0].querySelector('app-row-flag');
-    expect(activo?.querySelector('.row-flag')?.classList.contains('is-activo')).toBe(true);
-    expect(activo?.querySelector('.visually-hidden')?.textContent?.trim()).toBe('Estado: Activo');
+    const primera = cuerpo[0].querySelectorAll('td');
 
-    // The terminated row stays distinguishable without a text pill: its tone and
-    // its announcement carry the state.
-    const baja = cuerpo[1].querySelector('app-row-flag');
-    expect(baja?.querySelector('.row-flag')?.classList.contains('is-baja')).toBe(true);
-    expect(baja?.querySelector('.visually-hidden')?.textContent?.trim()).toBe('Estado: Baja');
+    // The number is the only thing painted in its cell: the stamp moved out, and
+    // the lane adds no text of its own (only the hidden sentence read above).
+    const numero = primera[0].cloneNode(true) as HTMLElement;
+    numero.querySelectorAll('.visually-hidden').forEach((nodo) => nodo.remove());
+    expect(numero.textContent?.trim()).toBe('12345');
+    expect(primera[0].querySelector('.seal')).toBeNull();
+
+    // The state owns the fourth cell, with its word and its role class.
+    const activo = primera[3].querySelector('.seal');
+    expect(activo?.textContent?.trim()).toBe('Activo');
+    expect(activo?.classList.contains('is-activo')).toBe(true);
+
+    const baja = cuerpo[1].querySelectorAll('td')[3].querySelector('.seal');
+    expect(baja?.textContent?.trim()).toBe('Baja definitiva');
+    expect(baja?.classList.contains('is-baja')).toBe(true);
   });
 
-  it('stamps the state of the row with an ink seal in the role of that state', async () => {
+  it('paints the lane and the stamp in the role of that state, and announces it once', async () => {
     const fixture = await render();
     await responder(fixture, respuesta([ANA, LUIS]));
 
-    const sellos = Array.from(host(fixture).querySelectorAll('tbody .seal'));
+    const cuerpo = host(fixture).querySelectorAll('tbody tr');
 
-    expect(sellos.map((sello) => sello.textContent?.trim())).toEqual(['Activo', 'Baja']);
+    // The lane lives on the leading edge of the first cell, like the traffic light.
+    const laneActiva = cuerpo[0].querySelector('app-row-flag .row-flag');
+    expect(laneActiva?.classList.contains('is-activo')).toBe(true);
+    expect(cuerpo[0].querySelector('app-row-flag .visually-hidden')?.textContent?.trim()).toBe(
+      'Estado: activo',
+    );
+
+    const laneBaja = cuerpo[1].querySelector('app-row-flag .row-flag');
+    expect(laneBaja?.classList.contains('is-baja')).toBe(true);
+    expect(cuerpo[1].querySelector('app-row-flag .visually-hidden')?.textContent?.trim()).toBe(
+      'Estado: baja definitiva, desde 2026-11-11',
+    );
+
+    const sellos = Array.from(host(fixture).querySelectorAll('tbody .seal'));
+    expect(sellos.map((sello) => sello.textContent?.trim())).toEqual(['Activo', 'Baja definitiva']);
     // The ring carries the state; the word keeps the primary ink, which is how
     // the semáforo solved the same contrast problem on the light theme.
     expect(
       sellos.map((sello) => Array.from(sello.classList).find((clase) => clase.startsWith('is-'))),
     ).toEqual(['is-activo', 'is-baja']);
-    // The flag already announces the state in a sentence, so the visible stamp
+    // The lane already announces the state in a sentence, so the visible stamp
     // stays out of the accessibility tree instead of being read twice.
     expect(sellos.map((sello) => sello.getAttribute('aria-hidden'))).toEqual(['true', 'true']);
+  });
+
+  it('paints a lane per status: green, amber and red', async () => {
+    const fixture = await render();
+    await responder(fixture, respuesta([ANA, EVA, LUIS]));
+
+    const lanes = Array.from(host(fixture).querySelectorAll('tbody app-row-flag .row-flag'));
+
+    // The same three roles the traffic light uses, one per employment status.
+    expect(lanes.map((lane) => Array.from(lane.classList).find((c) => c.startsWith('is-')))).toEqual([
+      'is-activo',
+      'is-licencia',
+      'is-baja',
+    ]);
+    // The lane is decoration; the sentence carries the datum.
+    expect(
+      Array.from(host(fixture).querySelectorAll('tbody app-row-flag .visually-hidden')).map(
+        (nodo) => nodo.textContent?.trim(),
+      ),
+    ).toEqual([
+      'Estado: activo',
+      'Estado: licencia',
+      'Estado: baja definitiva, desde 2026-11-11',
+    ]);
+  });
+
+  it('adds the termination date only when the list can hold a terminated worker', async () => {
+    const fixture = await render();
+    await responder(fixture, respuesta([ANA]));
+
+    // On `activo` the column would be a column of dashes.
+    expect(encabezados(fixture)).toEqual(['Núm. empleado', 'Nombre', 'Área', 'Estado']);
+
+    tabsEstado(fixture)[2].click();
+    await fixture.whenStable();
+
+    const peticion = peticiones();
+    expect(peticion.length).toBe(1);
+    peticion[0].flush(respuesta([LUIS]));
+    await fixture.whenStable();
+
+    expect(encabezados(fixture)).toEqual([
+      'Núm. empleado',
+      'Nombre',
+      'Área',
+      'Estado',
+      'Fecha de baja',
+    ]);
+    // `YYYY-MM-DD` from the API reads as a calendar day, never as a timestamp.
+    expect(filas(fixture)[0]).toEqual([
+      '12346',
+      'Luis Ramírez',
+      '—',
+      'Baja definitiva',
+      '11/11/2026',
+    ]);
   });
 
   it('renders the roster as the ledger sheet through the opt-in variant', async () => {
@@ -423,25 +525,18 @@ describe('EmpleadosPage', () => {
     expect(host(fixture).querySelector('.page .tabs')?.getAttribute('role')).toBe('group');
   });
 
-  it('keeps Activos as the selected and operable tab', async () => {
+  it('keeps Activos as the selected tab and leaves the other three operable', async () => {
     const fixture = await render();
     await responder(fixture, PRIMER_BLOQUE);
 
     const tabs = tabsEstado(fixture);
 
-    // `Activos` is the one filter the endpoint can answer today, and it is the
-    // list on screen; the other three are visible but not operable.
+    // The screen lives at `/empleados`, so the route names the default.
     expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual([
       null,
       'true',
       null,
       null,
-    ]);
-    expect(tabs.map((tab) => tab.getAttribute('aria-disabled'))).toEqual([
-      'true',
-      null,
-      'true',
-      'true',
     ]);
     expect(tabs.map((tab) => tab.classList.contains('is-active'))).toEqual([
       false,
@@ -449,88 +544,138 @@ describe('EmpleadosPage', () => {
       false,
       false,
     ]);
-    // Not natively `disabled` on purpose: a disabled button leaves the tab order,
-    // and then the reason the tab does not answer could never be read.
+    // All four answer: the endpoint filters on `estatus` in SQL.
+    expect(tabs.map((tab) => tab.getAttribute('aria-disabled'))).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
     expect(tabs.map((tab) => tab.disabled)).toEqual([false, false, false, false]);
+
+    // Each tab carries the role of the status it filters, like the traffic
+    // light: `Todos` has none of its own, so it keeps the primary ink.
+    expect(
+      tabs.map((tab) =>
+        Array.from(tab.classList).find((clase) => clase.startsWith('is-') && clase !== 'is-active'),
+      ),
+    ).toEqual(['is-todos', 'is-activo', 'is-baja_definitiva', 'is-licencia']);
   });
 
-  it('explains why the three pending tabs do not answer', async () => {
-    const fixture = await render();
-    await responder(fixture, PRIMER_BLOQUE);
-
-    const pendientes = tabsEstado(fixture).filter(
-      (tab) => tab.getAttribute('aria-disabled') === 'true',
-    );
-    expect(pendientes).toHaveLength(3);
-
-    for (const tab of pendientes) {
-      // The reason travels two ways: a `title` for the pointer and an
-      // `aria-describedby` target for the keyboard and the screen reader.
-      expect(tab.getAttribute('title')).toContain('filtro por estado del servidor');
-
-      const descrito = tab.getAttribute('aria-describedby');
-      expect(descrito).toBe('estado-pendiente');
-
-      const pista = host(fixture).querySelector('#estado-pendiente');
-      expect(pista?.textContent).toContain('espera el parámetro estado del servidor');
-    }
-
-    // The one operable tab carries neither the title nor the hint.
-    const activo = tabsEstado(fixture)[1];
-    expect(activo.getAttribute('title')).toBeNull();
-    expect(activo.getAttribute('aria-describedby')).toBeNull();
-  });
-
-  it('reserves the count slot of every tab and prints no figure', async () => {
+  it('asks the server for the pressed status and returns to the first page', async () => {
     const fixture = await render();
     await responder(fixture, PRIMER_BLOQUE);
 
     const tabs = tabsEstado(fixture);
 
-    // The slot exists in all four, because the strip must not reflow when the
-    // contract brings the figures.
-    expect(tabs.map((tab) => tab.querySelector('.tab-count'))).toHaveLength(4);
-    expect(tabs.map((tab) => tab.querySelector('.tab-count')?.textContent?.trim())).toEqual([
-      '',
-      '',
-      '',
-      '',
-    ]);
-    // Nothing is printed next to the label: not `0`, not the size of this page.
-    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual([
-      'Todos',
-      'Activos',
-      'Bajas definitivas',
-      'Licencias',
-    ]);
-  });
-
-  it('sends no request when a pending tab is pressed', async () => {
-    const fixture = await render();
-    await responder(fixture, PRIMER_BLOQUE);
-
-    const tabs = tabsEstado(fixture);
-
-    // The three tabs that await the endpoint are inert: a client-side filter
-    // would make the range line and the pager lie about the rest of the padrón.
-    tabs[0].click();
-    tabs[2].click();
     tabs[3].click();
     await fixture.whenStable();
 
-    expect(peticiones().length).toBe(0);
+    const licencias = peticiones();
+    expect(licencias.length).toBe(1);
+    // The filter is part of the request, and a new result set starts at page 1.
+    expect(licencias[0].request.params.get('estatus')).toBe('licencia');
+    expect(licencias[0].request.params.get('pagina')).toBe('1');
+
+    licencias[0].flush(respuesta([]));
+    await fixture.whenStable();
+
     expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual([
       null,
+      null,
+      null,
+      'true',
+    ]);
+    expect(texto(fixture)).toContain('Empleados en licencia');
+    expect(host(fixture).querySelector('td.empty')?.textContent?.trim()).toBe(
+      'No hay empleados en licencia.',
+    );
+
+    // The tab is part of the address: a deep link reopens it, and the breadcrumb
+    // — which reads the URL, not this component — can name it.
+    expect(router.url).toContain('estatus=licencia');
+
+    // Pressing the status already applied is not a request.
+    tabs[3].click();
+    await fixture.whenStable();
+    expect(peticiones().length).toBe(0);
+  });
+
+  it('prints the figures of the filtered universe, one per tab', async () => {
+    const fixture = await render();
+    await responder(
+      fixture,
+      respuesta([ANA, EVA, LUIS], 3, 1, { total: 12, activo: 9, licencia: 2, baja_definitiva: 1 }),
+    );
+
+    const tabs = tabsEstado(fixture);
+
+    expect(tabs.map((tab) => tab.querySelector('.tab-count')?.textContent?.trim())).toEqual([
+      '12',
+      '9',
+      '1',
+      '2',
+    ]);
+
+    // The figure is hidden from assistive tech; the button reads it in a sentence.
+    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
+      'Todos: 12 empleados',
+      'Activos: 9 empleados',
+      'Bajas definitivas: 1 empleado',
+      'Licencias: 2 empleados',
+    ]);
+  });
+
+  it('keeps the figures stable when the tab changes, because they count the universe', async () => {
+    const fixture = await render();
+    await responder(
+      fixture,
+      respuesta([ANA], 12, 1, { total: 12, activo: 9, licencia: 2, baja_definitiva: 1 }),
+    );
+
+    const antes = tabsEstado(fixture).map(
+      (tab) => tab.querySelector('.tab-count')?.textContent?.trim(),
+    );
+
+    tabsEstado(fixture)[3].click();
+    await fixture.whenStable();
+
+    const peticion = peticiones();
+    expect(peticion.length).toBe(1);
+    peticion[0].flush(
+      respuesta([EVA], 12, 1, { total: 12, activo: 9, licencia: 2, baja_definitiva: 1 }),
+    );
+    await fixture.whenStable();
+
+    // Same universe, different page of it: the four figures do not move.
+    expect(
+      tabsEstado(fixture).map((tab) => tab.querySelector('.tab-count')?.textContent?.trim()),
+    ).toEqual(antes);
+  });
+
+  it('asks for the first page again when a different tab starts a new result set', async () => {
+    const fixture = await render();
+    await responder(fixture, PRIMER_BLOQUE);
+
+    const tabs = tabsEstado(fixture);
+
+    // Every tab lands on the server: the filter narrows the query and its count,
+    // so the range line and the pager never describe a slice of one block.
+    tabs[0].click();
+    await fixture.whenStable();
+
+    const todos = peticiones();
+    expect(todos.length).toBe(1);
+    expect(todos[0].request.params.get('estatus')).toBe('todos');
+    todos[0].flush(respuesta([ANA, LUIS]));
+    await fixture.whenStable();
+
+    expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual([
       'true',
       null,
       null,
+      null,
     ]);
-
-    // Pressing the one filter the endpoint answers is also not a request: it is
-    // the list already on screen.
-    tabs[1].click();
-    await fixture.whenStable();
-    expect(peticiones().length).toBe(0);
   });
 
   it('keeps the density control in the foot of the sheet and changes the density', async () => {
@@ -749,7 +894,7 @@ describe('EmpleadosPage', () => {
     expect(vacio()).toBe('No hay empleados que coincidan con la búsqueda.');
   });
 
-  it('validates the term before it travels and keeps a backend 400 term in the field', () => {
+  it('validates the term before it travels and shows a backend 422 in the field', () => {
     vi.useFakeTimers();
 
     const fixture = TestBed.createComponent(EmpleadosPage);
@@ -775,19 +920,19 @@ describe('EmpleadosPage', () => {
     expect(busqueda[0].request.params.get('buscar')).toBe('ana');
     expect(host(fixture).querySelector('#buscar-error')).toBeNull();
 
-    // A stricter backend than the local mirror is still possible: its sentence
-    // is the one shown, and the typed term stays where the user left it.
+    // A stricter backend than the local mirror is still possible: Laravel's 422
+    // carries the per-field sentence, and the typed term stays where the user
+    // left it.
     busqueda[0].flush(
       {
-        mensaje: 'El término de búsqueda no cumple el formato.',
-        codigo: 'parametros_invalidos',
+        message: 'The given data was invalid.',
+        errors: { buscar: ['El término de búsqueda no cumple el formato.'] },
       },
-      { status: 400, statusText: 'Bad Request' },
+      { status: 422, statusText: 'Unprocessable Content' },
     );
     fixture.detectChanges();
 
     expect(texto(fixture)).toContain('El término de búsqueda no cumple el formato.');
-    expect(texto(fixture)).toContain('parametros_invalidos');
     expect(campoBusqueda(fixture).value).toBe('ana');
     expect(buscarBoton(fixture, 'Reintentar')).toBeUndefined();
   });
@@ -1028,7 +1173,7 @@ describe('EmpleadosPage', () => {
     );
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('No tienes permisos para consultar el padrón.');
+    expect(texto(fixture)).toContain('No tienes permisos para consultar el listado de empleados.');
     expect(texto(fixture)).toContain('permiso_denegado');
     // Nothing to retry: the answer will not change by asking again.
     expect(buscarBoton(fixture, 'Reintentar')).toBeUndefined();

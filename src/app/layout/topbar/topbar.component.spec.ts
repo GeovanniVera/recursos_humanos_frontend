@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { ESTATUS_INICIAL, TITULO_ESTATUS } from '../../core/empleados/estatus-ui';
 import { Topbar } from './topbar.component';
 
 @Component({ selector: 'app-test-leaf', template: '' })
@@ -60,16 +61,14 @@ describe('Topbar', () => {
                 component: TestLeaf,
               },
               {
+                // One screen, one step: the listing owns every status, so the
+                // trail has no `Empleados` branch above it.
                 path: 'empleados',
-                // Componentless branch: it only contributes a breadcrumb step.
-                data: { breadcrumb: 'Empleados' },
-                children: [
-                  {
-                    path: 'activos',
-                    data: { breadcrumb: 'Empleados activos' },
-                    component: TestLeaf,
-                  },
-                ],
+                data: {
+                  breadcrumb: TITULO_ESTATUS[ESTATUS_INICIAL],
+                  breadcrumbByEstatus: TITULO_ESTATUS,
+                },
+                component: TestLeaf,
               },
             ],
           },
@@ -86,19 +85,50 @@ describe('Topbar', () => {
 
   it('builds the trail from the route tree and links every ancestor', async () => {
     const fixture = TestBed.createComponent(Topbar);
-    await TestBed.inject(Router).navigateByUrl('/empleados/activos');
+    await TestBed.inject(Router).navigateByUrl('/empleados');
     await fixture.whenStable();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(labels(element)).toEqual(['Inicio', 'Empleados', 'Empleados activos']);
+    expect(labels(element)).toEqual(['Inicio', 'Empleados activos']);
 
     const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('.crumb.is-link'));
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/', '/empleados']);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/']);
 
     // The last step is the page you are on: text, never a link.
     const current = element.querySelector<HTMLElement>('.crumb.is-current');
     expect(current?.textContent?.trim()).toBe('Empleados activos');
     expect(current?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('names the active employee filter in the trail', async () => {
+    const fixture = TestBed.createComponent(Topbar);
+    await TestBed.inject(Router).navigateByUrl('/empleados?estatus=licencia');
+    await fixture.whenStable();
+
+    // The last step follows the tab, not the path: the listing is one route with
+    // four views, and a trail that says "activos" over a list of licencias lies.
+    expect(labels(fixture.nativeElement as HTMLElement)).toEqual([
+      'Inicio',
+      'Empleados en licencia',
+    ]);
+
+    await TestBed.inject(Router).navigateByUrl('/empleados?estatus=baja_definitiva');
+    await fixture.whenStable();
+    expect(labels(fixture.nativeElement as HTMLElement)).toEqual([
+      'Inicio',
+      'Bajas definitivas',
+    ]);
+  });
+
+  it('falls back to the default tab when the query names an unknown status', async () => {
+    const fixture = TestBed.createComponent(Topbar);
+    await TestBed.inject(Router).navigateByUrl('/empleados?estatus=otro');
+    await fixture.whenStable();
+
+    expect(labels(fixture.nativeElement as HTMLElement)).toEqual([
+      'Inicio',
+      'Empleados activos',
+    ]);
   });
 
   it('hides the home step when it would link to the current page', async () => {
@@ -177,7 +207,7 @@ describe('Topbar', () => {
 
   it('marks the current step as typed, unlike its ancestors', async () => {
     const fixture = TestBed.createComponent(Topbar);
-    await TestBed.inject(Router).navigateByUrl('/empleados/activos');
+    await TestBed.inject(Router).navigateByUrl('/empleados');
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
 

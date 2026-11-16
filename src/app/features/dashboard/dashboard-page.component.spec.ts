@@ -297,7 +297,7 @@ describe('DashboardPage', () => {
     go?.click();
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/empleados/activos']);
+    expect(navigate).toHaveBeenCalledWith(['/empleados']);
     // The layer closes before moving, so it cannot float over the new screen.
     expect(activos.hasAttribute('open')).toBe(false);
 

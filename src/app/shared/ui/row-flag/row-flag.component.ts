@@ -5,7 +5,13 @@ import { Component, computed, input } from '@angular/core';
  * of the row. It is a semantic role of this system, not a colour name: the theme
  * owns the value.
  */
-export type RowFlagTone = 'completo' | 'casi_completo' | 'incompleto' | 'activo' | 'baja';
+export type RowFlagTone =
+  | 'completo'
+  | 'casi_completo'
+  | 'incompleto'
+  | 'activo'
+  | 'licencia'
+  | 'baja';
 
 /**
  * State flag painted on the leading edge of a table row.

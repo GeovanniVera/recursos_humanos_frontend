@@ -70,7 +70,7 @@
 
 .title {
   font: var(--text-title);
-  color: var(--color-text-primary);
+  color: var(--color-text-heading);
 }
 
 .sub {
@@ -213,7 +213,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  // Room for the count that the contract will bring, before it lands.
+  // Room between the label and the figure of the status.
   gap: var(--space-4);
   flex: 0 0 auto;
   min-height: var(--space-8);
@@ -236,20 +236,39 @@
   font: var(--text-nav-branch);
 }
 
-// The count slot, reserved in every tab and empty: the figures arrive with the
-// contract, and the strip must not reflow the day they do. Nothing is printed
-// here — not even `0`, which is a real answer of this API.
+// The figure of the status this tab filters, typed like every other count of
+// the screen. It is painted in the role of that status through `--tab-state`,
+// the same variable the accent bar uses.
 .tab-count {
   min-inline-size: var(--space-8);
+  color: var(--tab-state, var(--color-text-primary));
   font-family: var(--font-typewriter);
   font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
+// `--tab-state` is the role of the status this tab filters, exactly as the
+// traffic light does it. `Todos` has no status of its own, so it keeps the
+// primary ink.
+.tab.is-activo {
+  --tab-state: var(--color-state-success);
+}
+
+.tab.is-licencia {
+  --tab-state: var(--color-state-warning);
+}
+
+.tab.is-baja_definitiva {
+  --tab-state: var(--color-state-error);
+}
+
+.tab.is-todos {
+  --tab-state: var(--color-text-primary);
+}
+
 // The pressed tab rises and becomes the sheet itself: same fill, full ink, no
-// rule under it. There is no state colour to spend here — the data the other
-// tabs would count does not exist yet.
+// rule under it.
 .tab.is-active {
   z-index: 1;
   margin-top: 0;
@@ -257,14 +276,17 @@
   color: var(--color-text-primary);
 }
 
-// The filters the endpoint cannot answer yet. They keep the tab's shape — a
-// ghost button would not be judgeable — and say "not ready" three ways: lower,
-// dimmer, and ruled in dashes, so the state survives grayscale and high contrast
-// without a colour of its own.
-.tab[aria-disabled='true'] {
-  border-style: dashed;
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
+// The accent that names the status, on the top edge of the pressed tab. It is
+// the same mark the traffic light paints, so both listings read the same way.
+.tab.is-active::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: calc(var(--border-width) * 3);
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+  background: var(--tab-state, var(--color-accent));
 }
 
 // --- The sheet --------------------------------------------------------------
@@ -368,12 +390,16 @@
 // small radius and uppercase typewriter.
 //
 // The ring carries the role; the word keeps the primary ink. The system already
-// measured `--color-state-success` and `--color-state-error` on the pale surface
-// of `light` and solved it the same way in `app-status-pill` (outline the word,
-// never fill it), so a 10px stamp does not reintroduce that failure.
+// measured `--color-state-success` and `--color-state-error` as *text* on the
+// pale surface of `light` and solved it the same way in `app-status-pill`
+// (outline the word, never fill it), so a 10px stamp does not reintroduce that
+// failure. The glass fill is a token, not a `color-mix` of the role: the style
+// contract only allows tokenised backgrounds, and the ring already carries the
+// colour the column needs.
 // `--border-width * 3` is the smallest width at which `double` still paints two
 // rules; at 2px it collapses to one.
 .seal {
+  display: inline-block;
   padding: 1px var(--space-2);
   border: calc(var(--border-width) * 3) double var(--seal-state);
   border-radius: var(--radius-sm);
@@ -391,6 +417,10 @@
   --seal-state: var(--color-state-success);
 }
 
+.seal.is-licencia {
+  --seal-state: var(--color-state-warning);
+}
+
 .seal.is-baja {
   --seal-state: var(--color-state-error);
 }
@@ -404,8 +434,7 @@
   }
 
   // High contrast takes fills away, so the pressed tab is restated as an
-  // outline. The dashed rule of the pending ones already survives on its own,
-  // which keeps the two states apart without a colour.
+  // outline; the pressed flag is the only thing that tells the two states apart.
   .tab.is-active {
     outline: var(--border-width) solid CanvasText;
     outline-offset: calc(-1 * var(--border-width));

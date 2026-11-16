@@ -9,6 +9,7 @@
  * absent here, so a component cannot send them by accident.
  */
 
+import { EstatusEmpleado } from './ficha.models';
 import { EntidadCatalogo } from './entidades-federativas';
 
 // Re-exported so consumers keep a single import surface for the payload shapes.
@@ -178,7 +179,8 @@ export interface EmpleadoRegistrado {
   num_empleado: string;
   nombre: string;
   correo_institucional?: string | null;
-  activo?: boolean;
+  /** Raw enum value the record is born with: `activo`. */
+  estatus?: EstatusEmpleado;
 }
 
 /**

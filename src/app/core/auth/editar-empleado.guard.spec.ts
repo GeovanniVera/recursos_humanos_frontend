@@ -25,7 +25,7 @@ describe('Edition authorization', () => {
         editarEmpleadoGuard({} as never, {} as never),
       );
       expect(result).not.toBe(true);
-      expect(String(result)).toBe('/empleados/activos');
+      expect(String(result)).toBe('/empleados');
     },
   );
 });

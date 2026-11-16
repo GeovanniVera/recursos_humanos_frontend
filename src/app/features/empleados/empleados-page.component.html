@@ -2,11 +2,10 @@
   <header class="head">
     <div class="identity">
       <p class="overline">Recursos Humanos</p>
-      <h1 class="title">Empleados activos</h1>
+      <h1 class="title">{{ titulo() }}</h1>
       <p class="sub">
-        La plantilla vigente: empleados con la cuenta activa y sin fecha de baja. La consulta filtra
-        por estado en el servidor, así que las cifras de abajo son las de esta lista y no las de
-        todo el padrón.
+        {{ subtitulo() }} La consulta filtra por estado en el servidor, así que las cifras de abajo
+        son las de esta lista y no las de todo el padrón.
       </p>
     </div>
 
@@ -118,56 +117,37 @@
 
   <div class="ledger">
     <!--
-      State tabs of the roster, folded on the top edge of the sheet.
+      State tabs of the listing, folded on the top edge of the sheet.
 
-      PENDING CONTRACT. The strip only becomes a filter when `GET /padron`
-      accepts `?estado=todos|activo|baja_definitiva|licencia` and answers with a
-      `contadores` object carrying the four figures. Until then the endpoint
-      takes just `buscar`, `pagina` and `por_pagina`, its wire model carries only
-      `Activo | Baja`, and it already answers with active workers alone.
+      The filter lands on the server: `GET /api/empleados` narrows on `estatus`
+      in SQL and counts the narrowed set, so the range line and the pager always
+      describe the list on screen. Filtering the rows already loaded would count
+      a slice of one buffered block as if it were the whole institution.
 
-      The filter has to land on the server, not here: this screen pages against
-      a buffered list, so filtering or counting the rows already loaded would
-      make the range line ("Mostrando 1–20 de N") and the pager lie about the
-      rest of the padrón. That is also why the count slots are reserved and
-      empty — a figure derived from one served page is worse than no figure.
-
-      `Activos` is the one tab the endpoint can answer today, and it is the list
-      this screen already shows. The other three keep the tab's shape so the
-      mechanic is judgeable, and say why they do not respond.
+      The count slot of each tab stays reserved and empty: the endpoint returns
+      the total of the filter, not one figure per status, and a number taken from
+      another filter would be a lie.
     -->
-    <div class="tabs" role="group" aria-label="Filtrar el padrón por estado">
+    <div class="tabs" role="group" aria-label="Filtrar el listado por estado">
       @for (filtro of filtrosEstado; track filtro.id) {
         <button
           type="button"
-          class="tab"
+          class="tab is-{{ filtro.id }}"
           [class.is-active]="estadoFiltro() === filtro.id"
           [attr.aria-pressed]="estadoFiltro() === filtro.id ? 'true' : null"
-          [attr.aria-disabled]="filtro.disponible ? null : 'true'"
-          [attr.aria-describedby]="filtro.disponible ? null : 'estado-pendiente'"
-          [attr.title]="filtro.disponible ? null : 'Espera el filtro por estado del servidor'"
+          [attr.aria-label]="etiquetaTab(filtro)"
           (click)="filtrarEstado(filtro)"
         >
           <span class="tab-title">{{ filtro.label }}</span>
           <!--
-            The count slot, reserved and empty: the figures arrive with the
-            contract, and the strip must not reflow the day they do. Nothing is
-            printed here — not even `0`, which is a real answer of this API.
+            The figure of this status in the filtered universe. It is hidden from
+            assistive tech because the button's `aria-label` already reads it in
+            a sentence, and one datum deserves one reading.
           -->
-          <span class="tab-count" aria-hidden="true"></span>
+          <span class="tab-count" aria-hidden="true">{{ contadorDe(filtro) }}</span>
         </button>
       }
     </div>
-
-    <!--
-      One sentence for the three tabs that await the contract, linked by
-      `aria-describedby` and read with the tab. It stays hidden because the tab
-      itself already says what it is; this only says why it does not answer.
-    -->
-    <p class="visually-hidden" id="estado-pendiente">
-      Este filtro espera el parámetro estado del servidor. Mientras el padrón no filtre por estado,
-      la lista muestra solo al personal activo.
-    </p>
 
     <!--
       The sheet: one frame around the table and the band that closes it, the same
@@ -178,24 +158,32 @@
     -->
     <div class="sheet">
       <!--
-        The number and the name are the two cells with a shape of their own; the
-        projected renderer receives the row, the column and the value, so the table
-        stays generic. The state is still not a column — the roster is one list of
-        active workers — so it is written the way a ledger writes it: the lane on
-        the leading edge at a glance, and the stamp beside the typed number in
-        words. The name is a shared `app-row-link`: the row click is a pointer
-        shortcut, and the keyboard needs an element that already is a control.
+        The number, the name and the status are the three cells with a shape of
+        their own; the projected renderer receives the row, the column and the
+        value, so the table stays generic.
+
+        The number prints alone: the stamp used to live inside it, pushing the
+        figure and leaving the end of the row empty. The status owns a column of
+        its own, where the word is read next to its colour instead of competing
+        with the identifier. The date joins only when the list can hold a
+        terminated worker.
+
+        `leadingDecoration` stays on without a lane: it is what opts a clickable
+        table into the row-wide focus indicator, and the row itself is not
+        focusable. The name is a shared `app-row-link`, because the row click is
+        a pointer shortcut and the keyboard needs an element that already is a
+        control.
       -->
       <app-data-table
         variant="ledger"
         [density]="densidad()"
         mobileMode="cards"
-        [columns]="columnas"
+        [columns]="columnas()"
         [leadingDecoration]="true"
         [rows]="filas()"
         [loading]="cargandoInicial()"
         [emptyMessage]="mensajeVacio()"
-        caption="Padrón de empleados"
+        caption="Listado de empleados"
         rowKey="id"
         [clickableRows]="true"
         (rowClick)="abrirFicha($event)"
@@ -203,19 +191,12 @@
         <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
           @if (column.key === 'num_empleado') {
             <!--
-              The stamp is hidden from assistive tech on purpose: the flag already
-              announces the same state in a sentence, and one datum deserves one
-              reading. The stamp is the word, the lane is the glance.
+              The lane is the same mechanic as the traffic light: colour on the
+              leading edge at a glance, with the sentence kept for the screen
+              reader. The stamp in `Estado` repeats the word visually and stays
+              out of the accessibility tree, so the datum is read once.
             -->
-            <app-row-flag
-              [tone]="row.estado === 'Activo' ? 'activo' : 'baja'"
-              [label]="'Estado: ' + row.estado"
-            />
-            <span
-              class="seal is-{{ row.estado === 'Activo' ? 'activo' : 'baja' }}"
-              aria-hidden="true"
-              >{{ row.estado }}</span
-            >
+            <app-row-flag [tone]="tonoDe(row)" [label]="descripcionDe(row)" />
             <span class="mono">{{ value }}</span>
           } @else if (column.key === 'nombre') {
             <app-row-link
@@ -224,6 +205,10 @@
             >
               <span class="mono">{{ value }}</span>
             </app-row-link>
+          } @else if (column.key === 'estatus') {
+            <span class="seal is-{{ tonoDe(row) }}" aria-hidden="true">{{ etiquetaDe(row) }}</span>
+          } @else if (column.key === 'fecha_baja') {
+            <span class="mono">{{ fechaDe(row) }}</span>
           } @else {
             {{ value }}
           }
@@ -287,7 +272,7 @@
   (editarSolicitado)="editarEmpleado($event)"
   [empleadoId]="fichaId()"
   [(open)]="fichaAbierta"
-  (bajaRegistrada)="alRegistrarBaja()"
+  (bajaRegistrada)="alActualizarCicloVida()"
 />
 
 <app-alta-drawer [(open)]="altaAbierta" (registrado)="alRegistrarEmpleado($event)" />

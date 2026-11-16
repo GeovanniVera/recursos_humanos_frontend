@@ -139,7 +139,7 @@ export class Topbar {
         segments.push(segment.path);
       }
 
-      const label = node.data?.['breadcrumb'];
+      const label = this.labelOf(node);
       if (typeof label === 'string') {
         steps.push({ label, url: `/${segments.join('/')}` });
       }
@@ -156,5 +156,27 @@ export class Topbar {
     }
 
     return trail;
+  }
+
+  /**
+   * Label of one route step.
+   *
+   * A route may declare `breadcrumbByEstatus` when its last step depends on a
+   * filter rather than on the path: the employee listing does exactly that, so
+   * the trail follows the pressed tab. `?estatus=` is read from the snapshot and
+   * falls back to `activo`, which is the value the URL omits.
+   */
+  private labelOf(node: ActivatedRouteSnapshot): unknown {
+    const byEstatus = node.data?.['breadcrumbByEstatus'];
+
+    if (byEstatus !== null && typeof byEstatus === 'object') {
+      const estatus = node.queryParams?.['estatus'] ?? 'activo';
+      const label = (byEstatus as Record<string, unknown>)[estatus];
+      if (typeof label === 'string') {
+        return label;
+      }
+    }
+
+    return node.data?.['breadcrumb'];
   }
 }

@@ -83,7 +83,7 @@
 
   <ng-template #actions>
     <app-button variant="secondary" (click)="accesoActivos.set(false)">Cancelar</app-button>
-    <app-button variant="primary" (click)="ir('/empleados/activos')">
+    <app-button variant="primary" (click)="ir('/empleados')">
       Ir a empleados activos
     </app-button>
   </ng-template>
@@ -92,12 +92,12 @@
 <app-modal title="Empleados baja" [(open)]="accesoBaja">
   <p>
     Cuenta las cuentas inactivas. El historial de cada baja, con su fecha, su motivo y su archivo,
-    vive en la pantalla de empleados baja.
+    vive en la pestaña de bajas definitivas del listado de empleados.
   </p>
 
   <ng-template #actions>
     <app-button variant="secondary" (click)="accesoBaja.set(false)">Cancelar</app-button>
-    <app-button variant="primary" (click)="ir('/empleados/baja')">Ir a empleados baja</app-button>
+    <app-button variant="primary" (click)="ir('/empleados', { estatus: 'baja_definitiva' })">Ir a empleados baja</app-button>
   </ng-template>
 </app-modal>
 

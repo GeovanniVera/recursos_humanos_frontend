@@ -1,11 +1,8 @@
 import { Routes } from '@angular/router';
 import { environment } from '../environments/environment';
 import { authGuard, guestGuard } from './core/auth/auth.guard';
+import { ESTATUS_INICIAL, TITULO_ESTATUS } from './core/empleados/estatus-ui';
 import { AppShell } from './layout/app-shell/app-shell.component';
-
-/** Lazy loader of the generic placeholder screen used by unbuilt destinations. */
-const placeholder = () =>
-  import('./shared/ui/placeholder-page/placeholder-page.component').then((m) => m.PlaceholderPage);
 
 /** Visual token & UI kit routes exposed strictly in non-production builds. */
 const devRoutes: Routes = !environment.produccion
@@ -46,55 +43,24 @@ export const routes: Routes = [
       },
       {
         path: 'empleados',
-        // A branch with no screen of its own: it is a componentless route whose
-        // breadcrumb gives the trail its middle step.
-        data: { breadcrumb: 'Empleados' },
-        children: [
-          {
-            path: '',
-            pathMatch: 'full',
-            // The branch is an index: it names the sections and leads to them.
-            // The listing lives where it belongs, under `activos`.
-            loadComponent: () =>
-              import('./features/empleados/empleados-index.component').then(
-                (m) => m.EmpleadosIndex,
-              ),
-          },
-          {
-            path: 'activos',
-            data: { breadcrumb: 'Empleados activos' },
-            loadComponent: () =>
-              import('./features/empleados/empleados-page.component').then((m) => m.EmpleadosPage),
-          },
-          {
-            path: ':id/editar',
-            // The edition left the route tree too: the pencil of the roster
-            // opens the drawer. The path stays as a redirect so an old bookmark
-            // — or a link from a document — lands on the list instead of a 404.
-            pathMatch: 'full',
-            redirectTo: 'activos',
-          },
-          {
-            path: 'alta',
-            // The alta left the route tree: it is the drawer of the roster now,
-            // opened from its own header. The path stays as a redirect so an old
-            // bookmark — or a link from a document — lands on the list instead of
-            // a 404. `pathMatch: 'full'` keeps it from swallowing `/empleados/alta/x`.
-            pathMatch: 'full',
-            redirectTo: 'activos',
-          },
-          {
-            path: 'baja',
-            data: {
-              breadcrumb: 'Empleados baja',
-              titulo: 'Empleados baja',
-              descripcion:
-                'Las bajas de personal, con su fecha, su motivo y el archivo histórico, llegan en la siguiente iteración.',
-            },
-            loadComponent: placeholder,
-          },
-        ],
+        // The listing is the whole branch: every status lives in one screen with
+        // its tabs, so there is no index above it and no `/baja` beside it. The
+        // last step of the trail follows the pressed tab.
+        data: {
+          breadcrumb: TITULO_ESTATUS[ESTATUS_INICIAL],
+          breadcrumbByEstatus: TITULO_ESTATUS,
+        },
+        loadComponent: () =>
+          import('./features/empleados/empleados-page.component').then((m) => m.EmpleadosPage),
       },
+      // Old addresses of the branch. The index, the roster and the baja listing
+      // were three screens; now they are one, and a bookmark or a link from a
+      // document lands on it instead of a 404. `redirectTo` keeps the query, so
+      // `?estatus=licencia` still opens that tab.
+      { path: 'empleados/activos', pathMatch: 'full', redirectTo: 'empleados' },
+      { path: 'empleados/baja', pathMatch: 'full', redirectTo: 'empleados' },
+      { path: 'empleados/alta', pathMatch: 'full', redirectTo: 'empleados' },
+      { path: 'empleados/:id/editar', pathMatch: 'full', redirectTo: 'empleados' },
       {
         path: 'semaforo-documentos',
         data: { breadcrumb: 'Semáforo de Completitud' },

@@ -18,9 +18,9 @@
 }
 
 // One state role per tone: these flip with the theme, so the lane stays visible
-// on the pale canvas of `light` and on the deep one of `guinda`. The roster only
-// ever passes `activo` and `baja`, so the three completeness tones belong to the
-// semáforo screen alone.
+// on the pale canvas of `light` and on the deep one of `guinda`. The roster
+// passes the three employment states; the completeness tones belong to the
+// semáforo screen.
 .row-flag.is-completo {
   background: var(--color-state-success);
 }
@@ -35,6 +35,11 @@
 
 .row-flag.is-activo {
   background: var(--color-state-success);
+}
+
+// A leave is open but not terminated: warning, not error.
+.row-flag.is-licencia {
+  background: var(--color-state-warning);
 }
 
 .row-flag.is-baja {
