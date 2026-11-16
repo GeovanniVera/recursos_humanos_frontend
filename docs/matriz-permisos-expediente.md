@@ -9,7 +9,7 @@ mostrar la frase que el backend devuelve cuando niega.
 
 | Pantalla | Ruta | Para qué existe | Capacidad |
 |---|---|---|---|
-| Padrón (activos y bajas) | `/empleados/activos` | Quién está y quién se fue | `E-01` lista, `E-12` búsqueda |
+| Padrón (activos y bajas) | `/empleados` | Quién está y quién se fue | `E-01` lista, `E-12` búsqueda |
 | Semáforo de completitud | `/semaforo-documentos` | Quién debe documentos, entre los activos | `E-08` |
 | Expediente (drawer) | — | El trabajador, visto desde cualquiera de las dos | `E-02` |
 | Edición (drawer) | — | Corregir estado civil, estudios y experiencia | `E-04` |

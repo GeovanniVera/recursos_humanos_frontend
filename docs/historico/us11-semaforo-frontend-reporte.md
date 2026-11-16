@@ -41,7 +41,7 @@ Rutas relativas a este repositorio:
 | `src/app/shared/ui/data-table/data-table.component.html` | Cabeceras ordenables accesibles, optativas. |
 | `src/app/shared/ui/data-table/data-table.component.scss` | Controles de cabecera con tokens. |
 | `docs/us11-semaforo-frontend-reporte.md` | Este informe. |
-| `docs/evidence/us11/*.jpg` | Seis capturas locales de la integración. |
+| `docs/historico/evidence/us11/*.jpg` | Seis capturas locales de la integración. |
 
 El comportamiento anterior de DataTable queda como valor predeterminado; sus ocho pruebas anteriores siguen pasando.
 
