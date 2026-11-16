@@ -79,8 +79,11 @@
                   // banner and its own dialogs) legitimately needs more than the
                   // 6kB the initial scaffold assumed; the previous ceiling left
                   // the catalog screen 12 bytes under the warning with no room
-                  // for a copy change.
-                  "maximumWarning": "7kB",
+                  // for a copy change. The edit folder holds three sheets, two
+                  // 1:N folders and four stacked annexes, so it moved the ceiling
+                  // once more. The hard limit stays at 10kB: a component that
+                  // reaches it is a component that needs splitting.
+                  "maximumWarning": "9kB",
                   "maximumError": "10kB"
                 }
               ],

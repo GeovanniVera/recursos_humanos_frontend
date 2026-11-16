@@ -1,32 +1,20 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import { environment } from '../../../../environments/environment';
 import { FormularioCatalogos } from '../../../core/empleados/alta.models';
-import { BORRADOR_ALTA } from '../../../core/empleados/borrador-alta';
-import { CAMPOS_EDITABLES } from '../../../core/empleados/editar.service';
 import { FichaEmpleado } from '../../../core/empleados/ficha.models';
-import { HistorialCampo } from './historial-campo/historial-campo.component';
 import { EditarDrawer } from './editar-drawer.component';
 
 const URL_EMPLEADOS = `${environment.apiBaseUrl}/empleados`;
 const URL_FORMULARIO = `${URL_EMPLEADOS}/formulario`;
 
-/** The example the RENAPO publishes: Veracruz, 1956-04-27, female. */
-const CURP = 'HEGG560427MVZRRL04';
-
 const EMPLEADO_ID = 17;
-const OTRO_ID = 18;
 
-const AREA_ID = 3;
-const PUESTO_ID = 7;
-
-/** `200` body of the catalog endpoint, with only what this sheet reads. */
 const CATALOGOS: FormularioCatalogos = {
   areas: [
     {
-      id: AREA_ID,
+      id: 3,
       padre_id: null,
       nombre: 'Área A',
       tipo_area: 'Operativa',
@@ -35,8 +23,14 @@ const CATALOGOS: FormularioCatalogos = {
       asignable: true,
     },
   ],
-  puestos: [{ id: PUESTO_ID, nombre: 'Analista', categoria_cct_id: 1, area_ids: [AREA_ID] }],
-  categorias_cct: [{ id: 1, clave: 'CCT-01', tipo: 'administrativo', descripcion: 'Analista' }],
+  puestos: [
+    { id: 7, nombre: 'Analista', categoria_cct_id: 1, area_ids: [3] },
+    { id: 8, nombre: 'Jefe de Área', categoria_cct_id: 2, area_ids: [3] },
+  ],
+  categorias_cct: [
+    { id: 1, clave: 'CCT-01', tipo: 'administrativo', descripcion: 'Analista' },
+    { id: 2, clave: 'CCT-02', tipo: 'mando_medio_superior', descripcion: 'Jefe de Área' },
+  ],
   niveles_estudios: [
     { id: 2, clave: 'LIC', descripcion: 'Licenciatura' },
     { id: 3, clave: 'MTR', descripcion: 'Maestría' },
@@ -45,131 +39,73 @@ const CATALOGOS: FormularioCatalogos = {
     { id: 1, clave: 'SOL', descripcion: 'Soltero' },
     { id: 2, clave: 'CAS', descripcion: 'Casado' },
   ],
-  tipos_personal: ['Sindicalizado'],
+  tipos_personal: ['No Aplica', 'Sindicalizado', 'No sindicalizado'],
   sexos: ['Masculino', 'Femenino'],
   entidades: [{ clave: 'VZ', nombre: 'Veracruz' }],
-  tipos_jornada: ['Completa'],
+  tipos_jornada: ['Mixta', 'Matutina', 'Vespertina'],
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };
 
-/**
- * The record as the endpoint answers it.
- *
- * The birth date and the sex deliberately differ from what the CURP carries
- * (`1956-04-27` / `Femenino`): the record is the authority on both, and the edit
- * sheet must print the stored values instead of deriving them again.
- */
-const FICHA: FichaEmpleado = {
-  id: EMPLEADO_ID,
-  identificacion: {
-    num_empleado: 'US08-17',
-    nombre: 'Prueba US08',
-    curp: CURP,
-    fecha_nacimiento: '1990-05-14',
-    sexo: 'M',
-    estado_civil_id: 1,
-    estado_civil: 'Soltero',
-    entidad_nacimiento: 'Veracruz',
-  },
-  plaza: {
-    area_id: AREA_ID,
-    area: 'Área A',
-    puesto_id: PUESTO_ID,
-    puesto: 'Analista',
-    tipo_puesto: 'Confianza',
-    categoria_cct_id: 1,
-    categoria_cct_clave: 'CCT-01',
-    tipo_personal: 'Sindicalizado',
-    tipo_jornada: 'Completa',
-    fecha_inicio_puesto: '2020-01-15',
-    fecha_ingreso_institucion: '2018-03-01',
-    fecha_ingreso_gobierno: '2015-09-01',
-    antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
-  },
-  contacto: { correo_institucional: 'persona@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 2,
-    nivel_estudios: 'Licenciatura',
-    escuela_procedencia: 'UNAM',
-    generacion: '2010-2014',
-  },
-  experiencia: {
-    exp_publico_anios: 3,
-    exp_privado_anios: 2,
-    trabaja_otro_lugar: 'No',
-    trabaja_otro_donde: null,
-  },
-  gestion_interna: {
-    activo: true,
-    fecha_baja: null,
-    motivo_baja: null,
-    nota_baja: null,
-    observaciones: null,
-    estado_expediente: { estado: 'completo', total_faltantes: 0, campos_faltantes: [] },
-  },
-};
+const CAMPOS = ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'];
 
-/** A second worker, to prove a reopen does not print the previous one. */
-const OTRA_FICHA: FichaEmpleado = {
-  ...FICHA,
-  id: OTRO_ID,
-  identificacion: {
-    ...FICHA.identificacion,
-    num_empleado: 'US08-18',
-    nombre: 'Otra Persona',
-    curp: null,
-    fecha_nacimiento: null,
-    sexo: null,
-    estado_civil_id: 2,
-    estado_civil: 'Casado',
-    entidad_nacimiento: null,
-  },
-  contacto: { correo_institucional: 'otra@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 3,
-    nivel_estudios: 'Maestría',
-    escuela_procedencia: 'IPN',
-    generacion: '2012-2016',
-  },
-};
+function ficha(cambios: Partial<FichaEmpleado> = {}): FichaEmpleado {
+  return {
+    id: EMPLEADO_ID,
+    actualizado_en: '2026-01-01T00:00:00+00:00',
+    identificacion: {
+      num_empleado: 'US08-17',
+      nombre: 'Prueba US08',
+      curp: 'HEGG560427MVZRRL04',
+      fecha_nacimiento: '1990-05-14',
+      sexo: 'M',
+      estado_civil_id: 1,
+      estado_civil: 'Soltero',
+      entidad_nacimiento: 'Veracruz',
+    },
+    plaza: {
+      area_id: 3,
+      area: 'Área A',
+      puesto_id: 7,
+      puesto: 'Analista',
+      tipo_puesto: 'Confianza',
+      categoria_cct_id: 1,
+      categoria_cct_clave: 'CCT-01',
+      tipo_personal: 'Sindicalizado',
+      tipo_jornada: 'Matutina',
+      fecha_inicio_puesto: '2020-01-15',
+      fecha_ingreso_institucion: '2018-03-01',
+      fecha_ingreso_gobierno: '2015-09-01',
+      antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
+    },
+    contacto: { correo_institucional: 'persona@utn.edu.mx' },
+    experiencia: { exp_publico_anios: 5, exp_privado_anios: 3 },
+    gestion_interna: {
+      estatus: 'activo',
+      fecha_baja: null,
+      motivo_baja: null,
+      nota_baja: null,
+      observaciones: null,
+      estado_expediente: { estado: 'completo', total_faltantes: 0, campos_faltantes: [] },
+    },
+    edicion: { campos_editables: CAMPOS },
+    grados_academicos: [
+      {
+        id: 31,
+        nivel_estudios_id: 2,
+        nivel_estudios: 'Licenciatura',
+        titulo_o_carrera: 'Licenciatura en Sistemas',
+        escuela_procedencia: 'UNAM',
+        generacion: '2012-2016',
+        cedula_profesional: null,
+        es_maximo: true,
+      },
+    ],
+    empleos_externos: [],
+    ...cambios,
+  };
+}
 
-/**
- * A record whose protected values are legacy: they fail today's rules.
- *
- * The allowlist decides what may be written, so a value outside it is not the
- * user's to fix here — and it must not block the save either.
- */
-const FICHA_LEGADO: FichaEmpleado = {
-  ...FICHA,
-  identificacion: {
-    ...FICHA.identificacion,
-    curp: 'LEGADO',
-    fecha_nacimiento: null,
-    sexo: null,
-    entidad_nacimiento: null,
-  },
-};
-
-/** A record with no plaza: every one of its values prints the placeholder. */
-const FICHA_SIN_PLAZA: FichaEmpleado = {
-  ...FICHA,
-  plaza: {
-    ...FICHA.plaza,
-    area_id: null,
-    area: null,
-    puesto_id: null,
-    puesto: null,
-    categoria_cct_id: null,
-    categoria_cct_clave: null,
-    tipo_personal: null,
-    tipo_jornada: null,
-  },
-};
-
-/**
- * jsdom ships `HTMLDialogElement` without `showModal` / `close`, and the folder
- * is a native `<dialog>`: without these two the panel never opens.
- */
+/** jsdom ships `HTMLDialogElement` without the dialog API. */
 function patchDialogPrototype(): void {
   const proto = HTMLDialogElement.prototype as unknown as {
     showModal: () => void;
@@ -190,38 +126,10 @@ function host(fixture: ComponentFixture<EditarDrawer>): HTMLElement {
   return fixture.nativeElement as HTMLElement;
 }
 
-/** The sheet of the folder: the only scroll container of the panel. */
-function sheet(fixture: ComponentFixture<EditarDrawer>): HTMLElement {
-  const elemento = host(fixture).querySelector<HTMLElement>('.sheet');
-  if (elemento === null) {
-    throw new Error('No sheet rendered');
-  }
-  return elemento;
-}
-
 function texto(fixture: ComponentFixture<EditarDrawer>): string {
   return host(fixture).textContent ?? '';
 }
 
-/** A tab of the strip, found by the label it prints. */
-function tab(fixture: ComponentFixture<EditarDrawer>, etiqueta: string): HTMLButtonElement {
-  const encontrado = Array.from(
-    host(fixture).querySelectorAll<HTMLButtonElement>('button[role="tab"]'),
-  ).find((candidato) => (candidato.textContent ?? '').trim().startsWith(etiqueta));
-
-  if (encontrado === undefined) {
-    throw new Error(`No tab labelled ${etiqueta}`);
-  }
-  return encontrado;
-}
-
-/** Opens a sheet the way a pointer does. */
-async function abrirTab(fixture: ComponentFixture<EditarDrawer>, etiqueta: string): Promise<void> {
-  tab(fixture, etiqueta).click();
-  await fixture.whenStable();
-}
-
-/** A button of the panel, by the label it reads. */
 function boton(
   fixture: ComponentFixture<EditarDrawer>,
   etiqueta: string,
@@ -231,27 +139,22 @@ function boton(
   );
 }
 
-/** `id`s of every real control the sheet on screen renders. */
-function idsDeControles(fixture: ComponentFixture<EditarDrawer>): string[] {
-  return Array.from(sheet(fixture).querySelectorAll<HTMLElement>('input, select, textarea')).map(
-    (control) => control.id,
-  );
-}
-
-/** Value printed under a label, in the record drawer's read-only grammar. */
 function valorDe(fixture: ComponentFixture<EditarDrawer>, etiqueta: string): string | undefined {
-  const labels = Array.from(sheet(fixture).querySelectorAll('.label'));
+  const labels = Array.from(host(fixture).querySelectorAll('.label'));
   const label = labels.find((elemento) => elemento.textContent?.trim() === etiqueta);
   return label?.parentElement?.querySelector('.value')?.textContent?.trim();
 }
 
-/** Types into a field the way a keyboard does. */
+function campo<T extends HTMLElement>(fixture: ComponentFixture<EditarDrawer>, id: string): T | null {
+  return host(fixture).querySelector<T>(`#${id}`);
+}
+
 async function escribir(
   fixture: ComponentFixture<EditarDrawer>,
   id: string,
   valor: string,
 ): Promise<void> {
-  const control = sheet(fixture).querySelector<HTMLInputElement | HTMLTextAreaElement>(`#${id}`);
+  const control = campo<HTMLInputElement | HTMLTextAreaElement>(fixture, id);
   if (control === null) {
     throw new Error(`No field #${id} rendered`);
   }
@@ -260,9 +163,39 @@ async function escribir(
   await fixture.whenStable();
 }
 
-/** Lets the queued focus move run, which is scheduled for the next task. */
-async function siguienteTarea(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 10));
+async function elegir(
+  fixture: ComponentFixture<EditarDrawer>,
+  id: string,
+  valor: string,
+): Promise<void> {
+  const control = campo<HTMLSelectElement>(fixture, id);
+  if (control === null) {
+    throw new Error(`No select #${id} rendered`);
+  }
+  control.value = valor;
+  control.dispatchEvent(new Event('change', { bubbles: true }));
+  await fixture.whenStable();
+}
+
+async function marcar(fixture: ComponentFixture<EditarDrawer>, selector: string): Promise<void> {
+  const control = host(fixture).querySelector<HTMLInputElement>(selector);
+  if (control === null) {
+    throw new Error(`No checkbox ${selector}`);
+  }
+  control.checked = true;
+  control.dispatchEvent(new Event('change', { bubbles: true }));
+  await fixture.whenStable();
+}
+
+async function abrirTab(fixture: ComponentFixture<EditarDrawer>, etiqueta: string): Promise<void> {
+  const tab = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
+    (elemento) => (elemento.textContent ?? '').includes(etiqueta),
+  );
+  if (tab === undefined) {
+    throw new Error(`No tab ${etiqueta}`);
+  }
+  tab.click();
+  await fixture.whenStable();
 }
 
 describe('EditarDrawer', () => {
@@ -282,496 +215,359 @@ describe('EditarDrawer', () => {
     httpMock.verify();
   });
 
-  /** Creates the folder for a worker and opens it, answering its two requests. */
-  async function abrir(
-    id: number = EMPLEADO_ID,
-    ficha: FichaEmpleado = FICHA,
-  ): Promise<ComponentFixture<EditarDrawer>> {
+  async function abrir(registro: FichaEmpleado = ficha()): Promise<ComponentFixture<EditarDrawer>> {
     const fixture = TestBed.createComponent(EditarDrawer);
-    fixture.componentRef.setInput('empleadoId', id);
+    fixture.componentRef.setInput('empleadoId', EMPLEADO_ID);
     await fixture.whenStable();
 
     fixture.componentInstance.open.set(true);
     fixture.detectChanges();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock.expectOne(`${URL_EMPLEADOS}/${id}`).flush({ data: ficha });
-    await fixture.whenStable();
-
+    responder(fixture, registro);
     return fixture;
   }
 
-  it('loads the record and prefills the draft without blanking what the record holds', async () => {
-    const fixture = TestBed.createComponent(EditarDrawer);
-    fixture.componentRef.setInput('empleadoId', EMPLEADO_ID);
-    fixture.componentInstance.open.set(true);
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    // The sheet has nothing to print yet, and it says so instead of painting an
-    // empty form over the worker it is about to read.
-    expect(fixture.componentInstance.cargando()).toBe(true);
-    expect(sheet(fixture).querySelector('.skeleton')).not.toBeNull();
-    expect(boton(fixture, 'Guardar')).toBeUndefined();
-
+  function responder(fixture: ComponentFixture<EditarDrawer>, registro: FichaEmpleado): void {
     httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`).flush({ data: FICHA });
+    httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`).flush({ data: registro });
+    fixture.detectChanges();
+  }
+
+  it('paints the official data and offers only the fields the policy allows', async () => {
+    const fixture = await abrir();
     await fixture.whenStable();
 
-    const datos = fixture.componentInstance.modelo();
-    expect(datos.nombre).toBe('Prueba US08');
-    expect(datos.num_empleado).toBe('US08-17');
-    expect(datos.curp).toBe(CURP);
-    // The record wins over the CURP for both: the document is not re-interpreted
-    // by the screen that edits an existing file.
-    expect(datos.fecha_nacimiento).toBe('1990-05-14');
-    expect(datos.sexo).toBe('M');
-    // The entity is the exception: the request carries the key, never the name.
-    expect(datos.entidad_nacimiento).toBe('VZ');
-    expect(datos.area_id).toBe(AREA_ID);
-    expect(datos.puesto_id).toBe(PUESTO_ID);
-    expect(datos.estado_civil_id).toBe(1);
-    expect(datos.nivel_estudios_id).toBe(2);
-    expect(datos.escuela_procedencia).toBe('UNAM');
-    expect(datos.generacion).toBe('2010-2014');
-    expect(datos.exp_publico_anios).toBe(3);
-    expect(datos.exp_privado_anios).toBe(2);
-    expect(datos.trabaja_otro_lugar).toBe('No');
-    expect(datos.observaciones).toBe('');
-
-    // The sheet prints the worker it is about, with the document's values.
-    expect(texto(fixture)).toContain('Prueba US08');
-    expect(valorDe(fixture, 'CURP')).toBe(CURP);
-    expect(valorDe(fixture, 'Fecha de nacimiento')).toBe('14 de mayo de 1990');
-    expect(fixture.componentInstance.cargando()).toBe(false);
-    expect(fixture.componentInstance.fallo()).toBeNull();
-  });
-
-  it('renders only the nine editable fields as controls, and every other field as a value', async () => {
-    const fixture = await abrir();
-
-    // Identificación: the only control is the state of civil status.
-    expect(idsDeControles(fixture)).toEqual(['estado_civil_id']);
-    expect(valorDe(fixture, 'Nombre completo')).toBe('Prueba US08');
     expect(valorDe(fixture, 'Número de empleado')).toBe('US08-17');
-    expect(valorDe(fixture, 'Sexo')).toBe('M');
-    expect(valorDe(fixture, 'Entidad de nacimiento')).toBe('Veracruz');
-    expect(valorDe(fixture, 'Correo institucional')).toBe('persona@utn.edu.mx');
-    expect(sheet(fixture).querySelector('#nombre')).toBeNull();
-    expect(sheet(fixture).querySelector('#curp')).toBeNull();
+    expect(valorDe(fixture, 'CURP')).toBe('HEGG560427MVZRRL04');
+    expect(campo(fixture, 'estado_civil_id')).not.toBeNull();
 
-    // Plaza is read-only in full: the institution owns it.
+    // El 404 del historial de campos no se consulta nunca.
+    httpMock.expectNone((peticion) => peticion.url.includes('informacion-historial'));
+  });
+
+  it('sends only the changed scalar together with the concurrency token', async () => {
+    const fixture = await abrir();
+
+    // Sin cambios no hay nada que guardar.
+    expect(boton(fixture, 'Guardar cambios')?.disabled).toBe(true);
+
+    await elegir(fixture, 'estado_civil_id', '2');
+
+    expect(boton(fixture, 'Guardar cambios')?.disabled).toBe(false);
+    boton(fixture, 'Guardar cambios')?.click();
+    await fixture.whenStable();
+
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`);
+    expect(peticion.request.method).toBe('PATCH');
+    expect(peticion.request.body).toEqual({
+      estado_civil_id: 2,
+      updated_at: '2026-01-01T00:00:00+00:00',
+    });
+
+    const guardada = ficha();
+    peticion.flush({
+      data: {
+        ...guardada,
+        actualizado_en: '2026-02-02T10:00:00+00:00',
+        identificacion: { ...guardada.identificacion, estado_civil_id: 2, estado_civil: 'Casado' },
+      },
+    });
+    await fixture.whenStable();
+
+    // La carpeta no se cierra: sigue abierta y confirma el guardado.
+    expect(fixture.componentInstance.open()).toBe(true);
+    expect(texto(fixture)).toContain('Cambios guardados.');
+    expect(boton(fixture, 'Guardar cambios')?.disabled).toBe(true);
+  });
+
+  it('shows the conflict and offers reloading the record', async () => {
+    const fixture = await abrir();
+
+    await elegir(fixture, 'estado_civil_id', '2');
+    boton(fixture, 'Guardar cambios')?.click();
+    await fixture.whenStable();
+
+    httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`).flush(
+      {
+        mensaje: 'El expediente cambió desde que lo abriste. Recarga la ficha y vuelve a intentar.',
+        codigo: 'conflicto_concurrencia',
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await fixture.whenStable();
+
+    expect(texto(fixture)).toContain('cambió desde que lo abriste');
+
+    boton(fixture, 'Recargar ficha')?.click();
+    await fixture.whenStable();
+
+    responder(fixture, ficha());
+    await fixture.whenStable();
+
+    expect(texto(fixture)).not.toContain('cambió desde que lo abriste');
+  });
+
+  it('keeps the plaza sheet read-only, without a save action', async () => {
+    const fixture = await abrir();
     await abrirTab(fixture, 'Plaza');
-    expect(idsDeControles(fixture)).toEqual([]);
+
     expect(valorDe(fixture, 'Área')).toBe('Área A');
-    expect(valorDe(fixture, 'Puesto')).toBe('Analista');
-    expect(valorDe(fixture, 'Categoría CCT')).toBe('CCT-01');
-    expect(valorDe(fixture, 'Fecha de ingreso al gobierno')).toBe('1 de septiembre de 2015');
-
-    // Formación holds the other eight.
-    await abrirTab(fixture, 'Formación');
-    const formacion = idsDeControles(fixture).sort();
-    expect(formacion).toEqual(
-      [
-        'nivel_estudios_id',
-        'escuela_procedencia',
-        'generacion',
-        'exp_publico_anios',
-        'exp_privado_anios',
-        'trabaja_otro_lugar',
-        'trabaja_otro_donde',
-        'observaciones',
-      ].sort(),
-    );
-
-    // The three sheets together offer the allowlist and nothing else.
-    expect([...formacion, 'estado_civil_id'].sort()).toEqual([...CAMPOS_EDITABLES].sort());
+    expect(boton(fixture, 'Guardar cambios')).toBeUndefined();
+    expect(boton(fixture, 'Ver historial de adscripciones →')).toBeDefined();
+    expect(boton(fixture, 'Registrar cambio de adscripción →')).toBeDefined();
   });
 
-  it('prints every plaza field read-only, including the catalogue values that are empty', async () => {
-    const fixture = await abrir(EMPLEADO_ID, FICHA_SIN_PLAZA);
+  it('adds an academic grade from its inline form', async () => {
+    const fixture = await abrir();
+    await abrirTab(fixture, 'Formación');
+
+    expect(texto(fixture)).toContain('Licenciatura en Sistemas');
+
+    boton(fixture, '+ Agregar grado académico')?.click();
+    await fixture.whenStable();
+
+    await elegir(fixture, 'grado-nivel', '3');
+    await escribir(fixture, 'grado-titulo', 'Maestría en Redes');
+    await escribir(fixture, 'grado-escuela', 'IPN');
+
+    boton(fixture, 'Guardar grado')?.click();
+    await fixture.whenStable();
+
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/grados`);
+    expect(peticion.request.method).toBe('POST');
+    expect(peticion.request.body).toEqual(
+      expect.objectContaining({
+        nivel_estudios_id: 3,
+        titulo_o_carrera: 'Maestría en Redes',
+        escuela_procedencia: 'IPN',
+      }),
+    );
+
+    peticion.flush({
+      data: ficha({
+        grados_academicos: [
+          ...ficha().grados_academicos,
+          {
+            id: 32,
+            nivel_estudios_id: 3,
+            nivel_estudios: 'Maestría',
+            titulo_o_carrera: 'Maestría en Redes',
+            escuela_procedencia: 'IPN',
+            generacion: null,
+            cedula_profesional: null,
+            es_maximo: false,
+          },
+        ],
+      }),
+    });
+    await fixture.whenStable();
+
+    expect(texto(fixture)).toContain('Maestría en Redes');
+  });
+
+  it('disables the scalars the actor cannot write', async () => {
+    const fixture = await abrir(
+      ficha({ edicion: { campos_editables: ['estado_civil_id'] } }),
+    );
+    await abrirTab(fixture, 'Formación');
+
+    expect(campo<HTMLTextAreaElement>(fixture, 'observaciones')?.disabled).toBe(true);
+    expect(campo<HTMLInputElement>(fixture, 'exp_publico_anios')?.disabled).toBe(true);
+  });
+
+  it('shows the appointment history in its annex', async () => {
+    const fixture = await abrir();
     await abrirTab(fixture, 'Plaza');
 
-    // No control at all: the institution owns the plaza, so nothing here is
-    // something the user can type into.
-    expect(idsDeControles(fixture)).toEqual([]);
-    expect(sheet(fixture).querySelector('select')).toBeNull();
+    boton(fixture, 'Ver historial de adscripciones →')?.click();
+    await fixture.whenStable();
 
-    // A value the record does not carry reads as such, never as an empty cell.
-    for (const etiqueta of [
-      'Área',
-      'Puesto',
-      'Categoría CCT',
-      'Tipo de personal',
-      'Tipo de jornada',
-    ]) {
-      expect(valorDe(fixture, etiqueta)).toBe('Sin registro');
-    }
+    httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/historial`).flush({
+      data: [
+        {
+          id: 51,
+          desde: '2020-01-15',
+          hasta: null,
+          area_id: 3,
+          area: 'Área A',
+          puesto_id: 7,
+          puesto: 'Analista',
+          categoria_cct_id: 1,
+          categoria_cct_clave: 'CCT-01',
+          motivo: 'Alta',
+          estado: 'vigente',
+        },
+      ],
+    });
+    await fixture.whenStable();
 
-    // Nothing is scolded: there is no field on this sheet the user may fix.
-    expect(sheet(fixture).querySelector('[role="alert"]')).toBeNull();
+    expect(texto(fixture)).toContain('Analista');
+    expect(texto(fixture)).toContain('Vigente');
+    expect(texto(fixture)).toContain('Anexo al folio US08-17');
   });
 
-  it('keeps the studies and the experience editable', async () => {
+  it('registers an assignment change and returns to the plaza sheet', async () => {
     const fixture = await abrir();
-    await abrirTab(fixture, 'Formación');
-
-    for (const id of [
-      'escuela_procedencia',
-      'generacion',
-      'exp_publico_anios',
-      'exp_privado_anios',
-      'observaciones',
-    ]) {
-      const control = sheet(fixture).querySelector<HTMLInputElement>(`#${id}`);
-      expect(control).not.toBeNull();
-      expect(control?.readOnly).toBe(false);
-    }
-
-    expect(sheet(fixture).querySelector<HTMLSelectElement>('#trabaja_otro_lugar')?.disabled).toBe(
-      false,
-    );
-
-    // The write lands in the draft, which is what the request will carry.
-    await escribir(fixture, 'generacion', '2012-2016');
-    expect(fixture.componentInstance.modelo().generacion).toBe('2012-2016');
-  });
-
-  it('refuses to write a field outside the allowlist, even if the screen asks it to', async () => {
-    const fixture = await abrir();
-    const componente = fixture.componentInstance;
-
-    componente.guardar('nombre', 'Otro nombre');
-    componente.guardar('curp', 'XXXX000000XXXXXX00');
-    componente.guardar('area_id', 99);
-    componente.guardar('entidad_nacimiento', 'DF');
-    componente.guardar('tipo_personal', 'Otro');
-    await fixture.whenStable();
-
-    expect(componente.modelo().nombre).toBe('Prueba US08');
-    expect(componente.modelo().curp).toBe(CURP);
-    expect(componente.modelo().area_id).toBe(AREA_ID);
-    expect(componente.modelo().entidad_nacimiento).toBe('VZ');
-    expect(componente.modelo().tipo_personal).toBe('Sindicalizado');
-
-    // A legacy value that fails a current rule is not the user's to fix here, so
-    // it does not block the save either: the CURP of the fixture is a valid one,
-    // and swapping it for a broken one is exactly what the screen must not do.
-    expect(componente.errorDe('curp')).toBeNull();
-  });
-
-  it('loads the record and the catalogues once, keeps identification protected and civil status editable', async () => {
-    const fixture = await abrir(EMPLEADO_ID, FICHA_LEGADO);
-
-    // One request each: the sheet reads the record it is about exactly once.
-    httpMock.expectNone(URL_FORMULARIO);
-    httpMock.expectNone(`${URL_EMPLEADOS}/${EMPLEADO_ID}`);
-
-    // Every identification value is printed, not offered: the only control of
-    // the sheet is the marital status.
-    expect(sheet(fixture).querySelector('#nombre')).toBeNull();
-    expect(sheet(fixture).querySelector('#curp')).toBeNull();
-    expect(valorDe(fixture, 'Nombre completo')).toBe('Prueba US08');
-    expect(sheet(fixture).querySelector<HTMLSelectElement>('#estado_civil_id')?.disabled).toBe(
-      false,
-    );
-
-    // A write outside the allowlist is ignored, and a legacy value that fails a
-    // current rule is not revalidated here: it cannot be fixed on this screen, so
-    // it must not block the save either.
-    fixture.componentInstance.guardar('nombre', 'No permitido');
-    expect(fixture.componentInstance.modelo().nombre).toBe('Prueba US08');
-    expect(fixture.componentInstance.errorDe('curp')).toBeNull();
-    expect(fixture.componentInstance.puedeGuardar()).toBe(true);
-  });
-
-  it('sends exactly the allowlist in the PATCH, trimmed and without the protected fields', async () => {
-    const fixture = await abrir();
-    await abrirTab(fixture, 'Formación');
-
-    await escribir(fixture, 'generacion', '2012-2016');
-    fixture.componentInstance.guardar('observaciones', '  Nota interna  ');
-    await fixture.whenStable();
-
-    boton(fixture, 'Guardar')?.click();
-    await fixture.whenStable();
-
-    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`);
-    expect(peticion.request.method).toBe('PATCH');
-    expect(Object.keys(peticion.request.body).sort()).toEqual([...CAMPOS_EDITABLES].sort());
-    expect(peticion.request.body['nombre']).toBeUndefined();
-    expect(peticion.request.body['curp']).toBeUndefined();
-    expect(peticion.request.body['entidad_nacimiento']).toBeUndefined();
-    expect(peticion.request.body['area_id']).toBeUndefined();
-
-    expect(peticion.request.body['generacion']).toBe('2012-2016');
-    expect(peticion.request.body['observaciones']).toBe('Nota interna');
-    // A field the user cleared travels as `null`, which is how the endpoint
-    // erases it; an abandoned value is never sent as `''`.
-    expect(peticion.request.body['escuela_procedencia']).toBe('UNAM');
-    expect(peticion.request.body['trabaja_otro_donde']).toBeNull();
-
-    peticion.flush({ data: FICHA });
-    await fixture.whenStable();
-  });
-
-  it('ignores a second save while the first one is still in flight', async () => {
-    const fixture = await abrir();
-    const componente = fixture.componentInstance;
-
-    // Two presses, the way a double click does it: the second one must not even
-    // reach the service, or the worker would be saved twice.
-    componente.guardarCambios();
-    componente.guardarCambios();
-    await fixture.whenStable();
-
-    // `expectOne` fails when the second press started a second PATCH.
-    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`);
-    expect(peticion.request.method).toBe('PATCH');
-    expect(componente.enviando()).toBe(true);
-
-    peticion.flush({ data: FICHA });
-    await fixture.whenStable();
-  });
-
-  it('lands a 422 on its field, reveals it and opens the tab that owns it', async () => {
-    const fixture = await abrir();
-
-    // The sheet on screen is Identificación; the failure belongs to Formación.
-    boton(fixture, 'Guardar')?.click();
-    await fixture.whenStable();
-
-    httpMock
-      .expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`)
-      .flush(
-        { message: 'Los datos no son válidos.', errors: { generacion: ['Revisa la generación.'] } },
-        { status: 422, statusText: 'Unprocessable Content' },
-      );
-    await fixture.whenStable();
-
-    expect(tab(fixture, 'Formación').getAttribute('aria-selected')).toBe('true');
-    expect(sheet(fixture).querySelector('#error-generacion')?.textContent).toContain(
-      'Revisa la generación.',
-    );
-    expect(sheet(fixture).querySelector('#generacion')?.getAttribute('aria-invalid')).toBe('true');
-    expect(sheet(fixture).querySelector('#generacion')?.getAttribute('aria-describedby')).toBe(
-      'error-generacion',
-    );
-
-    await siguienteTarea();
-    await fixture.whenStable();
-    expect(document.activeElement?.id).toBe('generacion');
-  });
-
-  it('blocks an invalid generation, then lands a 422 on its field without losing what was typed', async () => {
-    const fixture = await abrir();
-    const componente = fixture.componentInstance;
-
-    componente.guardar('generacion', '2020');
-    await fixture.whenStable();
-    componente.guardarCambios();
-    await fixture.whenStable();
-
-    // Nothing left the browser, and the sheet that owns the field is on screen.
-    httpMock.expectNone((peticion) => peticion.method === 'PATCH');
-    expect(componente.tabActiva()).toBe('formacion');
-    expect(sheet(fixture).querySelector('#error-generacion')?.textContent).toContain(
-      'La generación debe tener el formato AAAA-AAAA.',
-    );
-
-    componente.guardar('generacion', '2020-2024');
-    componente.guardarCambios();
-    await fixture.whenStable();
-
-    httpMock
-      .expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`)
-      .flush(
-        { message: 'Datos inválidos', errors: { generacion: ['Revisa la generación.'] } },
-        { status: 422, statusText: 'Unprocessable' },
-      );
-    await fixture.whenStable();
-
-    // The typed value survives the answer, the request is no longer in flight,
-    // and the server sentence is on its own field.
-    expect(componente.modelo().generacion).toBe('2020-2024');
-    expect(componente.enviando()).toBe(false);
-    expect(componente.errorDe('generacion')).toBe('Revisa la generación.');
-    expect(sheet(fixture).querySelector('#generacion')?.getAttribute('aria-invalid')).toBe('true');
-  });
-
-  it('reports the saved record, closes, and lets the history panel read its field again', async () => {
-    const fixture = await abrir();
-    const guardadas: FichaEmpleado[] = [];
-    fixture.componentInstance.actualizado.subscribe((ficha) => guardadas.push(ficha));
-
-    const actualizada: FichaEmpleado = {
-      ...FICHA,
-      estudios: { ...FICHA.estudios, nivel_estudios_id: 3, nivel_estudios: 'Maestría' },
-    };
-
-    boton(fixture, 'Guardar')?.click();
-    await fixture.whenStable();
-
-    httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`).flush({ data: actualizada });
-    await fixture.whenStable();
-
-    expect(guardadas).toEqual([actualizada]);
-    expect(fixture.componentInstance.open()).toBe(false);
-    expect(host(fixture).querySelector('dialog')?.hasAttribute('open')).toBe(false);
-    // The same revision signal the edit page bumps: a save is the only thing that
-    // makes an open history panel reload.
-    expect(fixture.componentInstance.historialRevision()).toBe(1);
-    expect(fixture.componentInstance.registroActual()?.estudios.nivel_estudios_id).toBe(3);
-  });
-
-  it('mounts the study-level history on Formación, and nowhere else', async () => {
-    const fixture = await abrir();
-
-    expect(host(fixture).querySelector('app-historial-campo')).toBeNull();
-
-    await abrirTab(fixture, 'Formación');
-    const paneles = fixture.debugElement.queryAll(By.directive(HistorialCampo));
-    expect(paneles).toHaveLength(1);
-
-    const panel = paneles[0].componentInstance as HistorialCampo;
-    expect(panel.campo()).toBe('nivel_estudios_id');
-    expect(panel.empleadoId()).toBe(EMPLEADO_ID);
-    expect(texto(fixture)).toContain('Niveles de estudios ya registrados');
-    // Deferred read: nothing is asked until the disclosure is opened.
-    httpMock.expectNone((peticion) => peticion.url.includes('informacion-historial'));
-
     await abrirTab(fixture, 'Plaza');
-    expect(host(fixture).querySelector('app-historial-campo')).toBeNull();
+
+    boton(fixture, 'Registrar cambio de adscripción →')?.click();
+    await fixture.whenStable();
+
+    // The form opens on the current appointment, with its working condition.
+    expect(campo<HTMLSelectElement>(fixture, 'adsc-area')?.value).toBe('3');
+    expect(campo<HTMLSelectElement>(fixture, 'adsc-tipo-personal')?.value).toBe('Sindicalizado');
+    expect(campo<HTMLSelectElement>(fixture, 'adsc-tipo-jornada')?.value).toBe('Matutina');
+    expect(texto(fixture)).toContain('CCT-01');
+
+    await elegir(fixture, 'adsc-tipo-personal', 'No sindicalizado');
+    await elegir(fixture, 'adsc-tipo-jornada', 'Vespertina');
+    await escribir(fixture, 'adsc-nota', 'Cambio de plaza aprobado');
+
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(false);
+    boton(fixture, 'Registrar cambio')?.click();
+    await fixture.whenStable();
+
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/adscripcion`);
+    expect(peticion.request.body).toEqual({
+      area_id: 3,
+      puesto_id: 7,
+      tipo_personal: 'No sindicalizado',
+      tipo_jornada: 'Vespertina',
+      nota: 'Cambio de plaza aprobado',
+    });
+
+    peticion.flush({ data: ficha() });
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.tabActiva()).toBe('plaza');
+    expect(fixture.componentInstance.vistaL2()).toBeNull();
+    expect(texto(fixture)).toContain('Cambios guardados.');
   });
 
-  it('reads the history of its field only when the panel is expanded', async () => {
+  it('asks for the working condition of a non-management post before saving', async () => {
+    const fixture = await abrir(
+      ficha({ plaza: { ...ficha().plaza, tipo_personal: null, tipo_jornada: null } }),
+    );
+    await abrirTab(fixture, 'Plaza');
+
+    boton(fixture, 'Registrar cambio de adscripción →')?.click();
+    await fixture.whenStable();
+
+    const personal = campo<HTMLSelectElement>(fixture, 'adsc-tipo-personal');
+    const jornada = campo<HTMLSelectElement>(fixture, 'adsc-tipo-jornada');
+
+    expect(personal).not.toBeNull();
+    expect(jornada).not.toBeNull();
+    expect(personal?.disabled).toBe(false);
+    expect(jornada?.disabled).toBe(false);
+
+    // Without a post and without a condition there is nothing to send.
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(true);
+
+    await elegir(fixture, 'adsc-tipo-personal', 'Sindicalizado');
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(true);
+
+    await elegir(fixture, 'adsc-tipo-jornada', 'Mixta');
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(false);
+  });
+
+  it('fixes the working condition of a management post instead of asking for it', async () => {
     const fixture = await abrir();
-    await abrirTab(fixture, 'Formación');
+    await abrirTab(fixture, 'Plaza');
 
-    const panel = fixture.debugElement.query(By.directive(HistorialCampo))
-      .componentInstance as HistorialCampo;
-    expect(panel.campo()).toBe('nivel_estudios_id');
-    expect(panel.empleadoId()).toBe(EMPLEADO_ID);
-    httpMock.expectNone((peticion) => peticion.url.includes('informacion-historial'));
-
-    panel.alternar({ target: { open: true } } as unknown as Event);
+    boton(fixture, 'Registrar cambio de adscripción →')?.click();
     await fixture.whenStable();
 
-    const peticion = httpMock.expectOne(
-      (r) => r.url === `${URL_EMPLEADOS}/${EMPLEADO_ID}/informacion-historial`,
-    );
-    // It asks for its own field and for the page size the panel prints.
-    expect(peticion.request.params.get('campo')).toBe('nivel_estudios_id');
-    expect(peticion.request.params.get('por_pagina')).toBe('5');
-    peticion.flush({ datos: [], meta: { pagina: 1, por_pagina: 5, total: 0, total_paginas: 1 } });
+    await elegir(fixture, 'adsc-puesto', '8');
+
+    // A management category fixes the pair: there is nothing to choose.
+    expect(campo(fixture, 'adsc-tipo-personal')).toBeNull();
+    expect(campo(fixture, 'adsc-tipo-jornada')).toBeNull();
+    expect(texto(fixture)).toContain('Puesto de mando medio');
+
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(false);
+    boton(fixture, 'Registrar cambio')?.click();
     await fixture.whenStable();
 
-    expect(texto(fixture)).toContain('Sin cambios registrados.');
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/adscripcion`);
+    expect(peticion.request.body).toEqual({
+      area_id: 3,
+      puesto_id: 8,
+      tipo_personal: 'No Aplica',
+      tipo_jornada: 'Mixta',
+      nota: null,
+    });
+
+    peticion.flush({ data: ficha() });
+    await fixture.whenStable();
   });
 
-  it('starts from a clean sheet when it is reopened for another worker', async () => {
+  it('resets the working condition when the post changes', async () => {
     const fixture = await abrir();
-    const componente = fixture.componentInstance;
+    await abrirTab(fixture, 'Plaza');
 
-    await abrirTab(fixture, 'Formación');
-    await escribir(fixture, 'generacion', '2012-2016');
-    expect(componente.modelo().generacion).toBe('2012-2016');
-
-    boton(fixture, 'Cerrar')?.click();
-    await fixture.whenStable();
-    await new Promise((resolve) => setTimeout(resolve, 320));
+    boton(fixture, 'Registrar cambio de adscripción →')?.click();
     await fixture.whenStable();
 
-    expect(componente.open()).toBe(false);
-    expect(componente.modelo()).toEqual(BORRADOR_ALTA);
-    expect(componente.registroActual()).toBeNull();
-    expect(componente.tocado()).toEqual({});
-    expect(componente.erroresServidor()).toEqual({});
+    await elegir(fixture, 'adsc-tipo-personal', 'No sindicalizado');
+    await elegir(fixture, 'adsc-tipo-jornada', 'Vespertina');
 
-    fixture.componentRef.setInput('empleadoId', OTRO_ID);
-    componente.open.set(true);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    // A management post takes the condition and hides both controls.
+    await elegir(fixture, 'adsc-puesto', '8');
+    expect(campo(fixture, 'adsc-tipo-personal')).toBeNull();
 
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock.expectOne(`${URL_EMPLEADOS}/${OTRO_ID}`).flush({ data: OTRA_FICHA });
-    await fixture.whenStable();
-
-    expect(componente.tabActiva()).toBe('identificacion');
-    expect(componente.modelo().nombre).toBe('Otra Persona');
-    expect(componente.registroActual()?.id).toBe(OTRO_ID);
-    expect(texto(fixture)).toContain('Otra Persona');
-    expect(texto(fixture)).not.toContain('Prueba US08');
+    // Going back to an administrative one empties it: it is declared again.
+    await elegir(fixture, 'adsc-puesto', '7');
+    expect(campo<HTMLSelectElement>(fixture, 'adsc-tipo-personal')?.value).toBe('');
+    expect(campo<HTMLSelectElement>(fixture, 'adsc-tipo-jornada')?.value).toBe('');
+    expect(boton(fixture, 'Registrar cambio')?.disabled).toBe(true);
   });
 
-  it('offers the retry of a failed load, and none for an answer that will not change', async () => {
-    const fixture = TestBed.createComponent(EditarDrawer);
-    fixture.componentRef.setInput('empleadoId', EMPLEADO_ID);
-    fixture.componentInstance.open.set(true);
-    fixture.detectChanges();
+  it('corrects the employee number from the header, with explicit confirmation', async () => {
+    const fixture = await abrir();
+
+    boton(fixture, 'Corregir número')?.click();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock
-      .expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`)
-      .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
+    expect(texto(fixture)).toContain('Anexo al folio US08-17');
+
+    await escribir(fixture, 'num-nuevo', 'utn-9999');
+    await escribir(fixture, 'num-motivo', 'El número original fue capturado mal');
+
+    expect(boton(fixture, 'Guardar número')?.disabled).toBe(true);
+
+    await marcar(fixture, '.anexo .check input');
+
+    boton(fixture, 'Guardar número')?.click();
     await fixture.whenStable();
 
-    expect(sheet(fixture).querySelector('[role="alert"]')?.textContent).toContain(
-      'No encontramos ese trabajador.',
-    );
-    expect(boton(fixture, 'Reintentar')).toBeUndefined();
-
-    fixture.componentInstance.open.set(false);
-    await fixture.whenStable();
-
-    fixture.componentRef.setInput('empleadoId', OTRO_ID);
-    fixture.componentInstance.open.set(true);
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock
-      .expectOne(`${URL_EMPLEADOS}/${OTRO_ID}`)
-      .flush({}, { status: 0, statusText: 'Unknown Error' });
-    await fixture.whenStable();
-
-    expect(sheet(fixture).querySelector('[role="alert"]')?.textContent).toContain(
-      'No pudimos conectar con el servidor. Revisa tu conexión.',
-    );
-
-    boton(fixture, 'Reintentar')?.click();
-    await fixture.whenStable();
-
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock.expectOne(`${URL_EMPLEADOS}/${OTRO_ID}`).flush({ data: OTRA_FICHA });
-    await fixture.whenStable();
-
-    expect(fixture.componentInstance.fallo()).toBeNull();
-    expect(sheet(fixture).querySelector('[role="alert"]')).toBeNull();
-    expect(texto(fixture)).toContain('Otra Persona');
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/num-empleado`);
+    expect(peticion.request.body).toEqual({
+      num_empleado: 'utn-9999',
+      motivo_correccion: 'El número original fue capturado mal',
+    });
   });
 
-  it('does not leave the save enabled when the preload fails', async () => {
-    const fixture = TestBed.createComponent(EditarDrawer);
-    fixture.componentRef.setInput('empleadoId', EMPLEADO_ID);
-    fixture.componentInstance.open.set(true);
-    fixture.detectChanges();
+  it('rectifies the identity of the worker from its annex', async () => {
+    const fixture = await abrir();
+
+    boton(fixture, 'Rectificar datos de identidad →')?.click();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_FORMULARIO).flush(CATALOGOS);
-    httpMock
-      .expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`)
-      .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
+    await escribir(fixture, 'identidad-nombre', 'Prueba Corregida');
+    await escribir(fixture, 'identidad-motivo', 'Corrección del acta de nacimiento');
+
+    boton(fixture, 'Rectificar identidad')?.click();
     await fixture.whenStable();
 
-    // Without a record there is nothing to save over.
-    expect(fixture.componentInstance.fallo()).not.toBeNull();
-    expect(fixture.componentInstance.puedeGuardar()).toBe(false);
-
-    fixture.componentInstance.guardarCambios();
-    await fixture.whenStable();
-    httpMock.expectNone((peticion) => peticion.method === 'PATCH');
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/identidad`);
+    expect(peticion.request.method).toBe('PATCH');
+    expect(peticion.request.body).toEqual(
+      expect.objectContaining({
+        nombre: 'Prueba Corregida',
+        motivo_rectificacion: 'Corrección del acta de nacimiento',
+      }),
+    );
   });
 });

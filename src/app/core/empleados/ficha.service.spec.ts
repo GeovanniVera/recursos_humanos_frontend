@@ -36,20 +36,29 @@ const FICHA: FichaEmpleado = {
     antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
   },
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 3,
-    nivel_estudios: 'Licenciatura',
-    escuela_procedencia: 'UNAM',
-    generacion: '2012-2016',
+  actualizado_en: '2026-01-01T00:00:00+00:00',
+  edicion: {
+    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
   },
+  grados_academicos: [
+    {
+      id: 1,
+      nivel_estudios_id: 3,
+      nivel_estudios: 'Licenciatura',
+      titulo_o_carrera: 'Licenciatura en Sistemas',
+      escuela_procedencia: 'UNAM',
+      generacion: '2012-2016',
+      cedula_profesional: null,
+      es_maximo: true,
+    },
+  ],
+  empleos_externos: [],
   experiencia: {
     exp_publico_anios: 5,
     exp_privado_anios: 3,
-    trabaja_otro_lugar: 'No',
-    trabaja_otro_donde: null,
   },
   gestion_interna: {
-    activo: true,
+    estatus: 'activo',
     fecha_baja: null,
     motivo_baja: null,
     nota_baja: null,

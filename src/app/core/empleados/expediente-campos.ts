@@ -28,7 +28,6 @@ export const ETIQUETAS_CAMPO_EXPEDIENTE: Readonly<Record<string, string>> = {
   generacion: 'Generación',
   exp_publico_anios: 'Años de experiencia en el sector público',
   exp_privado_anios: 'Años de experiencia en el sector privado',
-  trabaja_otro_lugar: 'Trabaja en otro lugar',
 };
 
 /**

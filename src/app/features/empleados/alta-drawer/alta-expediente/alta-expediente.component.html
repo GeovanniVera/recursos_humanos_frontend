@@ -8,6 +8,9 @@
     <p class="bar-name">{{ titulo() }}</p>
 
     <div class="bar-actions">
+      <!-- Acciones propias del documento que monta el fólder (la edición las usa). -->
+      <ng-content select="[acciones-bar]" />
+
       <button type="button" class="action" (click)="cerrar.emit()">Cerrar</button>
     </div>
   </div>

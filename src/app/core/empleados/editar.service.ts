@@ -1,75 +1,127 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { PadronMeta } from '../padron/padron.models';
+import {
+  ActualizarEmpleoExternoRequest,
+  ActualizarGradoAcademicoRequest,
+  AdscripcionHistorialResponse,
+  CambiarAdscripcionRequest,
+  CorregirNumEmpleadoRequest,
+  EdicionEmpleadoRequest,
+  EmpleoExternoRequest,
+  GradoAcademicoRequest,
+  RectificarIdentidadRequest,
+} from './editar.models';
 import { FichaEmpleadoResponse } from './ficha.models';
 
-export const CAMPOS_EDITABLES = [
-  'estado_civil_id',
-  'nivel_estudios_id',
-  'escuela_procedencia',
-  'generacion',
-  'exp_publico_anios',
-  'exp_privado_anios',
-  'trabaja_otro_lugar',
-  'trabaja_otro_donde',
-  'observaciones',
-] as const;
-export type CampoEditable = (typeof CAMPOS_EDITABLES)[number];
-export type EdicionEmpleado = Record<CampoEditable, string | number | null>;
-
 /**
- * The only `campo` values `GET /api/empleados/{id}/informacion-historial` accepts.
+ * HTTP surface of the record's edit flows.
  *
- * The endpoint filters by an enum of exactly these three, and anything else — a
- * fourth field, a typo, one of the other editable ones — is answered with a
- * `422`, never with an empty list. That is why the panel is typed against this
- * union instead of the editable fields: a request for `observaciones` fails to
- * compile here, which is what keeps an unsupported panel from being mounted at
- * all. A convention would have let six of them through.
- */
-export const CAMPOS_CON_HISTORIAL = [
-  'nivel_estudios_id',
-  'escuela_procedencia',
-  'generacion',
-] as const;
-export type CampoConHistorial = (typeof CAMPOS_CON_HISTORIAL)[number];
-
-/**
- * One recorded move of a field.
+ * One service for the scalar edition (E-04), the two 1:N folders (E-14), the
+ * assignment change, the identity rectification (E-10) and the employee-number
+ * correction (E-11): they all answer with the whole record, so the drawer never
+ * has to merge a partial response into what it already holds.
  *
- * `valor_anterior` and `valor_nuevo` are the readable strings the backend
- * resolved (`"Sin dato"` when empty) and are meant to be printed as they arrive.
- * They describe a past value only: they are never used to refill the form.
+ * It holds no state on purpose: the folder owns the draft and the failures, so
+ * a request that comes back never wipes what the user typed. The bearer token
+ * is out of scope — `authInterceptor` attaches it and clears the session on a
+ * `401`.
+ *
+ * Errors are left untouched: the caller reads `mensaje`, `codigo` and `errors`
+ * from `EdicionError`, because a `409 conflicto_concurrencia` needs a different
+ * sentence than a `422` of one field.
  */
-export interface MovimientoCampo {
-  id: number;
-  campo: CampoConHistorial;
-  antes: string | number | boolean | null;
-  despues: string | number | boolean | null;
-  valor_anterior: string;
-  valor_nuevo: string;
-  fecha: string;
-  responsable: string;
-}
-export interface HistoriaCampo {
-  datos: MovimientoCampo[];
-  meta: PadronMeta;
-}
-
 @Injectable({ providedIn: 'root' })
 export class EditarEmpleadoService {
   private readonly http = inject(HttpClient);
+
   private readonly url = `${environment.apiBaseUrl}/empleados`;
-  consultar(id: number) {
+
+  /** `GET /empleados/{id}` — the record the folder starts from. */
+  consultar(id: number): Observable<FichaEmpleadoResponse> {
     return this.http.get<FichaEmpleadoResponse>(`${this.url}/${id}`);
   }
-  actualizar(id: number, datos: EdicionEmpleado) {
+
+  /** `PATCH /empleados/{id}` — the four scalars, only what changed. */
+  actualizar(id: number, datos: EdicionEmpleadoRequest): Observable<FichaEmpleadoResponse> {
     return this.http.patch<FichaEmpleadoResponse>(`${this.url}/${id}`, datos);
   }
-  historialCampo(id: number, campo: CampoConHistorial, pagina = 1) {
-    return this.http.get<HistoriaCampo>(`${this.url}/${id}/informacion-historial`, {
-      params: new HttpParams().set('campo', campo).set('pagina', pagina).set('por_pagina', 5),
-    });
+
+  // ---------------------------------------------------------------------------
+  // Carpeta de grados académicos
+  // ---------------------------------------------------------------------------
+
+  agregarGrado(id: number, datos: GradoAcademicoRequest): Observable<FichaEmpleadoResponse> {
+    return this.http.post<FichaEmpleadoResponse>(`${this.url}/${id}/grados`, datos);
+  }
+
+  actualizarGrado(
+    id: number,
+    gradoId: number,
+    datos: ActualizarGradoAcademicoRequest,
+  ): Observable<FichaEmpleadoResponse> {
+    return this.http.patch<FichaEmpleadoResponse>(`${this.url}/${id}/grados/${gradoId}`, datos);
+  }
+
+  eliminarGrado(id: number, gradoId: number): Observable<FichaEmpleadoResponse> {
+    return this.http.delete<FichaEmpleadoResponse>(`${this.url}/${id}/grados/${gradoId}`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Carpeta de empleos externos
+  // ---------------------------------------------------------------------------
+
+  agregarEmpleoExterno(id: number, datos: EmpleoExternoRequest): Observable<FichaEmpleadoResponse> {
+    return this.http.post<FichaEmpleadoResponse>(`${this.url}/${id}/empleos-externos`, datos);
+  }
+
+  actualizarEmpleoExterno(
+    id: number,
+    empleoId: number,
+    datos: ActualizarEmpleoExternoRequest,
+  ): Observable<FichaEmpleadoResponse> {
+    return this.http.patch<FichaEmpleadoResponse>(`${this.url}/${id}/empleos-externos/${empleoId}`, datos);
+  }
+
+  eliminarEmpleoExterno(id: number, empleoId: number): Observable<FichaEmpleadoResponse> {
+    return this.http.delete<FichaEmpleadoResponse>(`${this.url}/${id}/empleos-externos/${empleoId}`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Adscripción
+  // ---------------------------------------------------------------------------
+
+  /** `POST /empleados/{id}/adscripcion` — closes the current period and opens one. */
+  cambiarAdscripcion(
+    id: number,
+    datos: CambiarAdscripcionRequest,
+  ): Observable<FichaEmpleadoResponse> {
+    return this.http.post<FichaEmpleadoResponse>(`${this.url}/${id}/adscripcion`, datos);
+  }
+
+  /** `GET /empleados/{id}/historial` — every appointment period, newest first. */
+  historialAdscripciones(id: number): Observable<AdscripcionHistorialResponse> {
+    return this.http.get<AdscripcionHistorialResponse>(`${this.url}/${id}/historial`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Actos auditados
+  // ---------------------------------------------------------------------------
+
+  /** `PATCH /empleados/{id}/identidad` (E-10). */
+  rectificarIdentidad(
+    id: number,
+    datos: RectificarIdentidadRequest,
+  ): Observable<FichaEmpleadoResponse> {
+    return this.http.patch<FichaEmpleadoResponse>(`${this.url}/${id}/identidad`, datos);
+  }
+
+  /** `PATCH /empleados/{id}/num-empleado` (E-11). */
+  corregirNumEmpleado(
+    id: number,
+    datos: CorregirNumEmpleadoRequest,
+  ): Observable<FichaEmpleadoResponse> {
+    return this.http.patch<FichaEmpleadoResponse>(`${this.url}/${id}/num-empleado`, datos);
   }
 }

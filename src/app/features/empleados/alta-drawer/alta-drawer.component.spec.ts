@@ -165,7 +165,7 @@ const CREADO: EmpleadoRegistrado = {
   num_empleado: '12345',
   nombre: 'Ana Martínez',
   correo_institucional: 'ana@utn.edu.mx',
-  activo: true,
+  estatus: 'activo',
 };
 
 /**
