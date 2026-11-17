@@ -97,7 +97,9 @@
                 @let nacimiento = valorDe('fecha_nacimiento');
                 <div class="field">
                   <span class="label">Fecha de nacimiento</span>
-                  <span class="value" [class.is-empty]="nacimiento.vacio">{{ nacimiento.valor }}</span>
+                  <span class="value" [class.is-empty]="nacimiento.vacio">{{
+                    nacimiento.valor
+                  }}</span>
                 </div>
 
                 @let sexo = valorDe('sexo');
@@ -126,9 +128,15 @@
                       name="estado_civil_id"
                       class="control"
                       [class.is-invalid]="erroresServidor()['estado_civil_id'] !== undefined"
-                      (change)="estadoCivilId.set(($any($event.target).value === '' ? null : +$any($event.target).value))"
+                      (change)="
+                        estadoCivilId.set(
+                          $any($event.target).value === '' ? null : +$any($event.target).value
+                        )
+                      "
                     >
-                      <option value="" [selected]="estadoCivilId() === null">Elige una opción</option>
+                      <option value="" [selected]="estadoCivilId() === null">
+                        Elige una opción
+                      </option>
                       @for (estado of estadosCiviles(); track estado.id) {
                         <option [value]="estado.id" [selected]="estadoCivilId() === estado.id">
                           {{ estado.descripcion }}
@@ -181,7 +189,9 @@
                 @let categoria = valorDe('categoria_cct');
                 <div class="field">
                   <span class="label">Categoría CCT</span>
-                  <span class="value" [class.is-empty]="categoria.vacio">{{ categoria.valor }}</span>
+                  <span class="value" [class.is-empty]="categoria.vacio">{{
+                    categoria.valor
+                  }}</span>
                 </div>
 
                 @let personal = valorDe('tipo_personal');
@@ -199,18 +209,26 @@
                 @let inicioPuesto = valorDe('fecha_inicio_puesto');
                 <div class="field">
                   <span class="label">Fecha de inicio en el puesto</span>
-                  <span class="value" [class.is-empty]="inicioPuesto.vacio">{{ inicioPuesto.valor }}</span>
+                  <span class="value" [class.is-empty]="inicioPuesto.vacio">{{
+                    inicioPuesto.valor
+                  }}</span>
                 </div>
 
                 @let ingresoGobierno = valorDe('fecha_ingreso_gobierno');
                 <div class="field">
                   <span class="label">Fecha de ingreso al gobierno</span>
-                  <span class="value" [class.is-empty]="ingresoGobierno.vacio">{{ ingresoGobierno.valor }}</span>
+                  <span class="value" [class.is-empty]="ingresoGobierno.vacio">{{
+                    ingresoGobierno.valor
+                  }}</span>
                 </div>
               </div>
 
               <div class="group-actions">
-                <button type="button" class="action" (click)="abrirNivel2('historial-adscripciones')">
+                <button
+                  type="button"
+                  class="action"
+                  (click)="abrirNivel2('historial-adscripciones')"
+                >
                   Ver historial de adscripciones →
                 </button>
                 <button type="button" class="action" (click)="abrirNivel2('cambio-adscripcion')">
@@ -221,199 +239,27 @@
           }
 
           @default {
-            <fieldset class="group">
-              <legend class="group-title">Grados académicos</legend>
-              <p class="group-hint">
-                La carpeta guarda todos los grados declarados. Solo uno puede estar marcado como
-                máximo, y es el que la ficha publica como nivel de estudios.
-              </p>
-
-              @if (grados().length === 0) {
-                <p class="carpeta-vacia">Sin grados registrados.</p>
-              } @else {
-                <ul class="tarjetas">
-                  @for (grado of grados(); track grado.id) {
-                    <li class="tarjeta">
-                      <div class="tarjeta-head">
-                        <p class="tarjeta-titulo">
-                          {{ grado.titulo_o_carrera || grado.nivel_estudios || 'Grado académico' }}
-                        </p>
-                        @if (grado.es_maximo) {
-                          <span class="badge is-ok">Grado máximo</span>
-                        }
-                      </div>
-
-                      <dl class="tarjeta-meta">
-                        <div>
-                          <dt>Nivel</dt>
-                          <dd>{{ grado.nivel_estudios || '—' }}</dd>
-                        </div>
-                        <div>
-                          <dt>Escuela</dt>
-                          <dd>{{ grado.escuela_procedencia || '—' }}</dd>
-                        </div>
-                        <div>
-                          <dt>Generación</dt>
-                          <dd>{{ grado.generacion || '—' }}</dd>
-                        </div>
-                        @if (grado.cedula_profesional) {
-                          <div>
-                            <dt>Cédula</dt>
-                            <dd>{{ grado.cedula_profesional }}</dd>
-                          </div>
-                        }
-                      </dl>
-
-                      <div class="tarjeta-acciones">
-                        <button type="button" class="action" [disabled]="guardandoGrado()" (click)="editarGrado(grado)">
-                          Editar
-                        </button>
-                        @if (!grado.es_maximo) {
-                          <button
-                            type="button"
-                            class="action"
-                            [disabled]="guardandoGrado()"
-                            (click)="marcarGradoMaximo(grado)"
-                          >
-                            Marcar como máximo
-                          </button>
-                        }
-                        <button
-                          type="button"
-                          class="action is-danger"
-                          [disabled]="guardandoGrado()"
-                          (click)="eliminarGrado(grado)"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </li>
-                  }
-                </ul>
-              }
-
-              @if (!gradoAbierto()) {
-                <button type="button" class="action" (click)="nuevoGrado()">
-                  + Agregar grado académico
-                </button>
-              } @else {
-                <div class="form-carpeta">
-                  <p class="form-carpeta-titulo">
-                    {{ gradoEditandoId() === null ? 'Nuevo grado' : 'Editar grado' }}
-                  </p>
-
-                  <div class="grid">
-                    <div class="field">
-                      <label class="label" for="grado-nivel">Nivel de estudios</label>
-                      <select
-                        id="grado-nivel"
-                        class="control"
-                        [class.is-invalid]="errorGrado('nivel_estudios_id') !== null"
-                        (change)="gradoNivel.set($any($event.target).value === '' ? null : +$any($event.target).value)"
-                      >
-                        <option value="" [selected]="gradoNivel() === null">Elige una opción</option>
-                        @for (nivel of niveles(); track nivel.id) {
-                          <option [value]="nivel.id" [selected]="gradoNivel() === nivel.id">
-                            {{ nivel.descripcion }}
-                          </option>
-                        }
-                      </select>
-                      @if (errorGrado('nivel_estudios_id'); as error) {
-                        <p class="field-error" role="alert">{{ error }}</p>
-                      }
-                    </div>
-
-                    <div class="field is-wide">
-                      <label class="label" for="grado-titulo">Título o carrera</label>
-                      <input
-                        id="grado-titulo"
-                        class="control"
-                        type="text"
-                        maxlength="200"
-                        [value]="gradoTitulo()"
-                        [class.is-invalid]="errorGrado('titulo_o_carrera') !== null"
-                        (input)="gradoTitulo.set($any($event.target).value)"
-                      />
-                      @if (errorGrado('titulo_o_carrera'); as error) {
-                        <p class="field-error" role="alert">{{ error }}</p>
-                      }
-                    </div>
-
-                    <div class="field">
-                      <label class="label" for="grado-escuela">Escuela de procedencia</label>
-                      <input
-                        id="grado-escuela"
-                        class="control"
-                        type="text"
-                        maxlength="200"
-                        [value]="gradoEscuela()"
-                        [class.is-invalid]="errorGrado('escuela_procedencia') !== null"
-                        (input)="gradoEscuela.set($any($event.target).value)"
-                      />
-                      @if (errorGrado('escuela_procedencia'); as error) {
-                        <p class="field-error" role="alert">{{ error }}</p>
-                      }
-                    </div>
-
-                    <div class="field">
-                      <label class="label" for="grado-generacion">Generación</label>
-                      <input
-                        id="grado-generacion"
-                        class="control"
-                        type="text"
-                        maxlength="9"
-                        placeholder="AAAA-AAAA"
-                        [value]="gradoGeneracion()"
-                        [class.is-invalid]="errorGrado('generacion') !== null"
-                        (input)="gradoGeneracion.set($any($event.target).value)"
-                      />
-                      @if (errorGrado('generacion'); as error) {
-                        <p class="field-error" role="alert">{{ error }}</p>
-                      }
-                    </div>
-
-                    <div class="field">
-                      <label class="label" for="grado-cedula">Cédula profesional</label>
-                      <input
-                        id="grado-cedula"
-                        class="control"
-                        type="text"
-                        maxlength="30"
-                        [value]="gradoCedula()"
-                        [class.is-invalid]="errorGrado('cedula_profesional') !== null"
-                        (input)="gradoCedula.set($any($event.target).value)"
-                      />
-                      @if (errorGrado('cedula_profesional'); as error) {
-                        <p class="field-error" role="alert">{{ error }}</p>
-                      }
-                    </div>
-                  </div>
-
-                  <label class="check">
-                    <input
-                      type="checkbox"
-                      [checked]="gradoMaximo()"
-                      (change)="gradoMaximo.set($any($event.target).checked)"
-                    />
-                    <span>Marcar como grado máximo</span>
-                  </label>
-
-                  <div class="acciones form-carpeta-acciones">
-                    <button type="button" class="action" [disabled]="guardandoGrado()" (click)="cancelarGrado()">
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      class="action is-primary"
-                      [disabled]="guardandoGrado()"
-                      (click)="guardarGrado()"
-                    >
-                      {{ guardandoGrado() ? 'Guardando…' : 'Guardar grado' }}
-                    </button>
-                  </div>
-                </div>
-              }
-            </fieldset>
+            <app-grados-academicos
+              prefijo="editar-"
+              [grados]="gradosPresentacion()"
+              [niveles]="niveles()"
+              [gradoAbierto]="gradoAbierto()"
+              [editando]="gradoEditandoId() !== null"
+              [gradoErrores]="gradoErrores()"
+              [guardandoGrado]="guardandoGrado()"
+              [(gradoNivel)]="gradoNivel"
+              [(gradoTitulo)]="gradoTitulo"
+              [(gradoEscuela)]="gradoEscuela"
+              [(gradoGeneracion)]="gradoGeneracion"
+              [(gradoCedula)]="gradoCedula"
+              [(gradoMaximo)]="gradoMaximo"
+              (nuevoGrado)="nuevoGrado()"
+              (cancelarGrado)="cancelarGrado()"
+              (guardarGrado)="guardarGrado()"
+              (editarGrado)="editarGrado($any($event))"
+              (eliminarGrado)="eliminarGrado($any($event))"
+              (marcarGradoMaximo)="marcarGradoMaximo($any($event))"
+            />
 
             <fieldset class="group">
               <legend class="group-title">Empleos externos</legend>
@@ -453,7 +299,12 @@
                       </dl>
 
                       <div class="tarjeta-acciones">
-                        <button type="button" class="action" [disabled]="guardandoEmpleo()" (click)="editarEmpleo(empleo)">
+                        <button
+                          type="button"
+                          class="action"
+                          [disabled]="guardandoEmpleo()"
+                          (click)="editarEmpleo(empleo)"
+                        >
                           Editar
                         </button>
                         <button
@@ -485,7 +336,9 @@
               } @else {
                 <div class="form-carpeta">
                   <p class="form-carpeta-titulo">
-                    {{ empleoEditandoId() === null ? 'Nuevo empleo externo' : 'Editar empleo externo' }}
+                    {{
+                      empleoEditandoId() === null ? 'Nuevo empleo externo' : 'Editar empleo externo'
+                    }}
                   </p>
 
                   <div class="grid">
@@ -564,7 +417,12 @@
                   </label>
 
                   <div class="acciones form-carpeta-acciones">
-                    <button type="button" class="action" [disabled]="guardandoEmpleo()" (click)="cancelarEmpleo()">
+                    <button
+                      type="button"
+                      class="action"
+                      [disabled]="guardandoEmpleo()"
+                      (click)="cancelarEmpleo()"
+                    >
                       Cancelar
                     </button>
                     <button
@@ -798,8 +656,8 @@
                     <div class="field is-wide">
                       <span class="label">Condición laboral</span>
                       <p class="dato">
-                        Puesto de mando medio: el tipo de personal y el tipo de jornada los fija
-                        el sistema ({{ personalMandoMedio }} · {{ jornadaMandoMedio }}).
+                        Puesto de mando medio: el tipo de personal y el tipo de jornada los fija el
+                        sistema ({{ personalMandoMedio }} · {{ jornadaMandoMedio }}).
                       </p>
                     </div>
                   } @else {
@@ -972,7 +830,10 @@
                     >
                       <option value="" [selected]="identidadEntidad() === ''">Sin dato</option>
                       @for (entidad of entidades(); track entidad.clave) {
-                        <option [value]="entidad.clave" [selected]="identidadEntidad() === entidad.clave">
+                        <option
+                          [value]="entidad.clave"
+                          [selected]="identidadEntidad() === entidad.clave"
+                        >
                           {{ entidad.nombre }}
                         </option>
                       }

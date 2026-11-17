@@ -779,7 +779,9 @@ export class FichaDrawer {
 
   /** The box of the sheet that fills a slot, or `null` when it is not on screen. */
   private campoDe(slot: CampoSlot): HTMLElement | null {
-    return this.hojaRef()?.nativeElement.querySelector<HTMLElement>(`[data-slot="${slot}"]`) ?? null;
+    return (
+      this.hojaRef()?.nativeElement.querySelector<HTMLElement>(`[data-slot="${slot}"]`) ?? null
+    );
   }
 
   /**
@@ -856,7 +858,11 @@ export class FichaDrawer {
       this.subtitulo('Identificación'),
       this.filaTexto('Nombre completo', identificacion?.nombre ?? null, null, true),
       this.filaTexto('CURP', identificacion?.curp ?? null, 'curp', true),
-      this.filaFecha('Fecha de nacimiento', identificacion?.fecha_nacimiento ?? null, 'fecha_nacimiento'),
+      this.filaFecha(
+        'Fecha de nacimiento',
+        identificacion?.fecha_nacimiento ?? null,
+        'fecha_nacimiento',
+      ),
       this.filaTexto('Sexo', identificacion?.sexo ?? null),
       this.filaTexto('Estado civil', identificacion?.estado_civil ?? null, 'estado_civil'),
       this.filaTexto(
@@ -902,6 +908,9 @@ export class FichaDrawer {
 
     return [
       this.subtitulo('Estudios'),
+      ...(maximo?.titulo_o_carrera
+        ? [this.filaTexto('Título o carrera', maximo.titulo_o_carrera)]
+        : []),
       this.filaTexto('Nivel de estudios', maximo?.nivel_estudios ?? null, 'nivel_estudios'),
       this.filaTexto('Generación', maximo?.generacion ?? null, 'generacion'),
       this.filaTexto(
@@ -910,6 +919,15 @@ export class FichaDrawer {
         'escuela_procedencia',
         true,
       ),
+      ...grados
+        .filter((grado) => grado.id !== maximo?.id)
+        .flatMap((grado) => [
+          this.subtitulo(grado.titulo_o_carrera || 'Grado académico adicional'),
+          this.filaTexto('Nivel de estudios', grado.nivel_estudios),
+          this.filaTexto('Generación', grado.generacion),
+          this.filaTexto('Escuela de procedencia', grado.escuela_procedencia, null, true),
+          this.filaTexto('Cédula profesional', grado.cedula_profesional),
+        ]),
       this.subtitulo('Experiencia laboral'),
       this.filaNumero('Sector público', experiencia?.exp_publico_anios ?? null),
       this.filaNumero('Sector privado', experiencia?.exp_privado_anios ?? null),
@@ -942,7 +960,9 @@ export class FichaDrawer {
     const estado = expediente === undefined ? NO_VALUE : this.etiquetaExpediente(expediente.estado);
     const total = expediente?.total_faltantes ?? 0;
     const pendientes =
-      total === 0 ? estado : `${estado} · ${total === 1 ? 'falta 1 campo' : `faltan ${total} campos`}`;
+      total === 0
+        ? estado
+        : `${estado} · ${total === 1 ? 'falta 1 campo' : `faltan ${total} campos`}`;
 
     filas.push(
       this.filaTexto('Estado del expediente', pendientes, null, true),

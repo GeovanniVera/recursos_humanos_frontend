@@ -145,7 +145,10 @@ function valorDe(fixture: ComponentFixture<EditarDrawer>, etiqueta: string): str
   return label?.parentElement?.querySelector('.value')?.textContent?.trim();
 }
 
-function campo<T extends HTMLElement>(fixture: ComponentFixture<EditarDrawer>, id: string): T | null {
+function campo<T extends HTMLElement>(
+  fixture: ComponentFixture<EditarDrawer>,
+  id: string,
+): T | null {
   return host(fixture).querySelector<T>(`#${id}`);
 }
 
@@ -327,9 +330,9 @@ describe('EditarDrawer', () => {
     boton(fixture, '+ Agregar grado académico')?.click();
     await fixture.whenStable();
 
-    await elegir(fixture, 'grado-nivel', '3');
-    await escribir(fixture, 'grado-titulo', 'Maestría en Redes');
-    await escribir(fixture, 'grado-escuela', 'IPN');
+    await elegir(fixture, 'editar-grado-nivel', '3');
+    await escribir(fixture, 'editar-grado-titulo', 'Maestría en Redes');
+    await escribir(fixture, 'editar-grado-escuela', 'IPN');
 
     boton(fixture, 'Guardar grado')?.click();
     await fixture.whenStable();
@@ -367,9 +370,7 @@ describe('EditarDrawer', () => {
   });
 
   it('disables the scalars the actor cannot write', async () => {
-    const fixture = await abrir(
-      ficha({ edicion: { campos_editables: ['estado_civil_id'] } }),
-    );
+    const fixture = await abrir(ficha({ edicion: { campos_editables: ['estado_civil_id'] } }));
     await abrirTab(fixture, 'Formación');
 
     expect(campo<HTMLTextAreaElement>(fixture, 'observaciones')?.disabled).toBe(true);

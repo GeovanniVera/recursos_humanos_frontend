@@ -4,7 +4,11 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { MotivoBaja } from '../../../core/empleados/baja.models';
-import { FichaEmpleado, HistorialBaja, ResumenCompletitud } from '../../../core/empleados/ficha.models';
+import {
+  FichaEmpleado,
+  HistorialBaja,
+  ResumenCompletitud,
+} from '../../../core/empleados/ficha.models';
 import { FichaDrawer } from './ficha-drawer.component';
 
 const EMPLEADO_ID = 12;
@@ -93,7 +97,12 @@ const FICHA_INACTIVA: FichaEmpleado = {
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
   actualizado_en: '2026-01-01T00:00:00+00:00',
   edicion: {
-    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
+    campos_editables: [
+      'estado_civil_id',
+      'exp_publico_anios',
+      'exp_privado_anios',
+      'observaciones',
+    ],
   },
   grados_academicos: [
     {
@@ -153,7 +162,12 @@ const FICHA: FichaEmpleado = {
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
   actualizado_en: '2026-01-01T00:00:00+00:00',
   edicion: {
-    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
+    campos_editables: [
+      'estado_civil_id',
+      'exp_publico_anios',
+      'exp_privado_anios',
+      'observaciones',
+    ],
   },
   grados_academicos: [
     {
@@ -249,7 +263,9 @@ function tabs(fixture: ComponentFixture<FichaHost>): HTMLButtonElement[] {
 }
 
 function tab(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLButtonElement {
-  const encontrada = tabs(fixture).find((elemento) => (elemento.textContent ?? '').includes(etiqueta));
+  const encontrada = tabs(fixture).find((elemento) =>
+    (elemento.textContent ?? '').includes(etiqueta),
+  );
   if (!encontrada) {
     throw new Error(`No tab labelled ${etiqueta}`);
   }
@@ -287,7 +303,10 @@ function valorEn(bloque: HTMLElement | null, etiqueta: string): string | undefin
   return encontrada?.parentElement?.querySelector('.value')?.textContent?.trim();
 }
 
-function boton(fixture: ComponentFixture<FichaHost>, etiqueta: string): HTMLButtonElement | undefined {
+function boton(
+  fixture: ComponentFixture<FichaHost>,
+  etiqueta: string,
+): HTMLButtonElement | undefined {
   return Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find((elemento) =>
     (elemento.textContent ?? '').includes(etiqueta),
   );
@@ -1086,9 +1105,9 @@ describe('FichaDrawer', () => {
     accionPanel(fixture, 'Seguir editando')?.click();
     await fixture.whenStable();
     expect(panelDe(fixture)?.querySelector('.discard')).toBeNull();
-    expect(
-      panelDe(fixture)?.querySelector<HTMLTextAreaElement>('#panel-nota')?.value,
-    ).toBe('Licencia por incapacidad');
+    expect(panelDe(fixture)?.querySelector<HTMLTextAreaElement>('#panel-nota')?.value).toBe(
+      'Licencia por incapacidad',
+    );
 
     // Giving it up leaves.
     accionPanel(fixture, 'Volver')?.click();
@@ -1153,10 +1172,12 @@ describe('FichaDrawer', () => {
     accionPanel(fixture, 'Dar de baja')?.click();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_BAJA).flush(
-      { mensaje: 'El trabajador ya está dado de baja.', codigo: 'trabajador_ya_inactivo' },
-      { status: 409, statusText: 'Conflict' },
-    );
+    httpMock
+      .expectOne(URL_BAJA)
+      .flush(
+        { mensaje: 'El trabajador ya está dado de baja.', codigo: 'trabajador_ya_inactivo' },
+        { status: 409, statusText: 'Conflict' },
+      );
     await fixture.whenStable();
 
     expect(panelDe(fixture)?.textContent).toContain('El trabajador ya está dado de baja.');
@@ -1182,10 +1203,9 @@ describe('FichaDrawer', () => {
     accionPanel(fixture, 'Dar de baja')?.click();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_BAJA).flush(
-      { codigo: 'permiso_denegado' },
-      { status: 403, statusText: 'Forbidden' },
-    );
+    httpMock
+      .expectOne(URL_BAJA)
+      .flush({ codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
     expect(panelDe(fixture)?.textContent).toContain('No tienes permisos para dar de baja.');
 
@@ -1193,10 +1213,9 @@ describe('FichaDrawer', () => {
     await fixture.whenStable();
 
     // A revoked access destroys the token and answers with no code at all.
-    httpMock.expectOne(URL_BAJA).flush(
-      { message: 'Unauthenticated.' },
-      { status: 403, statusText: 'Forbidden' },
-    );
+    httpMock
+      .expectOne(URL_BAJA)
+      .flush({ message: 'Unauthenticated.' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
 
     expect(panelDe(fixture)?.textContent).toContain(
@@ -1217,10 +1236,12 @@ describe('FichaDrawer', () => {
     accionPanel(fixture, 'Dar de baja')?.click();
     await fixture.whenStable();
 
-    httpMock.expectOne(URL_BAJA).flush(
-      { message: 'No query results for model [App\\Models\\Empleado] 99' },
-      { status: 404, statusText: 'Not Found' },
-    );
+    httpMock
+      .expectOne(URL_BAJA)
+      .flush(
+        { message: 'No query results for model [App\\Models\\Empleado] 99' },
+        { status: 404, statusText: 'Not Found' },
+      );
     await fixture.whenStable();
 
     // Laravel's sentence names a model, not a situation: it is replaced.
@@ -1361,5 +1382,35 @@ describe('FichaDrawer', () => {
     expect(panelDe(fixture)?.textContent).toContain('el endpoint aún no existe');
     expect(panelDe(fixture)?.querySelector('.evento')).toBeNull();
   });
-});
 
+  it('shows every academic degree while retaining the maximum summary and employment data', async () => {
+    const fixture = await abrir();
+    const maximo = {
+      ...FICHA.grados_academicos[0],
+      titulo_o_carrera: 'Maestría de prueba',
+      nivel_estudios: 'Maestría',
+      es_maximo: true,
+    };
+    await responder(fixture, {
+      ...FICHA,
+      grados_academicos: [
+        maximo,
+        {
+          ...maximo,
+          id: 999,
+          titulo_o_carrera: 'Licenciatura adicional',
+          nivel_estudios: 'Licenciatura',
+          escuela_procedencia: 'Escuela adicional',
+          es_maximo: false,
+        },
+      ],
+    });
+    tab(fixture, 'Formación').click();
+    await fixture.whenStable();
+    expect(text(fixture)).toContain('Maestría de prueba');
+    expect(text(fixture)).toContain('Licenciatura adicional');
+    expect(text(fixture)).toContain('Escuela adicional');
+    expect(valueOf(fixture, 'Nivel de estudios')).toBe('Maestría');
+    expect(valueOf(fixture, 'Sector público')).toBe('5');
+  });
+});
