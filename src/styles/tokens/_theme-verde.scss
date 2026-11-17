@@ -10,41 +10,67 @@
 // ---------------------------------------------------------------------------
 
 [data-theme='verde'] {
+  // Base theme tokens
+  --bg-main: #F4F2EC;
+  --bg-main-glow: rgba(59, 77, 54, 0.07);
+  --bg-sidebar: #2C3A28;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #EAE7DE;
+  --bg-input: #FAF9F5;
+  --border-color: #DCD7CA;
+  --border-strong: #C3BCA9;
+
+  --text-primary: #222621;
+  --text-secondary: #4C534A;
+  --text-muted: #788076;
+
+  --sidebar-text: #ECEEE9;
+  --sidebar-muted: #A4B0A0;
+  --sidebar-hover: #384933;
+
+  --accent-primary: #3B4D36;
+  --accent-primary-hover: #2C3A28;
+  --accent-primary-contrast: #FFFFFF;
+  --accent-soft: #E5EBE3;
+  --accent-gold: #A98628;
+  --accent-gold-bg: #A98628;
+  --shadow-card: 0 2px 10px rgba(34, 38, 33, 0.04);
+
   // Semáforo filter fills. Error keeps the institutional red: it is a signal,
   // not a brand colour, and it must not go green.
   --color-semaforo-filter-incompleto: var(--guinda-400);
   --color-semaforo-filter-incompleto-ink: var(--white);
   --color-semaforo-filter-casi-completo: var(--amber-400);
   --color-semaforo-filter-casi-completo-ink: var(--guinda-900);
-  --color-semaforo-filter-completo: var(--verde-600);
-  --color-semaforo-filter-completo-ink: var(--white);
+  --color-semaforo-filter-completo: var(--accent-primary);
+  --color-semaforo-filter-completo-ink: var(--accent-primary-contrast);
 
   // Surfaces
-  --color-bg-canvas: var(--crema-100);
-  --color-surface-glass: var(--crema-a72);
-  --color-surface-overlay: var(--crema-a94);
+  --color-bg-canvas: var(--bg-main);
+  --color-surface-glass: var(--bg-card);
+  --color-surface-overlay: rgba(255, 255, 255, 0.94);
   --color-surface-ghost: var(--transparent);
   --color-skeleton-sheen: linear-gradient(90deg, var(--transparent) 0%, var(--white-a72) 50%, var(--transparent) 100%);
 
   // Lines
-  --color-border-default: var(--crema-300);
+  --color-border-default: var(--border-color);
   --color-border-ghost: var(--transparent);
 
   // Text
-  --color-text-primary: var(--grafito-900);
-  --color-text-secondary: var(--grafito-700);
-  --color-text-overline: var(--verde-600);
-  --color-text-heading: var(--verde-600);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-overline: var(--accent-primary);
+  --color-text-heading: var(--accent-primary);
 
   // Actions
-  --color-action-primary: var(--verde-600);
-  --color-action-on-primary: var(--white);
+  --color-action-primary: var(--accent-primary);
+  --color-action-on-primary: var(--accent-primary-contrast);
   // Sheen over the deep green fill: a light veil, never the green itself.
   --color-action-sheen: var(--white-a20);
 
   // Accent
-  --color-accent: var(--verde-600);
-  --color-accent-ink: var(--white);
+  --color-accent: var(--accent-primary);
+  --color-accent-ink: var(--accent-primary-contrast);
 
   // States. The fills are deep in this theme, so their glyph ink is white.
   --color-state-error: var(--guinda-400);
@@ -57,64 +83,52 @@
   --color-state-warning-ink: var(--white);
 
   // Overlays and focus
-  --color-scrim: var(--verde-a60);
-  --color-focus-ring: rgba(75, 94, 59, 0.25);
+  --color-scrim: rgba(44, 58, 40, 0.6);
+  --color-focus-ring: rgba(59, 77, 54, 0.25);
 
-  // Canvas: cream that brightens toward the upper right and settles into a
-  // beige wash at the bottom centre. The gradient is shaped like the guinda one
-  // — one glow, one wash, one diagonal — so the glass panels refract the same
-  // way they do in every other theme.
-  --canvas-glow: rgba(75, 94, 59, 0.1);
-  --canvas-wash: rgba(75, 94, 59, 0.06);
+  // Canvas: cream ground with subtle military-green glow.
+  --canvas-glow: var(--bg-main-glow);
+  --canvas-wash: rgba(59, 77, 54, 0.04);
   --canvas-gradient:
-    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 46% 38% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
     radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
-    linear-gradient(158deg, var(--verde-canvas-hi) 0%, var(--verde-canvas-lo) 100%);
+    linear-gradient(158deg, var(--bg-main) 0%, var(--bg-subtle) 100%);
 
-  // Elevation. Graphite-tinted instead of guinda-tinted: a green sheet casting
-  // a red shadow reads as a printing mistake.
-  --shadow-sm: 0 8px 28px rgba(31, 31, 31, 0.06);
-  --shadow-md: 0 14px 34px rgba(31, 31, 31, 0.12);
-  --shadow-lg: 0 20px 44px rgba(31, 31, 31, 0.18);
+  // Elevation. Graphite-tinted instead of guinda-tinted.
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: 0 8px 24px rgba(34, 38, 33, 0.08);
+  --shadow-lg: 0 16px 38px rgba(34, 38, 33, 0.12);
 
-  // Sidebar. The rail is the one surface painted a colour the page is not, so
-  // it owns its ink: cream on green would fail as body text, and the page ink
-  // (graphite) is unreadable on a green sheet.
-  --color-sidebar-bg: var(--verde-600);
-  // One step above the rail: the disc and the mobile close button have to
-  // read as raised objects, and a cream veil at this size disappears.
-  --color-sidebar-glass: var(--verde-500);
-  --color-sidebar-ink: var(--crema-100);
-  --color-sidebar-line: var(--crema-a20);
-  --color-sidebar-overline: var(--verde-100);
-  --color-sidebar-active: var(--crema-100);
-  --color-sidebar-active-ink: var(--verde-700);
-  --color-sidebar-sheen: var(--verde-300);
+  // Sidebar. The rail is painted military green, so it owns its own ink.
+  --color-sidebar-bg: var(--bg-sidebar);
+  --color-sidebar-glass: var(--sidebar-hover);
+  --color-sidebar-ink: var(--sidebar-text);
+  --color-sidebar-line: rgba(236, 238, 233, 0.2);
+  --color-sidebar-overline: var(--sidebar-muted);
+  --color-sidebar-active: var(--bg-main);
+  --color-sidebar-active-ink: var(--bg-sidebar);
+  --color-sidebar-sheen: var(--accent-primary);
 
-  // Paper world (see `_paper.scss`). The sheet stays ivory, but its ink, rules
-  // and seal are re-inked in graphite and green: leaving the guinda defaults
-  // would make the expediente read as a brand of its own inside this theme.
-  --color-desk: var(--crema-200);
-  --color-paper-ink: var(--grafito-900);
-  --color-paper-action: var(--verde-600);
-  --color-paper-action-ink: var(--white);
-  --color-paper-text: var(--grafito-900);
-  --color-paper-muted: var(--grafito-500);
-  --color-paper-line: var(--crema-400);
-  --color-paper-empty: var(--grafito-500);
-  --color-paper-value: var(--grafito-900);
+  // Paper world (see `_paper.scss`).
+  --color-desk: var(--bg-subtle);
+  --color-paper-ink: var(--text-primary);
+  --color-paper-action: var(--accent-primary);
+  --color-paper-action-ink: var(--accent-primary-contrast);
+  --color-paper-text: var(--text-primary);
+  --color-paper-muted: var(--text-muted);
+  --color-paper-line: var(--border-strong);
+  --color-paper-empty: var(--text-muted);
+  --color-paper-value: var(--text-primary);
   --color-manila: var(--gold-400);
-  --color-manila-dark: var(--gold-600);
-  --color-manila-edge: var(--gold-600);
-  --color-manila-ink: var(--grafito-900);
-  --color-stamp: var(--verde-600);
+  --color-manila-dark: var(--accent-gold);
+  --color-manila-edge: var(--accent-gold);
+  --color-manila-ink: var(--text-primary);
+  --color-stamp: var(--accent-primary);
   --color-stamp-ok: var(--mint-700);
   --color-stamp-warn: var(--amber-700);
-  --color-stamp-soft: var(--verde-a14);
-  // The scrim the folder casts, and the marker swipe when a missing field is
-  // jumped to. Both are global paper roles, so this theme restates them.
-  --color-paper-scrim: var(--verde-a60);
-  --color-paper-flash: var(--verde-a45);
+  --color-stamp-soft: var(--accent-soft);
+  --color-paper-scrim: rgba(44, 58, 40, 0.6);
+  --color-paper-flash: rgba(59, 77, 54, 0.45);
 
   color-scheme: light;
 }
