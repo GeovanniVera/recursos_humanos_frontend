@@ -4,6 +4,32 @@
 // ---------------------------------------------------------------------------
 
 [data-theme='dark'] {
+  // Base theme tokens
+  --bg-main: #120F10;
+  --bg-main-glow: rgba(197, 155, 39, 0.06);
+  --bg-sidebar: #181416;
+  --bg-card: #201B1D;
+  --bg-subtle: #2A2326;
+  --bg-input: #171315;
+  --border-color: #332B2E;
+  --border-strong: #473C40;
+
+  --text-primary: #F6F1ED;
+  --text-secondary: #C8BEC1;
+  --text-muted: #8E8387;
+
+  --sidebar-text: #E5DCE0;
+  --sidebar-muted: #8E8387;
+  --sidebar-hover: #262022;
+
+  --accent-primary: #991B36;
+  --accent-primary-hover: #B32241;
+  --accent-primary-contrast: #FFFFFF;
+  --accent-soft: rgba(153, 27, 54, 0.24);
+  --accent-gold: #E5C158;
+  --accent-gold-bg: #C59B27;
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35);
+
   // US-11 filter fills only; existing global state tokens remain unchanged.
   --color-semaforo-filter-incompleto: var(--guinda-400);
   --color-semaforo-filter-incompleto-ink: var(--white);
@@ -13,9 +39,9 @@
   --color-semaforo-filter-completo-ink: var(--white);
 
   // Surfaces
-  --color-bg-canvas: var(--guinda-950);
-  --color-surface-glass: var(--white-a05);
-  --color-surface-overlay: var(--guinda-a80);
+  --color-bg-canvas: var(--bg-main);
+  --color-surface-glass: var(--bg-card);
+  --color-surface-overlay: rgba(24, 20, 22, 0.94);
   // "No fill" for buttons that must read as inline links.
   --color-surface-ghost: var(--transparent);
   --color-skeleton-sheen: linear-gradient(
@@ -26,28 +52,28 @@
   );
 
   // Lines
-  --color-border-default: var(--white-a12);
+  --color-border-default: var(--border-color);
   // "No line" for a control that only draws its edge on hover or focus, the way
   // `--color-surface-ghost` is "no fill".
   --color-border-ghost: var(--transparent);
 
   // Text
-  --color-text-primary: var(--rose-100);
-  --color-text-secondary: var(--rose-300);
-  --color-text-overline: var(--gold-400);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-overline: var(--accent-gold);
   // Page-heading ink, separate from body copy so a theme can colour headings
   // without recolouring prose.
-  --color-text-heading: var(--rose-100);
+  --color-text-heading: var(--text-primary);
 
   // Actions
-  --color-action-primary: var(--gold-400);
-  --color-action-on-primary: var(--guinda-900);
-  // Sheen over the gold fill: light veil, gold on gold would be invisible.
+  --color-action-primary: var(--accent-primary);
+  --color-action-on-primary: var(--accent-primary-contrast);
+  // Sheen over the guinda fill: light veil.
   --color-action-sheen: var(--white-a20);
 
   // Accent
-  --color-accent: var(--gold-400);
-  --color-accent-ink: var(--guinda-900);
+  --color-accent: var(--accent-gold);
+  --color-accent-ink: #120F10;
 
   // States
   --color-state-error: var(--rose-50);
@@ -62,33 +88,35 @@
 
   // Overlays and focus
   --color-scrim: var(--scrim);
-  --color-focus-ring: rgba(232, 199, 102, 0.25);
+  --color-focus-ring: rgba(229, 193, 88, 0.25);
 
-  // Canvas: near-black that deepens toward the bottom right, with the same warm
-  // light in the upper right. Measured from the dark canvas.
-  --canvas-glow: rgba(120, 70, 35, 0.42);
-  --canvas-wash: rgba(10, 1, 4, 0.15);
+  // Canvas: near-black with subtle warm gold glow.
+  --canvas-glow: var(--bg-main-glow);
+  --canvas-wash: rgba(0, 0, 0, 0.2);
   --canvas-gradient:
-    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 46% 38% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
     radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
-    linear-gradient(125deg, var(--dark-canvas-hi) 0%, var(--guinda-900) 50%, var(--dark-canvas-lo) 100%);
+    linear-gradient(145deg, var(--bg-sidebar) 0%, var(--bg-main) 100%);
 
-  // Paper world: see `_paper.scss`. On dark the ink turns cool and the action
-  // picks up the manila, exactly as the reference does.
-  --color-desk: var(--guinda-950);
-  --color-paper-ink: var(--gold-200);
-  --color-paper-action: var(--gold-400);
-  --color-paper-action-ink: var(--guinda-950);
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.55);
+
+  // Paper world: see `_paper.scss`.
+  --color-desk: var(--bg-main);
+  --color-paper-ink: var(--text-secondary);
+  --color-paper-action: var(--accent-gold);
+  --color-paper-action-ink: #120F10;
 
   // The drawer owns its own ink because a theme may paint it a colour the page
   // is not.
-  --color-sidebar-bg: var(--color-surface-overlay);
-  --color-sidebar-glass: var(--color-surface-glass);
-  --color-sidebar-ink: var(--color-text-primary);
-  --color-sidebar-line: var(--color-border-default);
-  --color-sidebar-overline: var(--color-text-overline);
-  --color-sidebar-active: var(--color-action-primary);
-  --color-sidebar-active-ink: var(--color-action-on-primary);
+  --color-sidebar-bg: var(--bg-sidebar);
+  --color-sidebar-glass: var(--sidebar-hover);
+  --color-sidebar-ink: var(--sidebar-text);
+  --color-sidebar-line: var(--border-color);
+  --color-sidebar-overline: var(--sidebar-muted);
+  --color-sidebar-active: var(--accent-primary);
+  --color-sidebar-active-ink: var(--accent-primary-contrast);
   --color-sidebar-sheen: var(--color-action-sheen);
 
   color-scheme: dark;
