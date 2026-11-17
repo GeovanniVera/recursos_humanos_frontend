@@ -340,9 +340,13 @@
       [bajas]="bajas()"
       [cargandoHistorial]="cargandoBajas()"
       [errorHistorial]="errorBajas()?.mensaje ?? null"
+      [adscripciones]="adscripciones()"
+      [cargandoAdscripciones]="cargandoAdscripciones()"
+      [errorAdscripciones]="errorAdscripciones()?.mensaje ?? null"
       [folio]="folio()"
       (volver)="cerrarVista()"
       (reintentarHistorial)="reintentarBajas()"
+      (reintentarAdscripciones)="reintentarAdscripciones()"
       (bajaRegistrada)="alActualizarCicloVida()"
     />
   </div>

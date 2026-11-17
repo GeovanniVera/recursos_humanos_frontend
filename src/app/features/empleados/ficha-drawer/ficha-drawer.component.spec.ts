@@ -4,12 +4,14 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { MotivoBaja } from '../../../core/empleados/baja.models';
+import { AdscripcionHistorialItem } from '../../../core/empleados/editar.models';
 import { FichaEmpleado, HistorialBaja, ResumenCompletitud } from '../../../core/empleados/ficha.models';
 import { FichaDrawer } from './ficha-drawer.component';
 
 const EMPLEADO_ID = 12;
 const URL_FICHA = `${environment.apiBaseUrl}/empleados/${EMPLEADO_ID}`;
 const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
+const URL_HISTORIAL_ADSCRIPCIONES = `${URL_FICHA}/historial`;
 const URL_MOTIVOS = `${environment.apiBaseUrl}/catalogos/motivos-baja`;
 const URL_BAJA = `${URL_FICHA}/baja`;
 const URL_REACTIVAR = `${URL_FICHA}/reactivar`;
@@ -59,6 +61,36 @@ const HISTORIAL: readonly HistorialBaja[] = [
     reactivado_por: null,
     nota_reactivacion: null,
     fecha_registro: '2026-11-11',
+  },
+];
+
+/** Two appointment periods, in the order the backend sends them: newest first. */
+const ADSCRIPCIONES: readonly AdscripcionHistorialItem[] = [
+  {
+    id: 12,
+    desde: '2023-08-01',
+    hasta: null,
+    area_id: 3,
+    area: 'División de Telemática',
+    puesto_id: 7,
+    puesto: 'Profesor de Tiempo Completo',
+    categoria_cct_id: 2,
+    categoria_cct_clave: 'DOC-TC',
+    motivo: null,
+    estado: 'vigente',
+  },
+  {
+    id: 8,
+    desde: '2020-02-01',
+    hasta: '2023-07-31',
+    area_id: 4,
+    area: 'División de Ciencias Sociales',
+    puesto_id: 5,
+    puesto: 'Profesor de Asignatura',
+    categoria_cct_id: 1,
+    categoria_cct_clave: 'DOC-PA',
+    motivo: 'Reorganización académica',
+    estado: 'cerrado',
   },
 ];
 
@@ -1346,20 +1378,148 @@ describe('FichaDrawer', () => {
     expect(httpMock.match(URL_REACTIVAR).length).toBe(0);
   });
 
-  it('shows the pending state of the assignment history instead of rows', async () => {
+  /** Opens `Plaza` and the door of its history, without answering the request. */
+  async function abrirAdscripciones(fixture: ComponentFixture<FichaHost>): Promise<void> {
+    tab(fixture, 'Plaza').click();
+    await fixture.whenStable();
+    boton(fixture, 'Historial de adscripciones')?.click();
+    await fixture.whenStable();
+  }
+
+  it('asks for the appointment history on demand and prints its real periods', async () => {
     const fixture = await abrir();
     await responder(fixture);
 
-    tab(fixture, 'Plaza').click();
-    await fixture.whenStable();
+    await abrirAdscripciones(fixture);
 
-    boton(fixture, 'Historial de adscripciones')?.click();
+    // Opening `Plaza` alone sent no history request: the door owns the trip.
+    const peticion = httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES);
+    expect(peticion.request.method).toBe('GET');
+    peticion.flush({ data: ADSCRIPCIONES });
     await fixture.whenStable();
 
     expect(panelDe(fixture)?.classList.contains('is-open')).toBe(true);
     expect(panelDe(fixture)?.textContent).toContain('Historial de adscripciones');
-    expect(panelDe(fixture)?.textContent).toContain('el endpoint aún no existe');
-    expect(panelDe(fixture)?.querySelector('.evento')).toBeNull();
+
+    const periodos = Array.from(panelDe(fixture)?.querySelectorAll<HTMLElement>('.evento') ?? []);
+    expect(periodos.length).toBe(2);
+
+    // The backend order is kept: the open period is the first row.
+    expect(periodos[0].querySelector('.tipo')?.textContent).toContain(
+      'División de Telemática · Profesor de Tiempo Completo',
+    );
+    expect(periodos[0].textContent).toContain('Desde 01/08/2023');
+    expect(periodos[0].textContent).not.toContain('· hasta');
+    expect(periodos[0].textContent).toContain('Categoría DOC-TC');
+    expect(periodos[0].classList.contains('is-ok')).toBe(true);
+    expect(periodos[0].querySelector('.vigente')?.textContent?.trim()).toBe('Vigente');
+
+    expect(periodos[1].querySelector('.tipo')?.textContent).toContain(
+      'División de Ciencias Sociales · Profesor de Asignatura',
+    );
+    expect(periodos[1].textContent).toContain('Desde 01/02/2020 · hasta 31/07/2023');
+    expect(periodos[1].textContent).toContain('Categoría DOC-PA · Reorganización académica');
+    expect(periodos[1].classList.contains('is-ok')).toBe(false);
+    expect(periodos[1].querySelector('.vigente')).toBeNull();
+  });
+
+  it('says there are no appointment periods without inventing a row', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+
+    await abrirAdscripciones(fixture);
+    httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES).flush({ data: [] });
+    await fixture.whenStable();
+
+    expect(panelDe(fixture)?.querySelectorAll('.evento').length).toBe(0);
+    expect(panelDe(fixture)?.querySelector('.state-text')?.textContent?.trim()).toBe(
+      'Sin adscripciones registradas.',
+    );
+  });
+
+  it('shows the loading block of the appointment history and then its rows', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+
+    await abrirAdscripciones(fixture);
+    expect(panelDe(fixture)?.querySelector('.skeleton')?.getAttribute('aria-hidden')).toBe('true');
+
+    httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES).flush({ data: ADSCRIPCIONES });
+    await fixture.whenStable();
+
+    expect(panelDe(fixture)?.querySelector('.skeleton')).toBeNull();
+    expect(panelDe(fixture)?.querySelectorAll('.evento').length).toBe(2);
+  });
+
+  it('explains a failure of the appointment history and retries from the annex', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+
+    await abrirAdscripciones(fixture);
+    httpMock
+      .expectOne(URL_HISTORIAL_ADSCRIPCIONES)
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    const alerta = panelDe(fixture)?.querySelector<HTMLElement>('.state[role="alert"]');
+    expect(alerta?.textContent).toContain('No pudimos conectar con el servidor.');
+
+    accionPanel(fixture, 'Reintentar')?.click();
+    await fixture.whenStable();
+
+    httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES).flush({ data: ADSCRIPCIONES });
+    await fixture.whenStable();
+
+    expect(panelDe(fixture)?.querySelector('.state')).toBeNull();
+    expect(panelDe(fixture)?.querySelectorAll('.evento').length).toBe(2);
+  });
+
+  it('names the missing permission of the appointment history on a 403', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+
+    await abrirAdscripciones(fixture);
+    httpMock
+      .expectOne(URL_HISTORIAL_ADSCRIPCIONES)
+      .flush({ codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+
+    expect(panelDe(fixture)?.querySelector('.state[role="alert"]')?.textContent).toContain(
+      'No tienes permisos para ver el historial de adscripciones.',
+    );
+  });
+
+  it('reuses the history on a plain reopen but asks again after a change of plaza', async () => {
+    const fixture = await abrir();
+    await responder(fixture);
+
+    await abrirAdscripciones(fixture);
+    httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES).flush({ data: ADSCRIPCIONES });
+    await fixture.whenStable();
+
+    accionPanel(fixture, 'Volver')?.click();
+    await fixture.whenStable();
+    await abrirAdscripciones(fixture);
+
+    // Same worker, same plaza: the list comes back without a second trip.
+    expect(httpMock.match(URL_HISTORIAL_ADSCRIPCIONES).length).toBe(0);
+    expect(panelDe(fixture)?.querySelectorAll('.evento').length).toBe(2);
+
+    accionPanel(fixture, 'Volver')?.click();
+    fixture.componentInstance.open.set(false);
+    await fixture.whenStable();
+    fixture.componentInstance.open.set(true);
+    await fixture.whenStable();
+    await responder(fixture, {
+      ...FICHA,
+      plaza: { ...FICHA.plaza, area_id: 9, area: 'División de Innovación', puesto_id: 11 },
+    });
+
+    await abrirAdscripciones(fixture);
+    httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES).flush({ data: ADSCRIPCIONES });
+    await fixture.whenStable();
+
+    expect(panelDe(fixture)?.querySelectorAll('.evento').length).toBe(2);
   });
 });
 
