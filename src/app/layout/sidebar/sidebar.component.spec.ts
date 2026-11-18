@@ -144,6 +144,22 @@ describe('Sidebar', () => {
     expect(links[1].textContent?.trim()).toBe('Empleados');
     // The product owner's spelling, verbatim: no accent on `Semaforo`.
     expect(links[2].textContent?.trim()).toBe('Semáforo de documentos');
+
+    const comunicadosBtn = host(fixture).querySelector<HTMLButtonElement>('#sidebar-nav button.is-branch');
+    expect(comunicadosBtn?.textContent?.trim()).toBe('Comunicados');
+    comunicadosBtn?.click();
+    await fixture.whenStable();
+
+    expect(navAnchors(fixture).map((link) => link.getAttribute('href'))).toEqual([
+      '/',
+      '/empleados',
+      '/semaforo-documentos',
+      '/mensajeria',
+      '/mensajeria/autorizaciones',
+      '/mensajeria/borradores',
+      '/admin/catalogos',
+      '/ajustes',
+    ]);
   });
 
   it('names the two groups of the archive and labels each list with its section', async () => {
@@ -260,6 +276,11 @@ describe('Sidebar', () => {
       '/admin/catalogos',
       '/ajustes',
     ]);
+
+    const comunicadosRailBtn = host(fixture).querySelector<HTMLButtonElement>('#sidebar-nav button.is-branch');
+    comunicadosRailBtn?.click();
+    await fixture.whenStable();
+    expect(host(fixture).querySelector('#rail-submenu-comunicados')).not.toBeNull();
 
     const empleados = links[1];
     expect(empleados.getAttribute('aria-label')).toBe('Empleados');
@@ -498,7 +519,13 @@ describe('Sidebar', () => {
       // The rail keeps the same destinations as links, with an accessible name.
       expect(
         navAnchors(tabletFixture).map((link) => link.getAttribute('href')),
-      ).toEqual(['/', '/empleados', '/semaforo-documentos', '/admin/catalogos', '/ajustes']);
+      ).toEqual([
+        '/',
+        '/empleados',
+        '/semaforo-documentos',
+        '/admin/catalogos',
+        '/ajustes',
+      ]);
       expect(navAnchors(tabletFixture)[1].getAttribute('aria-label')).toBe('Empleados');
       expect(localStorage.getItem('utn-rh.sidebar-collapsed')).toBe('false');
 

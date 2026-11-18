@@ -68,6 +68,30 @@ export const routes: Routes = [
           import('./features/semaforo/semaforo-page.component').then((m) => m.SemaforoPage),
       },
       {
+        path: 'mensajeria',
+        data: { breadcrumb: 'Correos masivos' },
+        loadComponent: () =>
+          import('./features/mensajeria/mensajeria-page.component').then(
+            (m) => m.MensajeriaPage,
+          ),
+      },
+      {
+        path: 'mensajeria/autorizaciones',
+        data: { breadcrumb: 'Autorizaciones' },
+        loadComponent: () =>
+          import('./features/mensajeria/autorizaciones-page/autorizaciones-page.component').then(
+            (m) => m.AutorizacionesPage,
+          ),
+      },
+      {
+        path: 'mensajeria/borradores',
+        data: { breadcrumb: 'Borradores' },
+        loadComponent: () =>
+          import('./features/mensajeria/borradores-page/borradores-page.component').then(
+            (m) => m.BorradoresPage,
+          ),
+      },
+      {
         path: 'admin/catalogos',
         // One flat route instead of an `admin` branch with its own breadcrumb:
         // the trail the product asked for is a single step, `Catálogos`.
