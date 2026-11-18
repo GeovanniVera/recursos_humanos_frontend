@@ -348,10 +348,48 @@
       }
 
       @case ('adscripciones') {
-        <!-- No rows: this history has no endpoint, and inventing one would be a lie. -->
-        <p class="pendiente">
-          El historial de adscripciones todavía no está conectado: el endpoint aún no existe.
-        </p>
+        @if (cargandoAdscripciones()) {
+          <!-- Hidden from assistive tech: the folder already announces the wait. -->
+          <div class="skeleton" aria-hidden="true">
+            @for (linea of esqueletos; track linea) {
+              <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+            }
+          </div>
+        } @else if (errorAdscripciones(); as fallo) {
+          <div class="state" role="alert">
+            <p class="state-title">{{ fallo }}</p>
+            <button type="button" class="action" (click)="reintentarAdscripciones.emit()">
+              Reintentar
+            </button>
+          </div>
+        } @else if (adscripcionesVista().length === 0) {
+          <div class="state">
+            <p class="state-text">Sin adscripciones registradas.</p>
+          </div>
+        } @else {
+          <ol class="timeline">
+            @for (entrada of adscripcionesVista(); track entrada.id) {
+              <li class="evento" [class.is-ok]="entrada.vigente">
+                <!-- A closed period and the one in force differ by ink and by word. -->
+                <span class="dot" aria-hidden="true"></span>
+
+                <p class="tipo">
+                  {{ entrada.areaPuesto }}
+                  @if (entrada.vigente) {
+                    <span class="vigente">Vigente</span>
+                  }
+                </p>
+                <p class="linea">
+                  Desde {{ entrada.desde }}@if (entrada.hasta) { · hasta {{ entrada.hasta }} }
+                </p>
+
+                @if (entrada.detalle) {
+                  <p class="linea">{{ entrada.detalle }}</p>
+                }
+              </li>
+            }
+          </ol>
+        }
       }
     }
 

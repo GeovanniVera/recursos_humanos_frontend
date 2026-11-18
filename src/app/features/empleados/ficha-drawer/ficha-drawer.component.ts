@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Observable, Subject, catchError, finalize, switchMap } from 'rxjs';
+import { AdscripcionHistorialItem } from '../../../core/empleados/editar.models';
 import { etiquetaCampoExpediente } from '../../../core/empleados/expediente-campos';
 import {
   EstadoExpediente,
@@ -41,6 +42,8 @@ import { FichaPanel, VistaFicha } from './ficha-panel/ficha-panel.component';
 const MESSAGE_SESSION = 'Tu sesión venció. Vuelve a iniciar sesión.';
 const MESSAGE_PERMISSION = 'No tienes permisos para ver esta ficha.';
 const MESSAGE_BAJAS_PERMISSION = 'No tienes permisos para ver el historial de bajas.';
+const MESSAGE_ADSCRIPCIONES_PERMISSION =
+  'No tienes permisos para ver el historial de adscripciones.';
 const MESSAGE_NOT_FOUND = 'No encontramos ese trabajador.';
 const MESSAGE_CONNECTION = 'No pudimos conectar con el servidor. Revisa tu conexión.';
 
@@ -291,6 +294,23 @@ export class FichaDrawer {
   /** `true` while the absence log of the loaded worker is in flight. */
   readonly cargandoBajas = signal(false);
 
+  /**
+   * Appointment history of the loaded worker.
+   *
+   * Unlike the absence log, this one is asked for only when the operator opens
+   * the door in `Plaza`, so a visit that never looks at the history costs no
+   * request. A successful read is kept under the worker and the plaza it
+   * described: reopening the same door after a plain close reuses it, while a
+   * change of assignment asks again.
+   */
+  readonly adscripciones = signal<readonly AdscripcionHistorialItem[]>([]);
+
+  /** Last failure of the appointment history, or `null`. */
+  readonly errorAdscripciones = signal<FichaFailure | null>(null);
+
+  /** `true` while the appointment history is in flight. */
+  readonly cargandoAdscripciones = signal(false);
+
   /** The four sheets, in the order the folder presents them. */
   protected readonly tabs: readonly Tab[] = [
     { id: 'ficha', etiqueta: 'Ficha' },
@@ -350,6 +370,15 @@ export class FichaDrawer {
    */
   private readonly requests = new Subject<number | null>();
   private readonly bajaRequests = new Subject<number | null>();
+  private readonly adscripcionRequests = new Subject<number | null>();
+
+  /**
+   * Appointment histories already read, keyed by worker and by the plaza they
+   * described. A new assignment changes one of the plaza fields and misses the
+   * key, so the next open asks the backend instead of printing a stale period.
+   */
+  private readonly adscripcionesLeidas = new Map<string, readonly AdscripcionHistorialItem[]>();
+
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private selloTimer: ReturnType<typeof setTimeout> | null = null;
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -558,6 +587,21 @@ export class FichaDrawer {
         next: (bajas) => this.bajas.set(bajas),
       });
 
+    this.adscripcionRequests
+      .pipe(
+        switchMap((id) => (id === null ? EMPTY : this.requestAdscripciones(id))),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (adscripciones) => {
+          this.adscripciones.set(adscripciones);
+          const id = this.empleadoId();
+          if (id !== null) {
+            this.adscripcionesLeidas.set(this.claveAdscripciones(id), adscripciones);
+          }
+        },
+      });
+
     effect(() => {
       const isOpen = this.open();
       const id = this.empleadoId();
@@ -567,8 +611,10 @@ export class FichaDrawer {
         // snapshot during the drawer's 300ms exit transition.
         this.requests.next(null);
         this.bajaRequests.next(null);
+        this.adscripcionRequests.next(null);
         this.loading.set(false);
         this.cargandoBajas.set(false);
+        this.cargandoAdscripciones.set(false);
         // The folder opens on its first sheet every time: the second visit to a
         // worker is a new reading of the record, not a continuation. The annex
         // goes with it: a level over a closed folder is a level nobody can see.
@@ -687,6 +733,12 @@ export class FichaDrawer {
     this.focoOrigen = origen instanceof HTMLElement ? origen : null;
     this.vistaL2.set(vista);
 
+    // This is the only door that owns a request of its own: opening `Plaza`
+    // does not fetch a history nobody may look at.
+    if (vista === 'adscripciones') {
+      this.abrirHistorialAdscripciones();
+    }
+
     afterNextRender(() => this.panelRef()?.enfocar(), { injector: this.injector });
   }
 
@@ -703,6 +755,47 @@ export class FichaDrawer {
     if (id !== null) {
       this.bajaRequests.next(id);
     }
+  }
+
+  /** Retry of the appointment history, from the annex that shows it. */
+  protected reintentarAdscripciones(): void {
+    const id = this.empleadoId();
+    if (id !== null) {
+      this.adscripcionRequests.next(id);
+    }
+  }
+
+  /**
+   * Reuses a history already read for this worker and this plaza, or asks for
+   * it. A failed read is never cached, so a retry after an error always travels.
+   */
+  private abrirHistorialAdscripciones(): void {
+    const id = this.empleadoId();
+    if (id === null) {
+      return;
+    }
+
+    const leidas = this.adscripcionesLeidas.get(this.claveAdscripciones(id));
+    if (leidas !== undefined) {
+      this.adscripciones.set(leidas);
+      this.errorAdscripciones.set(null);
+      return;
+    }
+
+    if (!this.cargandoAdscripciones()) {
+      this.adscripcionRequests.next(id);
+    }
+  }
+
+  /** Identity of the history: the worker plus the plaza the periods describe. */
+  private claveAdscripciones(id: number): string {
+    const plaza = this.ficha()?.plaza;
+    if (plaza === undefined) {
+      return String(id);
+    }
+    return [id, plaza.area_id, plaza.puesto_id, plaza.fecha_inicio_puesto, plaza.categoria_cct_id].join(
+      '|',
+    );
   }
 
   /**
@@ -1084,6 +1177,8 @@ export class FichaDrawer {
         this.error.set(null);
         this.bajas.set([]);
         this.errorBajas.set(null);
+        this.adscripciones.set([]);
+        this.errorAdscripciones.set(null);
       }
     }, 300);
   }
@@ -1092,6 +1187,11 @@ export class FichaDrawer {
   private load(id: number): void {
     this.ficha.set(null);
     this.bajas.set([]);
+    // Another worker (or another opening of this one) starts with no history on
+    // screen; the cache keeps the old one under its own key, not under this id.
+    this.adscripciones.set([]);
+    this.errorAdscripciones.set(null);
+    this.adscripcionRequests.next(null);
     this.requests.next(id);
     this.bajaRequests.next(id);
   }
@@ -1133,8 +1233,25 @@ export class FichaDrawer {
     );
   }
 
+  /** Loads the appointment history only when its door is opened. */
+  private requestAdscripciones(id: number): Observable<AdscripcionHistorialItem[]> {
+    this.cargandoAdscripciones.set(true);
+    this.errorAdscripciones.set(null);
+
+    return this.fichaService.consultarAdscripciones(id).pipe(
+      catchError((error: unknown) => {
+        // This failure belongs to the annex, which is the only place that shows
+        // the list. It says what the operator can do about it: retry, or ask for
+        // the E-02 permission when the actor lacks it.
+        this.errorAdscripciones.set(this.mapHttpError(error, 'adscripciones'));
+        return EMPTY;
+      }),
+      finalize(() => this.cargandoAdscripciones.set(false)),
+    );
+  }
+
   /** Maps an HTTP failure to the sentence and the action the user gets. */
-  private mapHttpError(error: unknown, scope: 'ficha' | 'bajas'): FichaFailure {
+  private mapHttpError(error: unknown, scope: 'ficha' | 'bajas' | 'adscripciones'): FichaFailure {
     const status = error instanceof HttpErrorResponse ? error.status : 0;
     const code = this.errorCode(error);
 
@@ -1146,7 +1263,12 @@ export class FichaDrawer {
       case 403:
         return {
           status,
-          mensaje: scope === 'bajas' ? MESSAGE_BAJAS_PERMISSION : MESSAGE_PERMISSION,
+          mensaje:
+            scope === 'bajas'
+              ? MESSAGE_BAJAS_PERMISSION
+              : scope === 'adscripciones'
+                ? MESSAGE_ADSCRIPCIONES_PERMISSION
+                : MESSAGE_PERMISSION,
           detalle: code,
           accion: 'ninguna',
         };
