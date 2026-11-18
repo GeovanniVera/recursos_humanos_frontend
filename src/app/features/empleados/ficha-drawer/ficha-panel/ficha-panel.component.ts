@@ -23,6 +23,7 @@ import {
   ReactivarEmpleadoPayload,
 } from '../../../../core/empleados/baja.models';
 import { BajaService } from '../../../../core/empleados/baja.service';
+import { AdscripcionHistorialItem } from '../../../../core/empleados/editar.models';
 import { FichaEmpleado, HistorialBaja } from '../../../../core/empleados/ficha.models';
 
 /**
@@ -132,6 +133,16 @@ interface EntradaHistorial {
   vigente: boolean;
 }
 
+/** One appointment period, already formatted for the timeline. */
+interface EntradaAdscripcion {
+  id: number;
+  areaPuesto: string;
+  desde: string;
+  hasta: string | null;
+  detalle: string | null;
+  vigente: boolean;
+}
+
 /**
  * Second level of the record: a paper panel over the folder.
  *
@@ -176,6 +187,15 @@ export class FichaPanel {
   /** Sentence of the log's last failure, or `null`. */
   readonly errorHistorial = input<string | null>(null);
 
+  /** Appointment history of the record, in the order the backend sent it. */
+  readonly adscripciones = input<readonly AdscripcionHistorialItem[]>([]);
+
+  /** `true` while the appointment history is in flight. */
+  readonly cargandoAdscripciones = input(false);
+
+  /** Sentence of the appointment history's last failure, or `null`. */
+  readonly errorAdscripciones = input<string | null>(null);
+
   /** Folio of the record, printed as the foot of every annex. */
   readonly folio = input('0000');
 
@@ -184,6 +204,9 @@ export class FichaPanel {
 
   /** Asks the folder for the absence log again, after a failure. */
   readonly reintentarHistorial = output<void>();
+
+  /** Asks the folder for the appointment history again, after a failure. */
+  readonly reintentarAdscripciones = output<void>();
 
   /** Fired only with a `200`: the record has to be read again. */
   readonly bajaRegistrada = output<void>();
@@ -409,6 +432,34 @@ export class FichaPanel {
       reactivacion: baja.nota_reactivacion?.trim() || null,
       vigente: baja.vigente,
     })),
+  );
+
+  /**
+   * The appointment history, already formatted: dates as `dd/mm/aaaa`, the area
+   * and the post on one line, and the open period marked by its own word too.
+   * The backend sends the list newest first; no sorting happens here.
+   */
+  protected readonly adscripcionesVista = computed<readonly EntradaAdscripcion[]>(() =>
+    this.adscripciones().map((periodo) => {
+      const categoria = periodo.categoria_cct_clave?.trim() ?? '';
+      const motivo = periodo.motivo?.trim() ?? '';
+      const detalle: string[] = [];
+      if (categoria !== '') {
+        detalle.push(`Categoría ${categoria}`);
+      }
+      if (motivo !== '') {
+        detalle.push(motivo);
+      }
+
+      return {
+        id: periodo.id,
+        areaPuesto: `${periodo.area?.trim() || NO_VALUE} · ${periodo.puesto?.trim() || NO_VALUE}`,
+        desde: this.fecha(periodo.desde),
+        hasta: periodo.hasta === null ? null : this.fecha(periodo.hasta),
+        detalle: detalle.length > 0 ? detalle.join(' · ') : null,
+        vigente: periodo.estado === 'vigente',
+      };
+    }),
   );
 
   /** The motive the record carries, which is what a reactivation would reopen. */

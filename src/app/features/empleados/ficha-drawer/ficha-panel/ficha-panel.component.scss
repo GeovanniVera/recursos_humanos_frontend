@@ -357,14 +357,18 @@
   margin-top: 14px;
 }
 
-// A destination that has no endpoint yet says so instead of showing a list.
-.pendiente {
-  margin: 14px 0 0;
-  padding-left: var(--paper-indent);
-  font-family: var(--font-paper-mono);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--color-paper-muted);
+// The word that names the open period: the dot alone would be only colour.
+.vigente {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--color-stamp-ok);
+  border-radius: var(--radius-paper-xs);
+  color: var(--color-stamp-ok);
+  font-family: var(--font-paper);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
 }
 
 // ---------------------------------------------------------------------------
@@ -460,5 +464,10 @@
 
   .dot {
     forced-color-adjust: none;
+  }
+
+  .vigente {
+    outline: 1px solid;
+    outline-offset: -1px;
   }
 }

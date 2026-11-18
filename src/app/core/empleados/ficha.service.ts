@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AdscripcionHistorialItem, AdscripcionHistorialResponse } from './editar.models';
 import {
   FichaEmpleado,
   FichaEmpleadoResponse,
@@ -44,6 +45,19 @@ export class FichaService {
   consultarBajas(id: number): Observable<HistorialBaja[]> {
     return this.http
       .get<HistorialBajasResponse>(`${this.baseUrl}/${id}/historial-bajas`)
+      .pipe(map((response) => response.data));
+  }
+
+  /**
+   * `GET /empleados/{id}/historial` — every appointment period, newest first.
+   *
+   * The backend already orders the list, so the caller prints it as it arrives.
+   * The types live with the rest of the assignment payloads in `editar.models`;
+   * both services read the same wire contract.
+   */
+  consultarAdscripciones(id: number): Observable<AdscripcionHistorialItem[]> {
+    return this.http
+      .get<AdscripcionHistorialResponse>(`${this.baseUrl}/${id}/historial`)
       .pipe(map((response) => response.data));
   }
 }

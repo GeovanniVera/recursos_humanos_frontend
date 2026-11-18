@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
+import { AdscripcionHistorialItem } from './editar.models';
 import { FichaEmpleado, HistorialBaja } from './ficha.models';
 import { FichaService } from './ficha.service';
 
 const URL_FICHA = `${environment.apiBaseUrl}/empleados/12`;
 const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
+const URL_HISTORIAL_ADSCRIPCIONES = `${URL_FICHA}/historial`;
 
 const FICHA: FichaEmpleado = {
   id: 12,
@@ -156,6 +158,38 @@ describe('FichaService', () => {
     expect(request.request.params.keys().length).toBe(0);
     request.flush({ data: historial });
 
+    expect(received).toEqual(historial);
+  });
+
+  it('asks GET /empleados/{id}/historial and unwraps data', () => {
+    const historial: AdscripcionHistorialItem[] = [
+      {
+        id: 12,
+        desde: '2023-08-01',
+        hasta: null,
+        area_id: 3,
+        area: 'División de Telemática',
+        puesto_id: 7,
+        puesto: 'Profesor de Tiempo Completo',
+        categoria_cct_id: 2,
+        categoria_cct_clave: 'DOC-TC',
+        motivo: null,
+        estado: 'vigente',
+      },
+    ];
+
+    let received: AdscripcionHistorialItem[] | undefined;
+    service.consultarAdscripciones(12).subscribe((rows) => {
+      received = rows;
+    });
+
+    const request = httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().length).toBe(0);
+    expect(request.request.body).toBeNull();
+    request.flush({ data: historial });
+
+    // The envelope is the wire format; the drawer never sees it or reorders it.
     expect(received).toEqual(historial);
   });
 });

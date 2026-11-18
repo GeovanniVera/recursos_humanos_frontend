@@ -1,3 +1,8 @@
+import {
+  GradosAcademicos,
+  GradoPresentacion,
+} from '../grados-academicos/grados-academicos.component';
+import { validarGeneracion, validarLargo } from '../../../core/empleados/validacion';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
@@ -190,7 +195,7 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  */
 @Component({
   selector: 'app-alta-drawer',
-  imports: [AltaExpediente, AltaRevision, Drawer, FormsModule],
+  imports: [GradosAcademicos, AltaExpediente, AltaRevision, Drawer, FormsModule],
   templateUrl: './alta-drawer.component.html',
   styleUrl: './alta-drawer.component.scss',
 })
@@ -257,6 +262,139 @@ export class AltaDrawer {
 
   /** Per-field messages of the last `422`, keyed by the name the backend uses. */
   readonly erroresServidor = signal<Record<string, string[]>>({});
+  readonly gradosPendientes = signal<GradoPresentacion[]>([]);
+  readonly gradoAbierto = signal(false);
+  readonly gradoEditandoClave = signal<string | null>(null);
+  readonly gradoNivel = signal<number | null>(null);
+  readonly gradoTitulo = signal('');
+  readonly gradoEscuela = signal('');
+  readonly gradoGeneracion = signal('');
+  readonly gradoCedula = signal('');
+  readonly gradoMaximo = signal(false);
+  readonly gradoErrores = signal<Record<string, string[]>>({});
+  private siguienteGrado = 0;
+  readonly erroresGrados = computed(() => {
+    const errores: Record<string, string[]> = {};
+    for (const [campo, mensajes] of Object.entries(this.erroresServidor())) {
+      const match = /^grados_academicos\.(\d+)\.(.+)$/.exec(campo);
+      if (!match) continue;
+      const grado = this.gradosPendientes()[Number(match[1])];
+      if (grado) (errores[grado.clave] ??= []).push(...mensajes);
+    }
+    return errores;
+  });
+  nuevoGrado(): void {
+    this.cancelarGrado();
+    this.gradoAbierto.set(true);
+  }
+  cancelarGrado(): void {
+    this.gradoAbierto.set(false);
+    this.gradoEditandoClave.set(null);
+    this.gradoNivel.set(null);
+    this.gradoTitulo.set('');
+    this.gradoEscuela.set('');
+    this.gradoGeneracion.set('');
+    this.gradoCedula.set('');
+    this.gradoMaximo.set(false);
+    this.gradoErrores.set({});
+  }
+  editarGrado(grado: GradoPresentacion): void {
+    this.gradoEditandoClave.set(grado.clave);
+    this.gradoNivel.set(grado.nivel_estudios_id);
+    this.gradoTitulo.set(grado.titulo_o_carrera ?? '');
+    this.gradoEscuela.set(grado.escuela_procedencia ?? '');
+    this.gradoGeneracion.set(grado.generacion ?? '');
+    this.gradoCedula.set(grado.cedula_profesional ?? '');
+    this.gradoMaximo.set(grado.es_maximo);
+    this.gradoAbierto.set(true);
+    const indice = this.gradosPendientes().findIndex((g) => g.clave === grado.clave);
+    const errores: Record<string, string[]> = {};
+    for (const [campo, mensajes] of Object.entries(this.erroresServidor())) {
+      const prefijo = 'grados_academicos.' + indice + '.';
+      if (campo.startsWith(prefijo)) errores[campo.slice(prefijo.length)] = mensajes;
+    }
+    this.gradoErrores.set(errores);
+  }
+  guardarGrado(): boolean {
+    const errores: Record<string, string[]> = {};
+    const poner = (campo: string, mensaje: string | null) => {
+      if (mensaje) errores[campo] = [mensaje];
+    };
+    poner(
+      'nivel_estudios_id',
+      this.niveles().some((n) => n.id === this.gradoNivel())
+        ? null
+        : 'Selecciona el nivel de estudios.',
+    );
+    poner(
+      'titulo_o_carrera',
+      !this.gradoTitulo().trim()
+        ? 'Indica el título o la carrera.'
+        : validarLargo(this.gradoTitulo(), 200),
+    );
+    poner(
+      'escuela_procedencia',
+      !this.gradoEscuela().trim()
+        ? 'Indica la escuela de procedencia.'
+        : validarLargo(this.gradoEscuela(), 200),
+    );
+    poner('generacion', validarGeneracion(this.gradoGeneracion()));
+    poner('cedula_profesional', validarLargo(this.gradoCedula(), 30));
+    this.gradoErrores.set(errores);
+    if (Object.keys(errores).length) return false;
+    const clave = this.gradoEditandoClave() ?? 'pendiente-' + ++this.siguienteGrado;
+    const esMaximo = this.gradoMaximo() || this.gradosPendientes().length === 0;
+    const grado: GradoPresentacion = {
+      clave,
+      nivel_estudios_id: this.gradoNivel()!,
+      nivel_estudios: this.niveles().find((n) => n.id === this.gradoNivel())!.descripcion,
+      titulo_o_carrera: this.gradoTitulo().trim(),
+      escuela_procedencia: this.gradoEscuela().trim(),
+      generacion: this.gradoGeneracion().trim() || null,
+      cedula_profesional: this.gradoCedula().trim() || null,
+      es_maximo: esMaximo,
+    };
+    const anteriores = this.gradosPendientes().map((g) =>
+      esMaximo ? { ...g, es_maximo: false } : g,
+    );
+    this.gradosPendientes.set(
+      this.gradoEditandoClave() === null
+        ? [...anteriores, grado]
+        : anteriores.map((g) => (g.clave === clave ? grado : g)),
+    );
+    this.limpiarErroresGrados();
+    this.cancelarGrado();
+    return true;
+  }
+  eliminarGrado(grado: GradoPresentacion): void {
+    const restantes = this.gradosPendientes().filter((g) => g.clave !== grado.clave);
+    // Same promotion policy as editing: highest catalogue order, newest on ties.
+    if (grado.es_maximo && restantes.length) {
+      const siguiente = [...restantes]
+        .reverse()
+        .sort(
+          (a, b) =>
+            this.niveles().findIndex((n) => n.id === b.nivel_estudios_id) -
+            this.niveles().findIndex((n) => n.id === a.nivel_estudios_id),
+        )[0];
+      this.gradosPendientes.set(
+        restantes.map((g) => ({ ...g, es_maximo: g.clave === siguiente.clave })),
+      );
+    } else this.gradosPendientes.set(restantes);
+    if (this.gradoEditandoClave() === grado.clave) this.cancelarGrado();
+    this.limpiarErroresGrados();
+  }
+  marcarGradoMaximo(grado: GradoPresentacion): void {
+    this.gradosPendientes.update((gs) =>
+      gs.map((g) => ({ ...g, es_maximo: g.clave === grado.clave })),
+    );
+    this.limpiarErroresGrados();
+  }
+  private limpiarErroresGrados(): void {
+    this.erroresServidor.update((es) =>
+      Object.fromEntries(Object.entries(es).filter(([k]) => !k.startsWith('grados_academicos'))),
+    );
+  }
 
   /** Upper bound of every date field: the backend rejects a future start. */
   readonly hoy = hoyLocal();
@@ -481,7 +619,7 @@ export class AltaDrawer {
       }
       vistos.add(campo);
 
-      const seccion = SECCION_DE_CAMPO[campo];
+      const seccion = campo.startsWith('grados_academicos') ? 2 : SECCION_DE_CAMPO[campo];
       if (seccion !== undefined) {
         conteo[seccion] += 1;
       }
@@ -499,7 +637,10 @@ export class AltaDrawer {
    */
   readonly erroresSueltos = computed<readonly string[]>(() =>
     Object.entries(this.erroresServidor())
-      .filter(([campo]) => SECCION_DE_CAMPO[campo] === undefined)
+      .filter(
+        ([campo]) =>
+          SECCION_DE_CAMPO[campo] === undefined && !campo.startsWith('grados_academicos.'),
+      )
       .flatMap(([, mensajes]) => mensajes),
   );
 
@@ -545,12 +686,25 @@ export class AltaDrawer {
       {
         titulo: 'Estudios y experiencia',
         filas: [
-          {
-            etiqueta: 'Nivel de estudios',
-            valor: this.descripcionDe(this.niveles(), datos.nivel_estudios_id),
-          },
-          { etiqueta: 'Escuela de procedencia', valor: this.texto(datos.escuela_procedencia) },
-          { etiqueta: 'Generación', valor: this.texto(datos.generacion) },
+          ...this.gradosPendientes().flatMap((g, indice) => [
+            { etiqueta: 'Grado ' + (indice + 1), valor: g.titulo_o_carrera ?? '' },
+            {
+              etiqueta: 'Grado ' + (indice + 1) + ' · Nivel de estudios',
+              valor: g.nivel_estudios ?? '',
+            },
+            {
+              etiqueta: 'Grado ' + (indice + 1) + ' · Escuela de procedencia',
+              valor: g.escuela_procedencia ?? '',
+            },
+            {
+              etiqueta: 'Grado ' + (indice + 1) + ' · Generación',
+              valor: g.generacion ?? 'Sin registro',
+            },
+            {
+              etiqueta: 'Grado ' + (indice + 1) + ' · Cédula profesional',
+              valor: g.cedula_profesional ?? 'Sin registro',
+            },
+          ]),
           { etiqueta: 'Experiencia pública (años)', valor: this.numero(datos.exp_publico_anios) },
           { etiqueta: 'Experiencia privada (años)', valor: this.numero(datos.exp_privado_anios) },
           { etiqueta: 'Trabaja en otro lugar', valor: this.texto(datos.trabaja_otro_lugar) },
@@ -860,6 +1014,10 @@ export class AltaDrawer {
       return;
     }
 
+    if (this.gradoAbierto() && !this.guardarGrado()) {
+      this.tabActiva.set('formacion');
+      return;
+    }
     const fallidos = Object.keys(this.erroresDelBorrador());
     if (fallidos.length > 0) {
       this.revelarErrores(fallidos);
@@ -890,11 +1048,23 @@ export class AltaDrawer {
    * server fixes for it, and every other post sends what the user chose.
    */
   private construirCuerpo(): AltaEmpleadoRequest {
-    return construirCuerpoAlta(
+    const cuerpo = construirCuerpoAlta(
       this.modelo(),
       this.contexto(),
       derivadosDe(this.modelo(), this.contexto()),
     );
+    delete cuerpo.nivel_estudios_id;
+    delete cuerpo.escuela_procedencia;
+    delete cuerpo.generacion;
+    cuerpo.grados_academicos = this.gradosPendientes().map((g) => ({
+      nivel_estudios_id: g.nivel_estudios_id,
+      titulo_o_carrera: g.titulo_o_carrera!,
+      escuela_procedencia: g.escuela_procedencia!,
+      generacion: g.generacion,
+      cedula_profesional: g.cedula_profesional,
+      es_maximo: g.es_maximo,
+    }));
+    return cuerpo;
   }
 
   /** Reports the created employee, closes the folder and leaves it empty. */
@@ -943,6 +1113,23 @@ export class AltaDrawer {
    */
   private irAlPrimerErrorDeServidor(errores: Record<string, string[]>): void {
     for (const campo of Object.keys(errores)) {
+      if (campo.startsWith('grados_academicos')) {
+        this.tabActiva.set('formacion');
+        const grado = this.gradosPendientes()[Number(campo.split('.')[1])];
+        if (grado) {
+          this.editarGrado(grado);
+          const controles: Record<string, string> = {
+            nivel_estudios_id: 'nivel',
+            titulo_o_carrera: 'titulo',
+            escuela_procedencia: 'escuela',
+            generacion: 'generacion',
+            cedula_profesional: 'cedula',
+          };
+          const control = controles[campo.split('.')[2]];
+          if (control) this.programarFoco('#alta-grado-' + control);
+        }
+        return;
+      }
       if (SECCION_DE_CAMPO[campo] !== undefined) {
         this.irAlCampo(campo);
         return;
@@ -952,7 +1139,7 @@ export class AltaDrawer {
 
   /** Opens the sheet of a field and puts the cursor in the control itself. */
   private irAlCampo(campo: string): void {
-    const seccion = SECCION_DE_CAMPO[campo];
+    const seccion = campo.startsWith('grados_academicos') ? 2 : SECCION_DE_CAMPO[campo];
     if (seccion === undefined) {
       return;
     }
@@ -1139,6 +1326,9 @@ export class AltaDrawer {
         return;
       }
       this.modelo.set({ ...BORRADOR_ALTA });
+      this.gradosPendientes.set([]);
+      this.siguienteGrado = 0;
+      this.cancelarGrado();
       this.tocado.set({});
       this.errores.set({});
       this.erroresServidor.set({});

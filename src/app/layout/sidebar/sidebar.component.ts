@@ -15,6 +15,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { filter, finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { SidebarStateService } from '../../core/layout/sidebar-state.service';
+import { MensajeriaService } from '../../core/mensajeria/mensajeria.service';
 import { BrandLogos } from '../../shared/ui/brand-logos/brand-logos.component';
 import { SidebarCredentialCard } from './credential-card/credential-card.component';
 import { roleLabel } from './role-label';
@@ -66,6 +67,7 @@ export interface RailTooltipState {
     '(focusin)': 'onHostFocusIn($event)',
     '(focusout)': 'onHostFocusOut($event)',
     '(keydown.escape)': 'onEscape()',
+    '(document:click)': 'onDocumentClick($event)',
     '(document:keydown)': 'onDocumentKeydown($event)',
   },
 })
@@ -73,6 +75,7 @@ export class Sidebar {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly sidebarState = inject(SidebarStateService);
+  private readonly mensajeria = inject(MensajeriaService);
   private readonly elementRef = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -97,6 +100,12 @@ export class Sidebar {
   /** Accessible tooltip state shown next to the 76px collapsed rail. */
   readonly railTooltip = signal<RailTooltipState | null>(null);
 
+  /** Whether the Comunicados branch submenu is open in expanded mode. */
+  readonly comunicadosOpen = signal(this.router.url.startsWith('/mensajeria'));
+
+  /** Floating submenu coordinates when the rail is collapsed and Comunicados is clicked. */
+  readonly railSubmenuPos = signal<{ top: number; left: number } | null>(null);
+
   private readonly navPillGroup: PillGroupState = {
     top: this.pillTop,
     left: this.pillLeft,
@@ -115,7 +124,11 @@ export class Sidebar {
   constructor() {
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
+      .subscribe((event) => {
+        if (event.urlAfterRedirects.startsWith('/mensajeria')) {
+          this.comunicadosOpen.set(true);
+        }
+        this.railSubmenuPos.set(null);
         if (this.isMobile() && this.mobileOpen()) {
           this.sidebarState.closeMobile();
         }
@@ -127,8 +140,10 @@ export class Sidebar {
     effect(() => {
       const isRail = this.collapsed() && !this.isMobile();
       this.mobileOpen();
+      this.comunicadosOpen();
       if (!isRail) {
         this.hideTooltip();
+        this.railSubmenuPos.set(null);
       }
       this.schedulePillUpdate(true);
     });
@@ -222,6 +237,51 @@ export class Sidebar {
   /** `Escape` on the drawer: the tooltip leaves with it. */
   onEscape(): void {
     this.hideTooltip();
+    this.railSubmenuPos.set(null);
+  }
+
+  onDocumentClick(event: MouseEvent): void {
+    if (this.railSubmenuPos() === null) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target && (this.elementRef.nativeElement as HTMLElement).contains(target)) {
+      return;
+    }
+    this.railSubmenuPos.set(null);
+  }
+
+  toggleComunicados(event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.isRailMode()) {
+      if (this.railSubmenuPos() !== null) {
+        this.railSubmenuPos.set(null);
+        return;
+      }
+      const btn = event.currentTarget as HTMLElement | null;
+      const hostEl = this.elementRef.nativeElement as HTMLElement;
+      if (!btn) {
+        return;
+      }
+      const hostRect = hostEl.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      const railWidth = hostRect.width > 0 ? hostRect.width : 76;
+      this.hideTooltip();
+      this.railSubmenuPos.set({
+        top: btnRect.top - hostRect.top,
+        left: railWidth + 10,
+      });
+      return;
+    }
+
+    this.comunicadosOpen.update((open) => !open);
+    this.schedulePillUpdate(false);
+  }
+
+  readonly isComunicadosRoute = (): boolean => this.router.url.startsWith('/mensajeria');
+
+  onNuevoCorreoClick(): void {
+    this.mensajeria.solicitarNuevoCorreo();
   }
 
   /** Captures clicks on nav items to trigger pill animation and auto-close mobile drawer. */

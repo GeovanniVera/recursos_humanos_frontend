@@ -556,85 +556,32 @@
         }
 
         @case ('formacion') {
+          <app-grados-academicos
+            prefijo="alta-"
+            [grados]="gradosPendientes()"
+            [niveles]="niveles()"
+            [gradoAbierto]="gradoAbierto()"
+            [editando]="gradoEditandoClave() !== null"
+            [gradoErrores]="gradoErrores()"
+            [erroresRegistros]="erroresGrados()"
+            [guardandoGrado]="enviando()"
+            [(gradoNivel)]="gradoNivel"
+            [(gradoTitulo)]="gradoTitulo"
+            [(gradoEscuela)]="gradoEscuela"
+            [(gradoGeneracion)]="gradoGeneracion"
+            [(gradoCedula)]="gradoCedula"
+            [(gradoMaximo)]="gradoMaximo"
+            (nuevoGrado)="nuevoGrado()"
+            (cancelarGrado)="cancelarGrado()"
+            (guardarGrado)="guardarGrado()"
+            (editarGrado)="editarGrado($event)"
+            (eliminarGrado)="eliminarGrado($event)"
+            (marcarGradoMaximo)="marcarGradoMaximo($event)"
+          />
           <fieldset class="group">
-            <legend class="group-title">Estudios y experiencia</legend>
-            <p class="group-hint">
-              Todo este bloque es opcional; se puede completar después del alta.
-            </p>
-
+            <legend class="group-title">Experiencia</legend>
+            <p class="group-hint">Puedes completar estos datos después del alta.</p>
             <div class="grid">
-              <div class="field">
-                <label class="label" for="nivel_estudios_id">Nivel de estudios</label>
-                <select
-                  id="nivel_estudios_id"
-                  name="nivel_estudios_id"
-                  class="control"
-                  (change)="elegirNumero('nivel_estudios_id', $event)"
-                  (blur)="tocar('nivel_estudios_id')"
-                  [class.is-invalid]="errorDe('nivel_estudios_id') !== null"
-                  [attr.aria-invalid]="errorDe('nivel_estudios_id') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('nivel_estudios_id')"
-                >
-                  <option value="" [selected]="modelo().nivel_estudios_id === null">
-                    Elige una opción
-                  </option>
-                  @for (nivel of niveles(); track nivel.id) {
-                    <option [value]="nivel.id" [selected]="modelo().nivel_estudios_id === nivel.id">
-                      {{ nivel.descripcion }}
-                    </option>
-                  }
-                </select>
-                @if (errorDe('nivel_estudios_id'); as error) {
-                  <p class="field-error" id="error-nivel_estudios_id" role="alert">
-                    {{ error }}
-                  </p>
-                }
-              </div>
-
-              <div class="field is-wide">
-                <label class="label" for="escuela_procedencia">Escuela de procedencia</label>
-                <input
-                  id="escuela_procedencia"
-                  name="escuela_procedencia"
-                  class="control"
-                  type="text"
-                  maxlength="100"
-                  [ngModel]="modelo().escuela_procedencia"
-                  (ngModelChange)="guardar('escuela_procedencia', $event)"
-                  (blur)="tocar('escuela_procedencia')"
-                  [class.is-invalid]="errorDe('escuela_procedencia') !== null"
-                  [attr.aria-invalid]="errorDe('escuela_procedencia') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('escuela_procedencia')"
-                />
-                @if (errorDe('escuela_procedencia'); as error) {
-                  <p class="field-error" id="error-escuela_procedencia" role="alert">
-                    {{ error }}
-                  </p>
-                }
-              </div>
-
-              <div class="field">
-                <label class="label" for="generacion">Generación</label>
-                <input
-                  id="generacion"
-                  name="generacion"
-                  class="control"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="9"
-                  placeholder="2018-2022"
-                  [ngModel]="modelo().generacion"
-                  (ngModelChange)="guardar('generacion', $event)"
-                  (blur)="tocar('generacion')"
-                  [class.is-invalid]="errorDe('generacion') !== null"
-                  [attr.aria-invalid]="errorDe('generacion') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('generacion')"
-                />
-                @if (errorDe('generacion'); as error) {
-                  <p class="field-error" id="error-generacion" role="alert">{{ error }}</p>
-                }
-              </div>
-
               <div class="field">
                 <label class="label" for="exp_publico_anios">Experiencia pública (años)</label>
                 <input

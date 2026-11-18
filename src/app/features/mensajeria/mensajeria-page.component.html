@@ -1,0 +1,737 @@
+<section class="page">
+  <div class="top-row">
+    <app-page-header
+      eyebrow="Comunicación Institucional"
+      title="Correos masivos"
+      subtitle="Redacta comunicados oficiales personalizados para el personal activo, adjunta archivos y envía a autorización o dispersión directa."
+    />
+
+    <div class="top-actions">
+      @if (comunicadoId() !== null) {
+        <app-button variant="ghost" size="sm" (click)="nuevoBorradorLimpio()">
+          Nuevo correo
+        </app-button>
+      }
+      <app-button variant="secondary" size="sm" (click)="irABorradores()">
+        Ver borradores
+      </app-button>
+    </div>
+  </div>
+
+  @if (loadingDraft()) {
+    <p class="mono-meta">Cargando comunicado...</p>
+  }
+
+  @if (rejectedFeedback(); as motivo) {
+    <app-alert-banner
+      variant="error"
+      [title]="'Corrección de comunicado rechazado' + (folioActual() ? ' · ' + folioActual() : '')"
+      [message]="motivo"
+    />
+  }
+
+  <div class="compose-grid">
+    <div class="compose-main">
+      <!-- 01. Redacción -->
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">01</span>
+          <div>
+            <h2 class="panel-title">Redacción del correo</h2>
+            <p class="panel-desc">Define el asunto institucional y redacta el mensaje.</p>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label-row">
+            <label for="mensajeria-asunto" class="field-label">Asunto del correo *</label>
+            <span class="mono-meta">{{ subject().length }} / 120</span>
+          </div>
+
+          <input
+            id="mensajeria-asunto"
+            type="text"
+            class="text-input"
+            maxlength="120"
+            placeholder="Ej. [AVISO OFICIAL] Actualización de datos en el padrón institucional"
+            [ngModel]="subject()"
+            (ngModelChange)="subject.set($event)"
+          />
+
+          <div class="chip-row">
+            <span class="chip-caption">Prefijos rápidos:</span>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[AVISO OFICIAL]')">
+              [AVISO OFICIAL]
+            </button>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[NOM-035]')">
+              [NOM-035]
+            </button>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[CAPACITACIÓN]')">
+              [CAPACITACIÓN]
+            </button>
+          </div>
+        </div>
+
+        <div class="vars-bar">
+          <span class="vars-title">Insertar dato del trabajador:</span>
+          <div class="vars-list">
+            @for (variable of variablesDinamicas; track variable.token) {
+              <button
+                type="button"
+                class="var-btn"
+                [title]="variable.descripcion"
+                (mousedown)="$event.preventDefault()"
+                (click)="insertDynamicVariable(variable)"
+              >
+                + {{ variable.etiqueta }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="editor-shell">
+          <div class="editor-toolbar">
+            <div class="toolbar-group">
+              <div class="toolbar-segment" role="group" aria-label="Estilo de texto">
+                <button
+                  type="button"
+                  class="tool-btn is-icon"
+                  [class.is-active]="boldActive()"
+                  [attr.aria-pressed]="boldActive()"
+                  title="Negrita"
+                  aria-label="Negrita"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="execFormat('bold')"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+                    <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn is-icon"
+                  [class.is-active]="italicActive()"
+                  [attr.aria-pressed]="italicActive()"
+                  title="Cursiva"
+                  aria-label="Cursiva"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="execFormat('italic')"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="19" y1="4" x2="10" y2="4" />
+                    <line x1="14" y1="20" x2="5" y2="20" />
+                    <line x1="15" y1="4" x2="9" y2="20" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn is-icon"
+                  [class.is-active]="underlineActive()"
+                  [attr.aria-pressed]="underlineActive()"
+                  title="Subrayado"
+                  aria-label="Subrayado"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="execFormat('underline')"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 3v7a6 6 0 0 0 12 0V3" />
+                    <line x1="4" y1="21" x2="20" y2="21" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="toolbar-segment" role="group" aria-label="Listas">
+                <button
+                  type="button"
+                  class="tool-btn"
+                  [class.is-active]="ulActive()"
+                  [attr.aria-pressed]="ulActive()"
+                  title="Lista con viñetas"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="execFormat('insertUnorderedList')"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="9" y1="6" x2="20" y2="6" />
+                    <line x1="9" y1="12" x2="20" y2="12" />
+                    <line x1="9" y1="18" x2="20" y2="18" />
+                    <circle cx="4.5" cy="6" r="1" fill="currentColor" />
+                    <circle cx="4.5" cy="12" r="1" fill="currentColor" />
+                    <circle cx="4.5" cy="18" r="1" fill="currentColor" />
+                  </svg>
+                  <span>Viñetas</span>
+                </button>
+                <button
+                  type="button"
+                  class="tool-btn"
+                  [class.is-active]="olActive()"
+                  [attr.aria-pressed]="olActive()"
+                  title="Lista numerada"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="execFormat('insertOrderedList')"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="10" y1="6" x2="20" y2="6" />
+                    <line x1="10" y1="12" x2="20" y2="12" />
+                    <line x1="10" y1="18" x2="20" y2="18" />
+                    <path d="M4 6h1.5v4" />
+                    <path d="M4 10h2" />
+                    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
+                  </svg>
+                  <span>Numerada</span>
+                </button>
+              </div>
+
+              <div class="link-wrap">
+                <button
+                  type="button"
+                  class="tool-btn is-labelled"
+                  [class.is-active]="linkPopoverOpen()"
+                  title="Insertar enlace"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="toggleLinkPopover()"
+                >
+                  <svg
+                    class="tool-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <span>Enlace</span>
+                </button>
+
+                @if (linkPopoverOpen()) {
+                  <div class="link-popover">
+                    <p class="link-popover-title">Insertar hipervínculo</p>
+                    <input
+                      type="text"
+                      class="text-input is-sm"
+                      placeholder="Texto visible (ej. Portal RH)"
+                      [ngModel]="linkText()"
+                      (ngModelChange)="linkText.set($event)"
+                    />
+                    <input
+                      type="url"
+                      class="text-input is-sm mono-meta"
+                      placeholder="https://utn.edu.mx"
+                      [ngModel]="linkUrl()"
+                      (ngModelChange)="linkUrl.set($event)"
+                    />
+                    <div class="link-popover-actions">
+                      <app-button variant="ghost" size="sm" (click)="toggleLinkPopover(false)">
+                        Cancelar
+                      </app-button>
+                      <app-button variant="primary" size="sm" (click)="confirmInsertLink()">
+                        Insertar
+                      </app-button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="tool-clear"
+              title="Limpiar formato del texto seleccionado"
+              (mousedown)="$event.preventDefault()"
+              (click)="execFormat('removeFormat')"
+            >
+              <svg
+                class="tool-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+                <path d="M22 21H7" />
+                <path d="m5 11 9 9" />
+              </svg>
+              <span>Limpiar formato</span>
+            </button>
+          </div>
+
+          @if (activeLinkHref(); as href) {
+            <div class="active-link-bar">
+              <span class="active-link-url" [title]="href">Enlace: {{ href }}</span>
+              <div class="active-link-actions">
+                <button
+                  type="button"
+                  class="link-btn"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="abrirEnlaceActivo()"
+                >
+                  Abrir enlace ↗
+                </button>
+                <button
+                  type="button"
+                  class="link-btn"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="quitarEnlaceActivo()"
+                >
+                  Quitar enlace
+                </button>
+              </div>
+            </div>
+          }
+
+          <div
+            #richEditor
+            class="rich-editor"
+            contenteditable="true"
+            data-placeholder="Escribe aquí el cuerpo del comunicado oficial. Puedes dar formato, insertar datos del trabajador o embeber imágenes..."
+            (input)="onEditorInput()"
+            (click)="onEditorClick($event)"
+            (keydown)="onEditorKeydown($event)"
+            (focus)="saveEditorSelection()"
+            (keyup)="saveEditorSelection()"
+            (mouseup)="saveEditorSelection()"
+          ></div>
+
+          <div class="editor-foot">
+            <span class="mono-meta">{{ wordCount() }} palabras · {{ charCount() }} caracteres</span>
+            <span class="mono-meta">Formato institucional</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02. Archivos e imágenes adjuntas -->
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">02</span>
+          <div>
+            <h2 class="panel-title">Archivos e imágenes adjuntas</h2>
+            <p class="panel-desc">Adjunta documentos (PDF, Word, Excel) o imágenes para embeber en el cuerpo (máx. 2 MB).</p>
+          </div>
+        </div>
+
+        <div class="storage-block">
+          <div class="field-label-row">
+            <span class="field-label">Capacidad utilizada</span>
+            <span class="mono-meta">{{ storageLabel() }}</span>
+          </div>
+          <div class="storage-track">
+            <div class="storage-fill" [style.width.%]="storagePercent()"></div>
+          </div>
+        </div>
+
+        <div
+          class="drop-zone"
+          [class.is-dragging]="isDragging()"
+          (click)="openFilePicker()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            #fileInput
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            class="visually-hidden"
+            (change)="onFileSelected($event)"
+          />
+          <p class="drop-title">
+            @if (uploadingFiles()) {
+              Subiendo archivos...
+            } @else {
+              Arrastra tus archivos aquí o haz clic para seleccionar
+            }
+          </p>
+          <p class="drop-hint">Imágenes (PNG, JPG, WebP) y documentos (PDF, DOC, DOCX, XLS, XLSX) · Máx. 2 MB</p>
+        </div>
+
+        @if (imagesAttachments().length > 0) {
+          <div class="attachments-group">
+            <h3 class="group-heading">Imágenes cargadas ({{ imagesAttachments().length }})</h3>
+            <div class="attachments-grid">
+              @for (img of imagesAttachments(); track img.id) {
+                <div class="attachment-card">
+                  <div class="attachment-row">
+                    @if (imagePreviewUrls().get(img.id); as thumbUrl) {
+                      <img [src]="thumbUrl" [alt]="img.nombre_original" class="thumb-img" />
+                    }
+                    <div class="attachment-meta">
+                      <span class="attachment-name">{{ img.nombre_original }}</span>
+                      <span class="mono-meta">{{ formatBytes(img.tamano_bytes) }}</span>
+                    </div>
+                    <button type="button" class="remove-btn" title="Eliminar" (click)="eliminarAdjunto(img)">
+                      ✕
+                    </button>
+                  </div>
+                  <app-button variant="secondary" size="sm" (click)="insertarImagenEnCuerpo(img)">
+                    {{ img.embebido_en_cuerpo ? '✓ Insertada (insertar otra vez)' : '+ Insertar en el cuerpo' }}
+                  </app-button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (docsAttachments().length > 0) {
+          <div class="attachments-group">
+            <h3 class="group-heading">Documentos adjuntos ({{ docsAttachments().length }})</h3>
+            <div class="attachments-grid">
+              @for (doc of docsAttachments(); track doc.id) {
+                <div class="attachment-card">
+                  <div class="attachment-row">
+                    <span class="doc-badge">DOC</span>
+                    <div class="attachment-meta">
+                      <span class="attachment-name">{{ doc.nombre_original }}</span>
+                      <span class="mono-meta">{{ formatBytes(doc.tamano_bytes) }}</span>
+                    </div>
+                    <button type="button" class="remove-btn" title="Quitar adjunto" (click)="eliminarAdjunto(doc)">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- Columna derecha: Destinatarios y Acciones -->
+    <aside class="compose-side">
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">03</span>
+          <div>
+            <h2 class="panel-title">Destinatarios</h2>
+            <p class="panel-desc">Solo empleados activos con correo institucional.</p>
+          </div>
+        </div>
+
+        <div class="mode-list">
+          <button
+            type="button"
+            class="mode-card"
+            [class.is-active]="modoDestinatarios() === 'todos'"
+            (click)="setModoDestinatarios('todos')"
+          >
+            <div>
+              <div class="mode-title">Todos los empleados</div>
+              <div class="mono-meta">Padrón completo · {{ resumen()?.total_activos ?? 0 }} activos</div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'todos' ? '✓' : '' }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="mode-card"
+            [class.is-active]="modoDestinatarios() === 'area'"
+            (click)="setModoDestinatarios('area')"
+          >
+            <div>
+              <div class="mode-title">Por Área / Departamento</div>
+              <div class="mono-meta">{{ resumen()?.areas?.length ?? 0 }} áreas · {{ selectedAreasSum() }} seleccionados</div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'area' ? '✓' : '' }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="mode-card"
+            [class.is-active]="modoDestinatarios() === 'categoria_cct'"
+            (click)="setModoDestinatarios('categoria_cct')"
+          >
+            <div>
+              <div class="mode-title">Por Tipo de Personal</div>
+              <div class="mono-meta">Admin, Docentes, MMyS · {{ selectedCategoriasSum() }}</div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'categoria_cct' ? '✓' : '' }}</span>
+          </button>
+        </div>
+
+        @if (modoDestinatarios() === 'area') {
+          <div class="segment-panel">
+            <div class="segment-head">
+              <span class="field-label">Áreas institucionales</span>
+              <button type="button" class="link-btn" (click)="toggleAllAreas()">
+                {{ selectedAreaIds().size === (resumen()?.areas?.length ?? 0) ? 'Limpiar' : 'Seleccionar todas' }}
+              </button>
+            </div>
+            <div class="segment-scroll">
+              @for (area of resumen()?.areas ?? []; track area.id) {
+                <button
+                  type="button"
+                  class="segment-item"
+                  [class.is-selected]="selectedAreaIds().has(area.id)"
+                  (click)="toggleArea(area.id)"
+                >
+                  <span class="segment-name">{{ area.nombre }}</span>
+                  <span class="mono-meta">{{ area.count }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (modoDestinatarios() === 'categoria_cct') {
+          <div class="segment-panel">
+            <div class="segment-head">
+              <span class="field-label">Categorías de personal</span>
+              <button type="button" class="link-btn" (click)="toggleAllCategorias()">
+                {{ selectedCategorias().size === (resumen()?.categorias_cct?.length ?? 0) ? 'Limpiar' : 'Seleccionar todas' }}
+              </button>
+            </div>
+            <div class="segment-list">
+              @for (cat of resumen()?.categorias_cct ?? []; track cat.tipo) {
+                <button
+                  type="button"
+                  class="segment-item"
+                  [class.is-selected]="selectedCategorias().has(cat.tipo)"
+                  (click)="toggleCategoria(cat.tipo)"
+                >
+                  <span class="segment-name">{{ cat.nombre }}</span>
+                  <span class="mono-meta">{{ cat.count }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (modoDestinatarios() !== 'todos') {
+          <div class="segment-panel">
+            <label for="empleado-extra-search" class="field-label">
+              Agregar empleados individuales del padrón
+            </label>
+            <input
+              id="empleado-extra-search"
+              type="search"
+              class="text-input is-sm"
+              placeholder="Buscar por nombre, número o correo..."
+              [ngModel]="empleadoQuery()"
+              (ngModelChange)="onEmpleadoQueryInput($event)"
+            />
+
+            @if (empleadoQuery().trim().length > 0) {
+              @if (buscandoEmpleados()) {
+                <p class="mono-meta">Buscando correos parecidos...</p>
+              } @else if (sugerenciasEmpleados().length > 0) {
+                <div class="search-results">
+                  @for (emp of sugerenciasEmpleados(); track emp.id) {
+                    <button type="button" class="search-item" (click)="agregarEmpleadoExtra(emp)">
+                      <span class="search-email">{{ emp.correo_institucional }}</span>
+                      <span class="mono-meta search-name">{{ emp.nombre }} · {{ emp.num_empleado }}</span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="mono-meta">No se encontraron correos parecidos en el padrón activo.</p>
+              }
+            }
+
+            @if (extraEmpleados().length > 0) {
+              <div class="extra-chips">
+                @for (emp of extraEmpleados(); track emp.id) {
+                  <span class="extra-chip">
+                    <span>{{ emp.nombre }}</span>
+                    <button type="button" class="chip-remove" (click)="quitarEmpleadoExtra(emp.id)">×</button>
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="total-summary">
+          <div>
+            <div class="field-label">Total de destinatarios</div>
+            <div class="summary-scope">{{ scopeSummary() }}</div>
+          </div>
+          <div class="total-count">{{ totalDestinatarios() }}</div>
+        </div>
+
+        @if (totalDestinatarios() > 0) {
+          <div class="recipients-toggle-row">
+            <button type="button" class="link-btn" (click)="toggleListaDestinatarios()">
+              {{ mostrarListaDestinatarios() ? 'Ocultar correos' : 'Ver correos (' + totalDestinatarios() + ')' }}
+            </button>
+          </div>
+
+          @if (mostrarListaDestinatarios()) {
+            <div class="segment-panel">
+              <input
+                type="search"
+                class="text-input is-sm"
+                placeholder="Filtrar por correo o nombre..."
+                [ngModel]="filtroListaDestinatarios()"
+                (ngModelChange)="filtroListaDestinatarios.set($event)"
+              />
+              <div class="segment-scroll">
+                @for (dest of destinatariosVisibles(); track dest.empleado_id) {
+                  <div class="search-item">
+                    <span class="search-email">{{ dest.correo_destino }}</span>
+                    <span class="mono-meta search-name">{{ dest.nombre_destino }} · {{ dest.area_nombre }}</span>
+                  </div>
+                } @empty {
+                  <p class="mono-meta">Sin correos que coincidan con el filtro.</p>
+                }
+              </div>
+            </div>
+          }
+        }
+      </section>
+
+      <section class="panel-card actions-card">
+        <div class="field-label-row">
+          <span class="field-label">Estado del comunicado</span>
+          <span class="mono-meta">{{ lastSavedLabel() }}</span>
+        </div>
+
+        <div class="role-notice">
+          @if (esAutorizador()) {
+            Tu perfil tiene permiso de envío directo sin autorización previa.
+          } @else {
+            Este comunicado pasará a revisión de <strong>Sistemas</strong> o <strong>Super Administrador</strong> antes de enviarse.
+          }
+        </div>
+
+        <app-button
+          variant="primary"
+          [loading]="submitting()"
+          (click)="handlePrimaryAction()"
+        >
+          {{ esAutorizador() ? 'Enviar Comunicado' : 'Pedir Autorización' }}
+        </app-button>
+
+        <div class="secondary-actions">
+          <app-button variant="secondary" size="sm" (click)="abrirVistaPrevia()">
+            Vista previa
+          </app-button>
+          <app-button variant="secondary" size="sm" [loading]="sendingTest()" (click)="enviarPrueba()">
+            Enviar prueba
+          </app-button>
+          <app-button variant="ghost" size="sm" [loading]="saving()" (click)="guardarBorrador()">
+            Guardar borrador
+          </app-button>
+        </div>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<!-- Modal: Vista Previa -->
+<app-modal [(open)]="previewModalOpen" title="Vista previa del correo institucional" size="lg">
+  <div class="preview-modal-body">
+    <div class="field-label-row">
+      <label for="sample-select" class="field-label">Muestra de destinatario</label>
+      <select
+        id="sample-select"
+        class="text-input is-sm"
+        [ngModel]="sampleIndex()"
+        (ngModelChange)="sampleIndex.set(+$event)"
+      >
+        @for (sample of sampleOptions(); track $index) {
+          <option [value]="$index">
+            {{ sample.nombre_destino }} ({{ sample.categoria_nombre }})
+          </option>
+        }
+      </select>
+    </div>
+
+    <div class="mail-preview-frame">
+      <div class="mail-preview-header">
+        <span class="mail-brand">Universidad Tecnológica de Nezahualcóyotl · Sistema de Recursos Humanos</span>
+      </div>
+      <div class="mail-preview-meta">
+        <div><strong>Para:</strong> {{ currentSample().nombre_destino }} &lt;{{ currentSample().correo_destino }}&gt;</div>
+        <div><strong>Asunto:</strong> {{ previewSubject() }}</div>
+      </div>
+      <div class="mail-preview-body" [innerHTML]="previewBodySafe()"></div>
+    </div>
+  </div>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="previewModalOpen.set(false)">Volver a editar</app-button>
+    <app-button variant="primary" (click)="previewModalOpen.set(false); handlePrimaryAction()">
+      {{ esAutorizador() ? 'Enviar Comunicado' : 'Pedir Autorización' }}
+    </app-button>
+  </ng-template>
+</app-modal>
+
+<!-- Modal: Confirmar envío directo -->
+<app-modal [(open)]="confirmSendModalOpen" title="Confirmar envío masivo directo">
+  <div class="confirm-body">
+    <p>Se enviará el comunicado de manera inmediata a <strong>{{ totalDestinatarios() }}</strong> destinatarios activos.</p>
+    <p class="mono-meta">Asunto: {{ subject() }}</p>
+    <p class="mono-meta">Adjuntos: {{ attachments().length }} ({{ formatBytes(totalAttachmentsBytes()) }})</p>
+  </div>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="confirmSendModalOpen.set(false)">Cancelar</app-button>
+    <app-button variant="primary" [loading]="submitting()" (click)="confirmarEnvioDirecto()">
+      Enviar Comunicado ahora
+    </app-button>
+  </ng-template>
+</app-modal>
+
+<!-- Modal: Solicitud registrada -->
+<app-modal [(open)]="authSubmittedModalOpen" title="Solicitud enviada a validación">
+  <div class="confirm-body">
+    <p>Tu comunicado quedó registrado con folio <strong>{{ submittedFolio() }}</strong> en estado <strong>Pendiente de autorización</strong>.</p>
+  </div>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="authSubmittedModalOpen.set(false)">Seguir redactando</app-button>
+    <app-button variant="primary" (click)="irAAutorizaciones()">
+      Ir a autorizaciones
+    </app-button>
+  </ng-template>
+</app-modal>

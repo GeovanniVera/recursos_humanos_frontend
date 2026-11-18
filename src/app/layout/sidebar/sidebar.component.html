@@ -205,6 +205,88 @@
           <span class="item-label">Semáforo de documentos</span>
         </a>
       </li>
+
+      <li>
+        <button
+          type="button"
+          class="item is-branch"
+          [class.is-branch-active]="isComunicadosRoute()"
+          aria-controls="submenu-comunicados"
+          [attr.aria-expanded]="isRailMode() ? railSubmenuPos() !== null : comunicadosOpen()"
+          data-tooltip-key="comunicados"
+          [attr.aria-label]="collapsed() ? 'Comunicados' : null"
+          [attr.title]="collapsed() ? 'Comunicados' : null"
+          [attr.aria-describedby]="tooltipFor('comunicados')"
+          (click)="toggleComunicados($event)"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2.5" />
+            <path d="m4 7 8 5.5L20 7" />
+          </svg>
+          <span class="item-label">Comunicados</span>
+          @if (!collapsed() || isMobile()) {
+            <svg
+              class="branch-chevron"
+              [class.is-open]="comunicadosOpen()"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          }
+        </button>
+
+        @if ((!collapsed() || isMobile()) && comunicadosOpen()) {
+          <ul id="submenu-comunicados" class="sublist">
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria"
+                routerLinkActive="is-active"
+                [routerLinkActiveOptions]="{ exact: true }"
+                ariaCurrentWhenActive="page"
+                (click)="onNuevoCorreoClick()"
+              >
+                <span class="item-label">Correos masivos</span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria/autorizaciones"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Autorizaciones</span>
+              </a>
+            </li>
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria/borradores"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Borradores</span>
+              </a>
+            </li>
+          </ul>
+        }
+      </li>
     </ul>
   </div>
 
@@ -296,6 +378,32 @@
     (signOut)="cerrarSesion()"
   />
 </footer>
+
+@if (collapsed() && !isMobile() && railSubmenuPos(); as submenu) {
+  <div
+    id="rail-submenu-comunicados"
+    class="rail-submenu"
+    role="menu"
+    aria-label="Submenú Comunicados"
+    [style.transform]="'translate3d(' + submenu.left + 'px, ' + submenu.top + 'px, 0)'"
+  >
+    <a
+      class="rail-submenu-item"
+      routerLink="/mensajeria"
+      routerLinkActive="is-active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="onNuevoCorreoClick()"
+    >
+      Correos masivos
+    </a>
+    <a class="rail-submenu-item" routerLink="/mensajeria/autorizaciones" routerLinkActive="is-active">
+      Autorizaciones
+    </a>
+    <a class="rail-submenu-item" routerLink="/mensajeria/borradores" routerLinkActive="is-active">
+      Borradores
+    </a>
+  </div>
+}
 
 @if (collapsed() && !isMobile() && railTooltip(); as tooltip) {
   <div
