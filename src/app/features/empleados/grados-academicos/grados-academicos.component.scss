@@ -1,0 +1,21 @@
+@use '../carpeta-formacion';
+:host {
+  display: block;
+  min-width: 0;
+}
+.tarjeta-meta {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+}
+.tarjeta-meta dd,
+.tarjeta-titulo {
+  overflow-wrap: anywhere;
+}
+.check {
+  min-height: var(--space-8);
+}
+
+.form-carpeta-acciones {
+  position: static;
+  flex-wrap: wrap;
+  padding-left: 0;
+}

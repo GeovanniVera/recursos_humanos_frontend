@@ -1,3 +1,4 @@
+import { GradosAcademicos } from '../grados-academicos/grados-academicos.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
@@ -108,10 +109,7 @@ const CAMPOS_POR_TAB: Readonly<Record<TabId, readonly string[]>> = {
 
 /** Sheet of the second level the folder can open. */
 export type VistaL2 =
-  | 'identidad'
-  | 'num-empleado'
-  | 'historial-adscripciones'
-  | 'cambio-adscripcion';
+  'identidad' | 'num-empleado' | 'historial-adscripciones' | 'cambio-adscripcion';
 
 const TITULOS_L2: Readonly<Record<VistaL2, string>> = {
   identidad: 'Rectificación de identidad',
@@ -163,7 +161,7 @@ const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
  */
 @Component({
   selector: 'app-editar-drawer',
-  imports: [AltaExpediente, Drawer, FormsModule],
+  imports: [AltaExpediente, Drawer, FormsModule, GradosAcademicos],
   templateUrl: './editar-drawer.component.html',
   styleUrl: './editar-drawer.component.scss',
 })
@@ -331,6 +329,10 @@ export class EditarDrawer {
   readonly niveles = computed(() => this.catalogos()?.niveles_estudios ?? []);
 
   readonly grados = computed(() => this.registroActual()?.grados_academicos ?? []);
+
+  readonly gradosPresentacion = computed(() =>
+    this.grados().map((g) => ({ ...g, clave: String(g.id) })),
+  );
 
   readonly empleos = computed(() => this.registroActual()?.empleos_externos ?? []);
 
@@ -1022,7 +1024,9 @@ export class EditarDrawer {
     if (status === 409) {
       this.conflicto.set(codigo === 'conflicto_concurrencia');
       this.mensaje.set(
-        codigo === 'conflicto_concurrencia' ? MENSAJE_CONFLICTO : (mensajeBackend ?? MENSAJE_SERVICIO),
+        codigo === 'conflicto_concurrencia'
+          ? MENSAJE_CONFLICTO
+          : (mensajeBackend ?? MENSAJE_SERVICIO),
       );
       return;
     }
@@ -1277,9 +1281,7 @@ export class EditarDrawer {
           }
 
           const texto = cuerpo?.mensaje ?? cuerpo?.message ?? null;
-          this.mensaje.set(
-            texto ?? (status === 0 ? MENSAJE_CONEXION : MENSAJE_SERVICIO),
-          );
+          this.mensaje.set(texto ?? (status === 0 ? MENSAJE_CONEXION : MENSAJE_SERVICIO));
         },
       });
   }

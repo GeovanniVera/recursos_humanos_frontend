@@ -398,7 +398,7 @@ describe('AltaDrawer', () => {
     await fixture.whenStable();
 
     expect(tab(fixture, 'Formación').getAttribute('aria-selected')).toBe('true');
-    expect(campo(fixture, 'nivel_estudios_id')).not.toBeNull();
+    expect(host(fixture).querySelector('app-grados-academicos')).not.toBeNull();
 
     tira?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     await fixture.whenStable();
@@ -944,5 +944,162 @@ describe('AltaDrawer', () => {
 
     expect(campo(fixture, 'num_empleado')).not.toBeNull();
     expect(host(fixture).querySelector('[role="alert"]')).toBeNull();
+  });
+
+  async function agregarGrado(
+    fixture: ComponentFixture<AltaDrawer>,
+    titulo: string,
+  ): Promise<void> {
+    await abrirTab(fixture, 'Formación');
+    fixture.componentInstance.nuevoGrado();
+    await fixture.whenStable();
+    await elegir(fixture, 'alta-grado-nivel', 2);
+    await escribir(fixture, 'alta-grado-titulo', titulo);
+    await escribir(fixture, 'alta-grado-escuela', 'Universidad de prueba');
+    await escribir(fixture, 'alta-grado-generacion', '2016-2020');
+    const guardar = Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === 'Guardar grado',
+    );
+    guardar!.click();
+    await fixture.whenStable();
+  }
+
+  it('reuses the edit folder, adds independent degrees and preserves them between sheets', async () => {
+    const f = await abrir();
+    await agregarGrado(f, 'Licenciatura de prueba');
+    await agregarGrado(f, 'Maestría de prueba');
+    expect(host(f).querySelectorAll('app-grados-academicos .tarjeta')).toHaveLength(2);
+    expect(f.componentInstance.gradosPendientes().map((g) => g.titulo_o_carrera)).toEqual([
+      'Licenciatura de prueba',
+      'Maestría de prueba',
+    ]);
+    await abrirTab(f, 'Plaza');
+    await abrirTab(f, 'Formación');
+    expect(texto(f)).toContain('Maestría de prueba');
+    const primero = f.componentInstance.gradosPendientes()[0];
+    f.componentInstance.editarGrado(primero);
+    await f.whenStable();
+    await escribir(f, 'alta-grado-titulo', 'Licenciatura corregida');
+    f.componentInstance.guardarGrado();
+    await f.whenStable();
+    expect(f.componentInstance.gradosPendientes()[1].titulo_o_carrera).toBe('Maestría de prueba');
+    expect(f.componentInstance.gradosPendientes()[0].titulo_o_carrera).toBe(
+      'Licenciatura corregida',
+    );
+    f.componentInstance.eliminarGrado(f.componentInstance.gradosPendientes()[0]);
+    await f.whenStable();
+    expect(f.componentInstance.gradosPendientes()).toHaveLength(1);
+    expect(f.componentInstance.gradosPendientes()[0].es_maximo).toBe(true);
+    httpMock.expectNone(URL_EMPLEADOS);
+  });
+
+  it('sends every degree once without UI keys or persisted IDs and closes on success', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    await agregarGrado(f, 'Licenciatura');
+    await agregarGrado(f, 'Maestría');
+    await agregarGrado(f, 'Doctorado');
+    f.componentInstance.marcarGradoMaximo(f.componentInstance.gradosPendientes()[2]);
+    const peticion = await registrar(f);
+    expect(peticion).not.toBeNull();
+    expect(peticion!.request.body.grados_academicos).toEqual([
+      {
+        nivel_estudios_id: 2,
+        titulo_o_carrera: 'Licenciatura',
+        escuela_procedencia: 'Universidad de prueba',
+        generacion: '2016-2020',
+        cedula_profesional: null,
+        es_maximo: false,
+      },
+      {
+        nivel_estudios_id: 2,
+        titulo_o_carrera: 'Maestría',
+        escuela_procedencia: 'Universidad de prueba',
+        generacion: '2016-2020',
+        cedula_profesional: null,
+        es_maximo: false,
+      },
+      {
+        nivel_estudios_id: 2,
+        titulo_o_carrera: 'Doctorado',
+        escuela_procedencia: 'Universidad de prueba',
+        generacion: '2016-2020',
+        cedula_profesional: null,
+        es_maximo: true,
+      },
+    ]);
+    expect(peticion!.request.body).not.toHaveProperty('nivel_estudios_id');
+    peticion!.flush(CREADO, { status: 201, statusText: 'Created' });
+    await f.whenStable();
+    expect(f.componentInstance.open()).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    await f.whenStable();
+    f.componentInstance.open.set(true);
+    await f.whenStable();
+    expect(f.componentInstance.gradosPendientes()).toEqual([]);
+    expect(f.componentInstance.gradoAbierto()).toBe(false);
+  });
+
+  it('validates the open degree before sending and preserves a pending editor across navigation', async () => {
+    const f = await abrir();
+    await abrirTab(f, 'Formación');
+    f.componentInstance.nuevoGrado();
+    await f.whenStable();
+    await escribir(f, 'alta-grado-generacion', '2020-2010');
+    f.componentInstance.guardarGrado();
+    await f.whenStable();
+    expect(campo(f, 'alta-grado-nivel')?.getAttribute('aria-invalid')).toBe('true');
+    expect(texto(f)).toContain('Selecciona el nivel de estudios.');
+    expect(f.componentInstance.gradoErrores()['generacion']).toBeDefined();
+    await escribir(f, 'alta-grado-titulo', 'Borrador sin guardar');
+    await abrirTab(f, 'Plaza');
+    await abrirTab(f, 'Formación');
+    expect(campo<HTMLInputElement>(f, 'alta-grado-titulo')?.value).toBe('Borrador sin guardar');
+    f.componentInstance.registrar();
+    await f.whenStable();
+    httpMock.expectNone(URL_EMPLEADOS);
+    expect(f.componentInstance.tabActiva()).toBe('formacion');
+  });
+
+  it('maps an indexed server error to the second degree and preserves all drafts on failure', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    await agregarGrado(f, 'Primero');
+    await agregarGrado(f, 'Segundo');
+    const peticion = await registrar(f);
+    peticion!.flush(
+      {
+        message: 'Revisa los datos.',
+        errors: { 'grados_academicos.1.generacion': ['Generación inválida del segundo grado.'] },
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await f.whenStable();
+    expect(f.componentInstance.tabActiva()).toBe('formacion');
+    expect(campo<HTMLInputElement>(f, 'alta-grado-titulo')?.value).toBe('Segundo');
+    expect(texto(f)).toContain('Generación inválida del segundo grado.');
+    expect(f.componentInstance.gradosPendientes()).toHaveLength(2);
+    expect(f.componentInstance.gradoErrores()['generacion']).toEqual([
+      'Generación inválida del segundo grado.',
+    ]);
+  });
+
+  it('clears pending degrees after cancellation and keeps only one maximum', async () => {
+    const f = await abrir();
+    await agregarGrado(f, 'Primero');
+    await agregarGrado(f, 'Segundo');
+    f.componentInstance.marcarGradoMaximo(f.componentInstance.gradosPendientes()[1]);
+    expect(f.componentInstance.gradosPendientes().filter((g) => g.es_maximo)).toHaveLength(1);
+    f.componentInstance.open.set(false);
+    await f.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    await f.whenStable();
+    f.componentInstance.open.set(true);
+    await f.whenStable();
+    await abrirTab(f, 'Formación');
+    expect(texto(f)).toContain('Sin grados registrados.');
+    expect(f.componentInstance.gradosPendientes()).toEqual([]);
   });
 });
