@@ -359,3 +359,97 @@
     border-bottom-style: double;
   }
 }
+
+.empleos-externos {
+  .carpeta-vacia {
+    margin: 0;
+    color: var(--color-paper-muted);
+  }
+  .tarjetas {
+    display: grid;
+    gap: var(--space-3);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .tarjeta {
+    padding: var(--space-3);
+    border: var(--border-width) solid var(--color-paper-line);
+    border-radius: var(--radius-paper-sm);
+  }
+  .tarjeta-head,
+  .tarjeta-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: baseline;
+  }
+  .tarjeta-head {
+    justify-content: space-between;
+  }
+  .tarjeta-titulo {
+    margin: 0;
+    font-family: var(--font-paper-mono);
+    color: var(--color-paper-value);
+    overflow-wrap: anywhere;
+  }
+  .badge {
+    border: var(--border-width) solid var(--color-paper-muted);
+    border-radius: var(--radius-paper-xs);
+    padding: var(--space-1);
+    color: var(--color-paper-muted);
+  }
+  .badge.is-ok {
+    color: var(--color-stamp-ok);
+    border-color: var(--color-stamp-ok);
+  }
+  .tarjeta-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+    gap: var(--space-2);
+  }
+  .tarjeta-meta div {
+    min-width: 0;
+  }
+  .tarjeta-meta dt {
+    color: var(--color-paper-muted);
+  }
+  .tarjeta-meta dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--font-paper-mono);
+  }
+  .is-wide {
+    grid-column: 1 / -1;
+  }
+  .form-carpeta {
+    border-top: var(--border-width) dashed var(--color-paper-line);
+    padding-top: var(--space-3);
+  }
+  .form-carpeta-titulo {
+    color: var(--color-paper-value);
+  }
+  .form-carpeta-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--space-8);
+    color: var(--color-paper-value);
+  }
+  .action.is-primary {
+    color: var(--color-paper-action-ink);
+    background: var(--color-paper-action);
+    border-color: var(--color-paper-action);
+  }
+  .area {
+    resize: vertical;
+    min-height: 96px;
+  }
+}

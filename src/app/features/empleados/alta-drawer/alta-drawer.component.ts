@@ -1,3 +1,4 @@
+import { EmpleoExternoRequest } from '../../../core/empleados/editar.models';
 import {
   GradosAcademicos,
   GradoPresentacion,
@@ -273,6 +274,110 @@ export class AltaDrawer {
   readonly gradoMaximo = signal(false);
   readonly gradoErrores = signal<Record<string, string[]>>({});
   private siguienteGrado = 0;
+  // Employment drafts belong exclusively to alta. No folder endpoint is called here.
+  readonly empleosPendientes = signal<(EmpleoExternoRequest & { clave: string })[]>([]);
+  readonly empleoAbierto = signal(false);
+  readonly empleoEditandoClave = signal<string | null>(null);
+  readonly empleoInstitucion = signal('');
+  readonly empleoPuesto = signal('');
+  readonly empleoHorario = signal('');
+  readonly empleoObservaciones = signal('');
+  readonly empleoVigente = signal(true);
+  readonly empleoErrores = signal<Record<string, string[]>>({});
+  private siguienteEmpleo = 0;
+  readonly erroresEmpleos = computed(() => {
+    const errores: Record<string, string[]> = {};
+    for (const [campo, mensajes] of Object.entries(this.erroresServidor())) {
+      const match = /^empleos_externos\.(\d+)\./.exec(campo);
+      const empleo = match ? this.empleosPendientes()[Number(match[1])] : undefined;
+      if (empleo) (errores[empleo.clave] ??= []).push(...mensajes);
+    }
+    return errores;
+  });
+  nuevoEmpleo(): void {
+    this.cancelarEmpleo();
+    this.empleoAbierto.set(true);
+  }
+  cancelarEmpleo(): void {
+    this.empleoAbierto.set(false);
+    this.empleoEditandoClave.set(null);
+    this.empleoInstitucion.set('');
+    this.empleoPuesto.set('');
+    this.empleoHorario.set('');
+    this.empleoObservaciones.set('');
+    this.empleoVigente.set(true);
+    this.empleoErrores.set({});
+  }
+  editarEmpleo(empleo: EmpleoExternoRequest & { clave: string }): void {
+    this.empleoEditandoClave.set(empleo.clave);
+    this.empleoInstitucion.set(empleo.institucion_o_empresa);
+    this.empleoPuesto.set(empleo.puesto_o_actividad);
+    this.empleoHorario.set(empleo.horario_o_jornada);
+    this.empleoObservaciones.set(empleo.observaciones ?? '');
+    this.empleoVigente.set(empleo.vigente ?? true);
+    const indice = this.empleosPendientes().findIndex((e) => e.clave === empleo.clave);
+    const prefijo = 'empleos_externos.' + indice + '.';
+    this.empleoErrores.set(
+      Object.fromEntries(
+        Object.entries(this.erroresServidor())
+          .filter(([k]) => k.startsWith(prefijo))
+          .map(([k, v]) => [k.slice(prefijo.length), v]),
+      ),
+    );
+    this.empleoAbierto.set(true);
+  }
+  guardarEmpleo(): boolean {
+    const errores: Record<string, string[]> = {};
+    for (const [campo, valor, maximo, mensaje] of [
+      ['institucion_o_empresa', this.empleoInstitucion(), 200, 'Indica la institución o empresa.'],
+      ['puesto_o_actividad', this.empleoPuesto(), 150, 'Indica el puesto o la actividad.'],
+      ['horario_o_jornada', this.empleoHorario(), 120, 'Indica el horario o la jornada.'],
+    ] as const) {
+      const error = valor.trim() ? validarLargo(valor.trim(), maximo) : mensaje;
+      if (error) errores[campo] = [error];
+    }
+    const nota = validarLargo(this.empleoObservaciones().trim(), 500);
+    if (nota) errores['observaciones'] = [nota];
+    this.empleoErrores.set(errores);
+    if (Object.keys(errores).length) return false;
+    const clave = this.empleoEditandoClave() ?? 'empleo-pendiente-' + ++this.siguienteEmpleo;
+    const empleo = {
+      clave,
+      institucion_o_empresa: this.empleoInstitucion().trim(),
+      puesto_o_actividad: this.empleoPuesto().trim(),
+      horario_o_jornada: this.empleoHorario().trim(),
+      vigente: this.empleoVigente(),
+      observaciones: this.empleoObservaciones().trim() || null,
+    };
+    this.empleosPendientes.update((es) =>
+      this.empleoEditandoClave() === null
+        ? [...es, empleo]
+        : es.map((e) => (e.clave === clave ? empleo : e)),
+    );
+    this.limpiarErroresEmpleos();
+    this.cancelarEmpleo();
+    return true;
+  }
+  eliminarEmpleo(empleo: EmpleoExternoRequest & { clave: string }): void {
+    this.empleosPendientes.update((es) => es.filter((e) => e.clave !== empleo.clave));
+    if (this.empleoEditandoClave() === empleo.clave) this.cancelarEmpleo();
+    this.limpiarErroresEmpleos();
+  }
+  alternarVigencia(empleo: EmpleoExternoRequest & { clave: string }): void {
+    this.empleosPendientes.update((es) =>
+      es.map((e) => (e.clave === empleo.clave ? { ...e, vigente: !e.vigente } : e)),
+    );
+    this.limpiarErroresEmpleos();
+  }
+  errorEmpleo(campo: string): string | null {
+    return this.empleoErrores()[campo]?.join(' ') || null;
+  }
+  private limpiarErroresEmpleos(): void {
+    this.erroresServidor.update((es) =>
+      Object.fromEntries(Object.entries(es).filter(([k]) => !k.startsWith('empleos_externos'))),
+    );
+  }
+
   readonly erroresGrados = computed(() => {
     const errores: Record<string, string[]> = {};
     for (const [campo, mensajes] of Object.entries(this.erroresServidor())) {
@@ -421,9 +526,14 @@ export class AltaDrawer {
    * field that fails here would come back as a `422`, so the drawer refuses to
    * send it instead of spending a round trip on a known answer.
    */
-  private readonly erroresDelBorrador = computed<Record<string, string>>(() =>
-    evaluarBorrador(this.modelo(), this.contexto()),
-  );
+  private readonly erroresDelBorrador = computed<Record<string, string>>(() => ({
+    ...evaluarBorrador(this.modelo(), this.contexto(), {
+      camposProtegidos: ['trabaja_otro_donde'],
+    }),
+    ...(this.pideOtroLugar() && this.empleosPendientes().length === 0 && !this.empleoAbierto()
+      ? { empleos_externos: 'Agrega al menos un empleo externo.' }
+      : {}),
+  }));
 
   /**
    * Domain the form appends to what the user types, with its `@`.
@@ -619,7 +729,10 @@ export class AltaDrawer {
       }
       vistos.add(campo);
 
-      const seccion = campo.startsWith('grados_academicos') ? 2 : SECCION_DE_CAMPO[campo];
+      const seccion =
+        campo.startsWith('grados_academicos') || campo.startsWith('empleos_externos')
+          ? 2
+          : SECCION_DE_CAMPO[campo];
       if (seccion !== undefined) {
         conteo[seccion] += 1;
       }
@@ -639,7 +752,9 @@ export class AltaDrawer {
     Object.entries(this.erroresServidor())
       .filter(
         ([campo]) =>
-          SECCION_DE_CAMPO[campo] === undefined && !campo.startsWith('grados_academicos.'),
+          SECCION_DE_CAMPO[campo] === undefined &&
+          !campo.startsWith('grados_academicos.') &&
+          !campo.startsWith('empleos_externos.'),
       )
       .flatMap(([, mensajes]) => mensajes),
   );
@@ -710,8 +825,25 @@ export class AltaDrawer {
           { etiqueta: 'Trabaja en otro lugar', valor: this.texto(datos.trabaja_otro_lugar) },
           {
             etiqueta: 'Dónde trabaja',
-            valor: this.pideOtroLugar() ? this.texto(datos.trabaja_otro_donde) : 'No aplica',
+            valor: this.pideOtroLugar()
+              ? this.empleosPendientes()
+                  .map((e) => e.institucion_o_empresa)
+                  .join(', ') || SIN_DATO
+              : 'No aplica',
           },
+          ...this.empleosPendientes().flatMap((e, i) => [
+            { etiqueta: 'Empleo ' + (i + 1), valor: e.institucion_o_empresa },
+            { etiqueta: 'Empleo ' + (i + 1) + ' · Puesto', valor: e.puesto_o_actividad },
+            { etiqueta: 'Empleo ' + (i + 1) + ' · Horario', valor: e.horario_o_jornada },
+            {
+              etiqueta: 'Empleo ' + (i + 1) + ' · Vigencia',
+              valor: e.vigente ? 'Vigente' : 'Concluido',
+            },
+            {
+              etiqueta: 'Empleo ' + (i + 1) + ' · Observaciones',
+              valor: e.observaciones || SIN_DATO,
+            },
+          ]),
           { etiqueta: 'Observaciones', valor: this.texto(datos.observaciones) },
         ],
       },
@@ -937,6 +1069,9 @@ export class AltaDrawer {
     this.guardar('trabaja_otro_lugar', valor);
     if (valor === OTRO_LUGAR_NO) {
       this.guardar('trabaja_otro_donde', '');
+      this.empleosPendientes.set([]);
+      this.cancelarEmpleo();
+      this.limpiarErroresEmpleos();
     }
   }
 
@@ -1018,6 +1153,10 @@ export class AltaDrawer {
       this.tabActiva.set('formacion');
       return;
     }
+    if (this.pideOtroLugar() && this.empleoAbierto() && !this.guardarEmpleo()) {
+      this.tabActiva.set('formacion');
+      return;
+    }
     const fallidos = Object.keys(this.erroresDelBorrador());
     if (fallidos.length > 0) {
       this.revelarErrores(fallidos);
@@ -1064,6 +1203,16 @@ export class AltaDrawer {
       cedula_profesional: g.cedula_profesional,
       es_maximo: g.es_maximo,
     }));
+    delete cuerpo.trabaja_otro_donde;
+    cuerpo.empleos_externos = this.pideOtroLugar()
+      ? this.empleosPendientes().map((e) => ({
+          institucion_o_empresa: e.institucion_o_empresa,
+          puesto_o_actividad: e.puesto_o_actividad,
+          horario_o_jornada: e.horario_o_jornada,
+          vigente: e.vigente,
+          observaciones: e.observaciones,
+        }))
+      : [];
     return cuerpo;
   }
 
@@ -1113,6 +1262,22 @@ export class AltaDrawer {
    */
   private irAlPrimerErrorDeServidor(errores: Record<string, string[]>): void {
     for (const campo of Object.keys(errores)) {
+      if (campo.startsWith('empleos_externos')) {
+        this.tabActiva.set('formacion');
+        const empleo = this.empleosPendientes()[Number(campo.split('.')[1])];
+        if (empleo) {
+          this.editarEmpleo(empleo);
+          const controles: Record<string, string> = {
+            institucion_o_empresa: 'institucion',
+            puesto_o_actividad: 'puesto',
+            horario_o_jornada: 'horario',
+            observaciones: 'observaciones',
+          };
+          const control = controles[campo.split('.')[2]];
+          if (control) this.programarFoco('#alta-empleo-' + control);
+        }
+        return;
+      }
       if (campo.startsWith('grados_academicos')) {
         this.tabActiva.set('formacion');
         const grado = this.gradosPendientes()[Number(campo.split('.')[1])];
@@ -1139,7 +1304,10 @@ export class AltaDrawer {
 
   /** Opens the sheet of a field and puts the cursor in the control itself. */
   private irAlCampo(campo: string): void {
-    const seccion = campo.startsWith('grados_academicos') ? 2 : SECCION_DE_CAMPO[campo];
+    const seccion =
+      campo.startsWith('grados_academicos') || campo.startsWith('empleos_externos')
+        ? 2
+        : SECCION_DE_CAMPO[campo];
     if (seccion === undefined) {
       return;
     }
@@ -1326,6 +1494,9 @@ export class AltaDrawer {
         return;
       }
       this.modelo.set({ ...BORRADOR_ALTA });
+      this.empleosPendientes.set([]);
+      this.siguienteEmpleo = 0;
+      this.cancelarEmpleo();
       this.gradosPendientes.set([]);
       this.siguienteGrado = 0;
       this.cancelarGrado();

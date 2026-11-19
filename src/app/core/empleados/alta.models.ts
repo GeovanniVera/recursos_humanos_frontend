@@ -1,4 +1,4 @@
-import { GradoAcademicoRequest } from './editar.models';
+import { EmpleoExternoRequest, GradoAcademicoRequest } from './editar.models';
 /**
  * Payloads of the registration flow: `GET /api/empleados/formulario` and
  * `POST /api/empleados`.
@@ -121,6 +121,7 @@ export interface FormularioCatalogos {
  * `puesto_id`, so the field is not part of this type at all.
  */
 export interface AltaEmpleadoRequest {
+  empleos_externos?: EmpleoExternoRequest[];
   grados_academicos?: GradoAcademicoRequest[];
   // --- Required -------------------------------------------------------------
   /** Employee number, max 20. */
