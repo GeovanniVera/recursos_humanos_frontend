@@ -100,7 +100,7 @@ describe('AutorizacionesPage', () => {
     return fixture;
   }
 
-  it('abre el modal de vista previa al hacer clic en una fila y permite aprobar a SUPER_ADMIN', () => {
+  it('abre el drawer de vista previa al hacer clic en una fila y permite aprobar a SUPER_ADMIN', () => {
     const fixture = flushList([PENDIENTE]);
     const host = fixture.nativeElement as HTMLElement;
 
@@ -108,8 +108,8 @@ describe('AutorizacionesPage', () => {
     row?.click();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.modalOpen()).toBe(true);
-    expect(host.querySelector('dialog')?.textContent).toContain('Aprobar y Enviar');
+    expect(fixture.componentInstance.drawerOpen()).toBe(true);
+    expect(host.querySelector('app-drawer dialog')?.textContent).toContain('Aprobar y Enviar');
 
     fixture.componentInstance.aprobar(PENDIENTE);
     httpMock.expectOne(`${URL_BASE}/comunicados/10/aprobar`).flush({

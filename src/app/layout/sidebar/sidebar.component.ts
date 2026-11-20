@@ -106,6 +106,10 @@ export class Sidebar {
   /** Floating submenu coordinates when the rail is collapsed and Comunicados is clicked. */
   readonly railSubmenuPos = signal<{ top: number; left: number } | null>(null);
 
+  /** Contadores para mostrar en los enlaces de Autorizaciones y Borradores. */
+  readonly pendientesCount = computed(() => this.mensajeria.conteos().pendientes);
+  readonly borradoresCount = computed(() => this.mensajeria.conteos().borradores);
+
   private readonly navPillGroup: PillGroupState = {
     top: this.pillTop,
     left: this.pillLeft,
@@ -120,8 +124,21 @@ export class Sidebar {
   private focusTimer: ReturnType<typeof setTimeout> | null = null;
   private hoverTarget: HTMLElement | null = null;
   private focusTarget: HTMLElement | null = null;
+  private lastSessionUserId: number | null = null;
 
   constructor() {
+    effect(() => {
+      const sesion = this.auth.sesion();
+      if (!sesion) {
+        this.lastSessionUserId = null;
+        this.mensajeria.limpiarConteos();
+        return;
+      }
+      if (this.lastSessionUserId !== sesion.usuario_id) {
+        this.lastSessionUserId = sesion.usuario_id;
+        this.mensajeria.refrescarConteos();
+      }
+    });
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {

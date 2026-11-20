@@ -3,7 +3,7 @@
 .page,
 .identity,
 .search,
-.modal-content,
+.drawer-content,
 .attachments-row,
 .reject-box {
   display: flex;
@@ -271,34 +271,6 @@
   color: var(--color-text-primary);
   font: var(--text-body);
   cursor: pointer;
-}
-
-.mail-preview-frame {
-  overflow: hidden;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-paper);
-  color: var(--color-paper-text);
-}
-
-.mail-preview-header {
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-action-primary);
-  color: var(--color-action-on-primary);
-  font: var(--text-nav-branch);
-}
-
-.mail-preview-meta {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-width) solid var(--color-border-default);
-  background: var(--bg-subtle);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-}
-
-.mail-preview-body {
-  padding: var(--space-4);
-  font: var(--text-body);
 }
 
 .reject-box {

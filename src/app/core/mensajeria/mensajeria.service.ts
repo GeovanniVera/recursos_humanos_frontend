@@ -1,9 +1,10 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   ComunicadoArchivo,
+  ComunicadoConteos,
   ComunicadoDto,
   FiltroBandejaComunicados,
   GuardarComunicadoPayload,
@@ -15,15 +16,34 @@ import {
   EmpleadoSegmento,
 } from './mensajeria.models';
 
+const CONTEOS_VACIOS: ComunicadoConteos = {
+  pendientes: 0,
+  aprobados: 0,
+  rechazados: 0,
+  borradores: 0,
+};
+
 @Injectable({ providedIn: 'root' })
 export class MensajeriaService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/mensajeria`;
   private readonly nuevoCorreoTick = signal(0);
+  private readonly conteosState = signal<ComunicadoConteos>(CONTEOS_VACIOS);
   readonly nuevoCorreoSolicitud = this.nuevoCorreoTick.asReadonly();
+  readonly conteos = this.conteosState.asReadonly();
 
   solicitarNuevoCorreo(): void {
     this.nuevoCorreoTick.update((n) => n + 1);
+  }
+
+  refrescarConteos(): void {
+    this.listarComunicados('pendientes', 1, undefined, 1).subscribe({
+      error: () => undefined,
+    });
+  }
+
+  limpiarConteos(): void {
+    this.conteosState.set(CONTEOS_VACIOS);
   }
 
   resumenSegmentacion(): Observable<SegmentacionResumen> {
@@ -63,7 +83,9 @@ export class MensajeriaService {
     if (buscar && buscar.trim() !== '') {
       params = params.set('buscar', buscar.trim());
     }
-    return this.http.get<ListadoComunicadosResponse>(`${this.baseUrl}/comunicados`, { params });
+    return this.http
+      .get<ListadoComunicadosResponse>(`${this.baseUrl}/comunicados`, { params })
+      .pipe(tap((res) => this.conteosState.set(res.conteos)));
   }
 
   obtenerComunicado(id: number): Observable<{ comunicado: ComunicadoDto }> {

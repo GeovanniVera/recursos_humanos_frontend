@@ -68,7 +68,7 @@
         caption="Listado de autorizaciones de comunicados"
         rowKey="id"
         [clickableRows]="true"
-        (rowClick)="abrirModal($event)"
+        (rowClick)="abrirDrawer($event)"
       >
         <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
           @if (column.key === 'folio_texto') {
@@ -123,14 +123,15 @@
   </div>
 </section>
 
-<!-- Modal: Vista previa y resolución -->
-<app-modal
-  [(open)]="modalOpen"
+<!-- Drawer: Vista previa y resolución -->
+<app-drawer
+  [(open)]="drawerOpen"
   [title]="seleccionado()?.folio ?? 'Vista previa del comunicado'"
+  side="right"
   size="lg"
 >
   @if (seleccionado(); as item) {
-    <div class="modal-content">
+    <div class="drawer-content">
       <div class="detail-meta-grid">
         <div class="meta-box">
           <span class="meta-label">Solicitante</span>
@@ -159,15 +160,7 @@
         </div>
       }
 
-      <div class="mail-preview-frame">
-        <div class="mail-preview-header">
-          Universidad Tecnológica de Nezahualcóyotl · Sistema de Recursos Humanos
-        </div>
-        <div class="mail-preview-meta">
-          <strong>Asunto:</strong> {{ previewSubject() }}
-        </div>
-        <div class="mail-preview-body" [innerHTML]="previewBodySafe()"></div>
-      </div>
+      <app-mail-preview [folio]="item.folio" [subject]="previewSubject()" [bodyHtml]="previewBodySafe()" />
 
       @if (item.status === 'RECHAZADO' && item.feedback_rechazo) {
         <app-alert-banner
@@ -206,7 +199,7 @@
 
   <ng-template #actions>
     @if (seleccionado(); as item) {
-      <app-button variant="ghost" (click)="modalOpen.set(false)">Cerrar</app-button>
+      <app-button variant="ghost" (click)="drawerOpen.set(false)">Cerrar</app-button>
 
       @if (puedeEditarRechazado(item)) {
         <app-button variant="primary" (click)="editarRechazado(item)">
@@ -233,4 +226,4 @@
       }
     }
   </ng-template>
-</app-modal>
+</app-drawer>

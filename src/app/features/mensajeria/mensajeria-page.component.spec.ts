@@ -243,4 +243,47 @@ describe('MensajeriaPage', () => {
 
     expect(host.querySelector('.active-link-bar')?.textContent).toContain('https://utn.edu.mx');
   });
+
+  it('abre la vista previa del correo dentro de un drawer lateral', () => {
+    const fixture = flushInitialLoads();
+    const host = fixture.nativeElement as HTMLElement;
+
+    fixture.componentInstance.subject.set('[AVISO] Prueba');
+    fixture.componentInstance.bodyHtml.set('<p>Hola {{nombre_empleado}}</p><img src="https://example.com/flyer.png" alt="Flyer" />');
+    fixture.componentInstance.abrirVistaPrevia();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.previewDrawerOpen()).toBe(true);
+    const drawerDialog = host.querySelector<HTMLDialogElement>('app-drawer dialog');
+    expect(drawerDialog?.hasAttribute('open')).toBe(true);
+    expect(drawerDialog?.querySelector('.mail-preview-body img')).not.toBeNull();
+    expect(drawerDialog?.textContent).toContain('Comunicado Institucional');
+    expect(drawerDialog?.textContent).toContain('Este mensaje fue enviado de manera automática');
+  });
+
+  it('permite alinear imágenes en el editor desde la barra de formato', () => {
+    const fixture = flushInitialLoads();
+    const host = fixture.nativeElement as HTMLElement;
+    const editor = host.querySelector<HTMLDivElement>('.rich-editor')!;
+
+    editor.innerHTML = '<img src="https://example.com/flyer.png" data-att-id="4" class="embedded-mail-img">';
+    const img = editor.querySelector('img')!;
+    img.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const centerBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Centrar"]')!;
+    const rightBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Alinear a la derecha"]')!;
+    expect(centerBtn).not.toBeNull();
+    expect(rightBtn).not.toBeNull();
+
+    centerBtn.click();
+    fixture.detectChanges();
+    expect(img.getAttribute('data-align')).toBe('center');
+    expect(fixture.componentInstance.alignCenterActive()).toBe(true);
+
+    rightBtn.click();
+    fixture.detectChanges();
+    expect(img.getAttribute('data-align')).toBe('right');
+    expect(fixture.componentInstance.alignRightActive()).toBe(true);
+  });
 });
