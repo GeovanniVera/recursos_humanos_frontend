@@ -528,7 +528,7 @@ export class AltaDrawer {
    */
   private readonly erroresDelBorrador = computed<Record<string, string>>(() => ({
     ...evaluarBorrador(this.modelo(), this.contexto(), {
-      camposProtegidos: ['trabaja_otro_donde'],
+      camposProtegidos: ['trabaja_otro_donde', 'observaciones'],
     }),
     ...(this.pideOtroLugar() && this.empleosPendientes().length === 0 && !this.empleoAbierto()
       ? { empleos_externos: 'Agrega al menos un empleo externo.' }
@@ -844,7 +844,6 @@ export class AltaDrawer {
               valor: e.observaciones || SIN_DATO,
             },
           ]),
-          { etiqueta: 'Observaciones', valor: this.texto(datos.observaciones) },
         ],
       },
     ];
@@ -1204,6 +1203,7 @@ export class AltaDrawer {
       es_maximo: g.es_maximo,
     }));
     delete cuerpo.trabaja_otro_donde;
+    delete cuerpo.observaciones;
     cuerpo.empleos_externos = this.pideOtroLugar()
       ? this.empleosPendientes().map((e) => ({
           institucion_o_empresa: e.institucion_o_empresa,

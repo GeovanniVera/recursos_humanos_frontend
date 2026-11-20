@@ -657,25 +657,6 @@
                 }
               </div>
 
-              <div class="field is-wide">
-                <label class="label" for="observaciones">Observaciones</label>
-                <textarea
-                  id="observaciones"
-                  name="observaciones"
-                  class="control control-area"
-                  rows="4"
-                  maxlength="2000"
-                  [ngModel]="modelo().observaciones"
-                  (ngModelChange)="guardar('observaciones', $event)"
-                  (blur)="tocar('observaciones')"
-                  [class.is-invalid]="errorDe('observaciones') !== null"
-                  [attr.aria-invalid]="errorDe('observaciones') === null ? null : 'true'"
-                  [attr.aria-describedby]="idDeError('observaciones')"
-                ></textarea>
-                @if (errorDe('observaciones'); as error) {
-                  <p class="field-error" id="error-observaciones" role="alert">{{ error }}</p>
-                }
-              </div>
             </div>
           </fieldset>
           @if (pideOtroLugar()) {

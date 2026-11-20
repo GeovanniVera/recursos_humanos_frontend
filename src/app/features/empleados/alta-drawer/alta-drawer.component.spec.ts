@@ -1156,6 +1156,47 @@ describe('AltaDrawer', () => {
     httpMock.expectNone((r) => r.method !== 'GET');
   });
 
+  it('omits general observations without blocking alta and preserves each employment note', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    // A residual shared draft value must neither block nor leave the alta.
+    f.componentInstance.modelo.update((datos) => ({ ...datos, observaciones: 'x'.repeat(2001) }));
+    await abrirTab(f, 'Formación');
+    expect(campo(f, 'observaciones')).toBeNull();
+    expect(host(f).querySelector('label[for="observaciones"]')).toBeNull();
+    await agregarEmpleo(f, 'Empresa A');
+    await agregarEmpleo(f, 'Empresa B');
+    f.componentInstance.editarEmpleo(f.componentInstance.empleosPendientes()[1]);
+    await f.whenStable();
+    expect(campo(f, 'alta-empleo-observaciones')).not.toBeNull();
+    await escribir(f, 'alta-empleo-observaciones', 'Nota independiente B');
+    f.componentInstance.guardarEmpleo();
+    await abrirTab(f, 'Plaza');
+    await abrirTab(f, 'Formación');
+    expect(f.componentInstance.empleosPendientes().map((e) => e.observaciones)).toEqual([
+      'Nota QA',
+      'Nota independiente B',
+    ]);
+    const peticion = await registrar(f);
+    expect(peticion).not.toBeNull();
+    expect(peticion!.request.body).not.toHaveProperty('observaciones');
+    expect(
+      peticion!.request.body.empleos_externos.map(
+        (e: { observaciones: string }) => e.observaciones,
+      ),
+    ).toEqual(['Nota QA', 'Nota independiente B']);
+    expect(
+      f.componentInstance
+        .resumen()
+        .flatMap((g) => g.filas)
+        .some((fila) => fila.etiqueta === 'Observaciones'),
+    ).toBe(false);
+    peticion!.flush(CREADO, { status: 201, statusText: 'Created' });
+    await f.whenStable();
+    expect(f.componentInstance.open()).toBe(false);
+  });
+
   it('sends all jobs and multiple studies without local keys, preserving the existing alta', async () => {
     const f = await abrir();
     await llenarIdentificacion(f);
