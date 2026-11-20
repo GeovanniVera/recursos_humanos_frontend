@@ -657,34 +657,6 @@
                 }
               </div>
 
-              @if (pideOtroLugar()) {
-                <!--
-                        The backend prohibits this field when the answer is `No`,
-                        so it is only on screen when it has a value to carry.
-                      -->
-                <div class="field is-wide">
-                  <label class="label" for="trabaja_otro_donde">¿Dónde trabaja?</label>
-                  <input
-                    id="trabaja_otro_donde"
-                    name="trabaja_otro_donde"
-                    class="control"
-                    type="text"
-                    maxlength="255"
-                    [ngModel]="modelo().trabaja_otro_donde"
-                    (ngModelChange)="guardar('trabaja_otro_donde', $event)"
-                    (blur)="tocar('trabaja_otro_donde')"
-                    [class.is-invalid]="errorDe('trabaja_otro_donde') !== null"
-                    [attr.aria-invalid]="errorDe('trabaja_otro_donde') === null ? null : 'true'"
-                    [attr.aria-describedby]="idDeError('trabaja_otro_donde')"
-                  />
-                  @if (errorDe('trabaja_otro_donde'); as error) {
-                    <p class="field-error" id="error-trabaja_otro_donde" role="alert">
-                      {{ error }}
-                    </p>
-                  }
-                </div>
-              }
-
               <div class="field is-wide">
                 <label class="label" for="observaciones">Observaciones</label>
                 <textarea
@@ -706,6 +678,228 @@
               </div>
             </div>
           </fieldset>
+          @if (pideOtroLugar()) {
+            <fieldset
+              class="group empleos-externos"
+              id="empleos_externos"
+              tabindex="-1"
+              [disabled]="enviando()"
+            >
+              <legend class="group-title">Empleos externos</legend>
+              @if (errorDe('empleos_externos'); as error) {
+                <p class="field-error" role="alert">{{ error }}</p>
+              }
+              <p class="group-hint">
+                Lo que la persona declara fuera de la institución. Los registros se guardan junto
+                con el empleado. El empleo concluido se conserva como historial; la vigencia se
+                cambia sin borrar el registro.
+              </p>
+
+              @if (empleosPendientes().length === 0) {
+                <p class="carpeta-vacia">Sin empleos externos registrados.</p>
+              } @else {
+                <ul class="tarjetas">
+                  @for (empleo of empleosPendientes(); track empleo.clave) {
+                    <li class="tarjeta">
+                      <div class="tarjeta-head">
+                        <p class="tarjeta-titulo">{{ empleo.institucion_o_empresa }}</p>
+                        <span class="badge" [class.is-ok]="empleo.vigente">
+                          {{ empleo.vigente ? 'Vigente' : 'Concluido' }}
+                        </span>
+                      </div>
+
+                      <dl class="tarjeta-meta">
+                        <div>
+                          <dt>Puesto</dt>
+                          <dd>{{ empleo.puesto_o_actividad || '—' }}</dd>
+                        </div>
+                        <div>
+                          <dt>Horario</dt>
+                          <dd>{{ empleo.horario_o_jornada || '—' }}</dd>
+                        </div>
+                        @if (empleo.observaciones) {
+                          <div class="is-wide">
+                            <dt>Observaciones</dt>
+                            <dd>{{ empleo.observaciones }}</dd>
+                          </div>
+                        }
+                      </dl>
+
+                      @for (error of erroresEmpleos()[empleo.clave] ?? []; track $index) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                      <div class="tarjeta-acciones">
+                        <button
+                          type="button"
+                          class="action"
+                          [disabled]="enviando()"
+                          (click)="editarEmpleo(empleo)"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="action"
+                          [disabled]="enviando()"
+                          (click)="alternarVigencia(empleo)"
+                        >
+                          {{ empleo.vigente ? 'Marcar concluido' : 'Marcar vigente' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="action is-danger"
+                          [disabled]="enviando()"
+                          (click)="eliminarEmpleo(empleo)"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (!empleoAbierto()) {
+                <button type="button" class="action" (click)="nuevoEmpleo()">
+                  + Registrar empleo externo
+                </button>
+              } @else {
+                <div class="form-carpeta">
+                  <p class="form-carpeta-titulo">
+                    {{
+                      empleoEditandoClave() === null
+                        ? 'Nuevo empleo externo'
+                        : 'Editar empleo externo'
+                    }}
+                  </p>
+
+                  <div class="grid">
+                    <div class="field is-wide">
+                      <label class="label" for="alta-empleo-institucion"
+                        >Institución o empresa</label
+                      >
+                      <input
+                        id="alta-empleo-institucion"
+                        class="control"
+                        type="text"
+                        maxlength="200"
+                        [value]="empleoInstitucion()"
+                        [class.is-invalid]="errorEmpleo('institucion_o_empresa') !== null"
+                        [attr.aria-invalid]="errorEmpleo('institucion_o_empresa') !== null"
+                        [attr.aria-describedby]="
+                          errorEmpleo('institucion_o_empresa')
+                            ? 'error-empleo-institucion_o_empresa'
+                            : null
+                        "
+                        (input)="empleoInstitucion.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('institucion_o_empresa'); as error) {
+                        <p class="field-error" id="error-empleo-institucion_o_empresa" role="alert">
+                          {{ error }}
+                        </p>
+                      }
+                    </div>
+
+                    <div class="field">
+                      <label class="label" for="alta-empleo-puesto">Puesto o actividad</label>
+                      <input
+                        id="alta-empleo-puesto"
+                        class="control"
+                        type="text"
+                        maxlength="150"
+                        [value]="empleoPuesto()"
+                        [class.is-invalid]="errorEmpleo('puesto_o_actividad') !== null"
+                        [attr.aria-invalid]="errorEmpleo('puesto_o_actividad') !== null"
+                        [attr.aria-describedby]="
+                          errorEmpleo('puesto_o_actividad')
+                            ? 'error-empleo-puesto_o_actividad'
+                            : null
+                        "
+                        (input)="empleoPuesto.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('puesto_o_actividad'); as error) {
+                        <p class="field-error" id="error-empleo-puesto_o_actividad" role="alert">
+                          {{ error }}
+                        </p>
+                      }
+                    </div>
+
+                    <div class="field">
+                      <label class="label" for="alta-empleo-horario">Horario o jornada</label>
+                      <input
+                        id="alta-empleo-horario"
+                        class="control"
+                        type="text"
+                        maxlength="120"
+                        [value]="empleoHorario()"
+                        [class.is-invalid]="errorEmpleo('horario_o_jornada') !== null"
+                        [attr.aria-invalid]="errorEmpleo('horario_o_jornada') !== null"
+                        [attr.aria-describedby]="
+                          errorEmpleo('horario_o_jornada') ? 'error-empleo-horario_o_jornada' : null
+                        "
+                        (input)="empleoHorario.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('horario_o_jornada'); as error) {
+                        <p class="field-error" id="error-empleo-horario_o_jornada" role="alert">
+                          {{ error }}
+                        </p>
+                      }
+                    </div>
+
+                    <div class="field is-wide">
+                      <label class="label" for="alta-empleo-observaciones">Observaciones</label>
+                      <textarea
+                        id="alta-empleo-observaciones"
+                        class="control area"
+                        rows="3"
+                        maxlength="500"
+                        [value]="empleoObservaciones()"
+                        [class.is-invalid]="errorEmpleo('observaciones') !== null"
+                        [attr.aria-invalid]="errorEmpleo('observaciones') !== null"
+                        [attr.aria-describedby]="
+                          errorEmpleo('observaciones') ? 'error-empleo-observaciones' : null
+                        "
+                        (input)="empleoObservaciones.set($any($event.target).value)"
+                      ></textarea>
+                      @if (errorEmpleo('observaciones'); as error) {
+                        <p class="field-error" id="error-empleo-observaciones" role="alert">
+                          {{ error }}
+                        </p>
+                      }
+                    </div>
+                  </div>
+
+                  <label class="check">
+                    <input
+                      type="checkbox"
+                      [checked]="empleoVigente()"
+                      (change)="empleoVigente.set($any($event.target).checked)"
+                    />
+                    <span>Sigue vigente</span>
+                  </label>
+
+                  <div class="acciones form-carpeta-acciones">
+                    <button
+                      type="button"
+                      class="action"
+                      [disabled]="enviando()"
+                      (click)="cancelarEmpleo()"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="action is-primary"
+                      [disabled]="enviando()"
+                      (click)="guardarEmpleo()"
+                    >
+                      {{ enviando() ? 'Guardando…' : 'Guardar empleo' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </fieldset>
+          }
         }
 
         @default {

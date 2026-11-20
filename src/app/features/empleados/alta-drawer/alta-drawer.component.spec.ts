@@ -735,11 +735,14 @@ describe('AltaDrawer', () => {
     expect(campo(fixture, 'trabaja_otro_donde')).toBeNull();
 
     await elegir(fixture, 'trabaja_otro_lugar', 'Publico');
-    expect(campo(fixture, 'trabaja_otro_donde')).not.toBeNull();
-    await escribir(fixture, 'trabaja_otro_donde', 'Gobierno del Estado de México');
+    await agregarEmpleo(fixture, 'Gobierno de prueba QA');
 
     const conDetalle = await registrar(fixture);
-    expect(conDetalle?.request.body.trabaja_otro_donde).toBe('Gobierno del Estado de México');
+    expect(conDetalle?.request.body.empleos_externos).toHaveLength(1);
+    expect(conDetalle?.request.body.empleos_externos[0].institucion_o_empresa).toBe(
+      'Gobierno de prueba QA',
+    );
+    expect(conDetalle?.request.body).not.toHaveProperty('trabaja_otro_donde');
     conDetalle?.flush(CREADO, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
 
@@ -1101,5 +1104,173 @@ describe('AltaDrawer', () => {
     await abrirTab(f, 'Formación');
     expect(texto(f)).toContain('Sin grados registrados.');
     expect(f.componentInstance.gradosPendientes()).toEqual([]);
+  });
+
+  async function agregarEmpleo(
+    f: ComponentFixture<AltaDrawer>,
+    institucion: string,
+  ): Promise<void> {
+    await abrirTab(f, 'Formación');
+    if (f.componentInstance.modelo().trabaja_otro_lugar === 'No')
+      await elegir(f, 'trabaja_otro_lugar', 'Privado');
+    const boton = Array.from(host(f).querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === '+ Registrar empleo externo',
+    );
+    boton!.click();
+    await f.whenStable();
+    await escribir(f, 'alta-empleo-institucion', institucion);
+    await escribir(f, 'alta-empleo-puesto', 'Actividad QA');
+    await escribir(f, 'alta-empleo-horario', '16:00 a 18:00');
+    await escribir(f, 'alta-empleo-observaciones', 'Nota QA');
+    Array.from(host(f).querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => b.textContent?.trim() === 'Guardar empleo')!
+      .click();
+    await f.whenStable();
+  }
+
+  it('adds independent external jobs, edits and removes only local drafts', async () => {
+    const f = await abrir();
+    await agregarEmpleo(f, 'Empresa A');
+    await agregarEmpleo(f, 'Empresa B');
+    expect(host(f).querySelectorAll('.empleos-externos .tarjeta')).toHaveLength(2);
+    await abrirTab(f, 'Plaza');
+    await abrirTab(f, 'Formación');
+    expect(texto(f)).toContain('Empresa A');
+    expect(texto(f)).toContain('Empresa B');
+    f.componentInstance.editarEmpleo(f.componentInstance.empleosPendientes()[0]);
+    await f.whenStable();
+    await escribir(f, 'alta-empleo-puesto', 'Actividad corregida');
+    f.componentInstance.guardarEmpleo();
+    await f.whenStable();
+    expect(f.componentInstance.empleosPendientes()[0].puesto_o_actividad).toBe(
+      'Actividad corregida',
+    );
+    expect(f.componentInstance.empleosPendientes()[1].puesto_o_actividad).toBe('Actividad QA');
+    f.componentInstance.alternarVigencia(f.componentInstance.empleosPendientes()[1]);
+    expect(f.componentInstance.empleosPendientes()[1].vigente).toBe(false);
+    f.componentInstance.eliminarEmpleo(f.componentInstance.empleosPendientes()[0]);
+    await f.whenStable();
+    expect(f.componentInstance.empleosPendientes().map((e) => e.institucion_o_empresa)).toEqual([
+      'Empresa B',
+    ]);
+    httpMock.expectNone((r) => r.method !== 'GET');
+  });
+
+  it('sends all jobs and multiple studies without local keys, preserving the existing alta', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    await agregarGrado(f, 'Licenciatura QA');
+    await agregarGrado(f, 'Maestría QA');
+    await agregarEmpleo(f, 'Empresa A');
+    await agregarEmpleo(f, 'Empresa B');
+    await agregarEmpleo(f, 'Empresa C');
+    f.componentInstance.alternarVigencia(f.componentInstance.empleosPendientes()[1]);
+    const peticion = await registrar(f);
+    expect(peticion).not.toBeNull();
+    expect(peticion!.request.body.grados_academicos).toHaveLength(2);
+    expect(peticion!.request.body.empleos_externos).toEqual(
+      ['Empresa A', 'Empresa B', 'Empresa C'].map((nombre, i) => ({
+        institucion_o_empresa: nombre,
+        puesto_o_actividad: 'Actividad QA',
+        horario_o_jornada: '16:00 a 18:00',
+        vigente: i !== 1,
+        observaciones: 'Nota QA',
+      })),
+    );
+    expect(peticion!.request.body).not.toHaveProperty('trabaja_otro_donde');
+    peticion!.flush(CREADO, { status: 201, statusText: 'Created' });
+    await f.whenStable();
+    expect(f.componentInstance.open()).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    await f.whenStable();
+    f.componentInstance.open.set(true);
+    await f.whenStable();
+    expect(f.componentInstance.empleosPendientes()).toEqual([]);
+    expect(f.componentInstance.empleoAbierto()).toBe(false);
+  });
+
+  it('validates each pending employment and keeps its editor across tabs', async () => {
+    const f = await abrir();
+    await abrirTab(f, 'Formación');
+    await elegir(f, 'trabaja_otro_lugar', 'Privado');
+    f.componentInstance.nuevoEmpleo();
+    await f.whenStable();
+    await escribir(f, 'alta-empleo-institucion', 'Borrador QA');
+    await escribir(f, 'alta-empleo-observaciones', 'x'.repeat(501));
+    f.componentInstance.guardarEmpleo();
+    await f.whenStable();
+    expect(campo(f, 'alta-empleo-puesto')?.getAttribute('aria-invalid')).toBe('true');
+    expect(f.componentInstance.empleoErrores()['observaciones']).toBeDefined();
+    await abrirTab(f, 'Plaza');
+    await abrirTab(f, 'Formación');
+    expect(campo<HTMLInputElement>(f, 'alta-empleo-institucion')?.value).toBe('Borrador QA');
+    f.componentInstance.registrar();
+    await f.whenStable();
+    expect(f.componentInstance.tabActiva()).toBe('formacion');
+    httpMock.expectNone(URL_EMPLEADOS);
+  });
+
+  it('maps indexed errors to the second employment without losing studies or other jobs', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    await agregarGrado(f, 'Estudio conservado');
+    await agregarEmpleo(f, 'Empresa A');
+    await agregarEmpleo(f, 'Empresa B');
+    const peticion = await registrar(f);
+    peticion!.flush(
+      {
+        message: 'Revisa el segundo empleo.',
+        errors: { 'empleos_externos.1.horario_o_jornada': ['Horario inválido QA.'] },
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await f.whenStable();
+    expect(f.componentInstance.tabActiva()).toBe('formacion');
+    expect(campo<HTMLInputElement>(f, 'alta-empleo-institucion')?.value).toBe('Empresa B');
+    expect(texto(f)).toContain('Horario inválido QA.');
+    expect(f.componentInstance.empleosPendientes()).toHaveLength(2);
+    expect(f.componentInstance.gradosPendientes()).toHaveLength(1);
+  });
+
+  it('allows No with an empty collection, requires a job for another workplace and clears only jobs', async () => {
+    const f = await abrir();
+    await llenarIdentificacion(f);
+    await llenarPlaza(f);
+    await agregarGrado(f, 'Estudio conservado');
+    await agregarEmpleo(f, 'Empresa A');
+    await elegir(f, 'trabaja_otro_lugar', 'No');
+    expect(f.componentInstance.empleosPendientes()).toEqual([]);
+    expect(f.componentInstance.gradosPendientes()).toHaveLength(1);
+    expect(host(f).querySelector('.empleos-externos')).toBeNull();
+    const peticion = await registrar(f);
+    expect(peticion!.request.body.empleos_externos).toEqual([]);
+    peticion!.flush(
+      { message: 'Prueba de conservación' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    await f.whenStable();
+    await abrirTab(f, 'Formación');
+    await elegir(f, 'trabaja_otro_lugar', 'Publico');
+    expect(await registrar(f)).toBeNull();
+    expect(f.componentInstance.tabActiva()).toBe('formacion');
+    expect(texto(f)).toContain('Agrega al menos un empleo externo.');
+  });
+
+  it('clears external drafts on cancellation while leaving editing endpoints unused', async () => {
+    const f = await abrir();
+    await agregarEmpleo(f, 'Empresa de borrador');
+    f.componentInstance.open.set(false);
+    await f.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 320));
+    await f.whenStable();
+    f.componentInstance.open.set(true);
+    await f.whenStable();
+    expect(f.componentInstance.empleosPendientes()).toEqual([]);
+    expect(f.componentInstance.empleoAbierto()).toBe(false);
+    httpMock.expectNone(
+      (r) => r.method === 'DELETE' || r.method === 'PATCH' || r.url.includes('/empleos-externos'),
+    );
   });
 });
