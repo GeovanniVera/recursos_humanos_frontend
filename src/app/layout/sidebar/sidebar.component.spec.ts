@@ -123,8 +123,11 @@ describe('Sidebar', () => {
   });
 
   afterEach(() => {
-    httpMock.verify();
-    TestBed.resetTestingModule();
+    try {
+      httpMock.verify();
+    } finally {
+      TestBed.resetTestingModule();
+    }
   });
 
   it('renders every destination of the expanded drawer', async () => {
@@ -314,6 +317,13 @@ describe('Sidebar', () => {
         .expectOne((candidate) => candidate.url.endsWith('/auth/sesion'))
         .flush({ usuario_id: 1, empleado_id: 9, nombre: 'Ana Martínez', rol });
       await fixture.whenStable();
+      for (const req of httpMock.match((r) => r.url.endsWith('/mensajeria/comunicados'))) {
+        req.flush({
+          comunicados: [],
+          conteos: { pendientes: 0, aprobados: 0, rechazados: 0, borradores: 0 },
+          meta: { current_page: 1, last_page: 1, per_page: 1, total: 0 },
+        });
+      }
     }
 
     // The entry is not gated: the module was impossible to find, and the backend
@@ -363,6 +373,13 @@ describe('Sidebar', () => {
         .expectOne((candidate) => candidate.url.endsWith('/auth/sesion'))
         .flush({ usuario_id: 1, empleado_id: 9, nombre: 'Ana Martínez', rol });
       await fixture.whenStable();
+      for (const req of httpMock.match((r) => r.url.endsWith('/mensajeria/comunicados'))) {
+        req.flush({
+          comunicados: [],
+          conteos: { pendientes: 0, aprobados: 0, rechazados: 0, borradores: 0 },
+          meta: { current_page: 1, last_page: 1, per_page: 1, total: 0 },
+        });
+      }
       return host(fixture).querySelector('.role-stamp')?.textContent?.trim() ?? '';
     }
 
@@ -578,5 +595,46 @@ describe('Sidebar', () => {
         value: original,
       });
     }
+  });
+
+  it('muestra contadores de autorizaciones pendientes y borradores al cargar la sesión', async () => {
+    const auth = TestBed.inject(AuthService);
+    const fixture = await createSidebar();
+
+    auth.cargarSesion().subscribe();
+    httpMock
+      .expectOne((req) => req.url.endsWith('/auth/sesion'))
+      .flush({
+        usuario_id: 1,
+        empleado_id: 10,
+        nombre: 'Admin UTN',
+        rol: 'SUPER_ADMIN',
+      });
+    await fixture.whenStable();
+
+    httpMock
+      .expectOne(
+        (req) =>
+          req.url.endsWith('/mensajeria/comunicados') &&
+          req.params.get('por_pagina') === '1',
+      )
+      .flush({
+        comunicados: [],
+        conteos: { pendientes: 4, aprobados: 2, rechazados: 1, borradores: 3 },
+        meta: { current_page: 1, last_page: 1, per_page: 1, total: 4 },
+      });
+    await fixture.whenStable();
+
+    host(fixture).querySelector<HTMLButtonElement>('#sidebar-nav button.is-branch')?.click();
+    await fixture.whenStable();
+
+    const autLink = host(fixture).querySelector<HTMLAnchorElement>(
+      'a[href="/mensajeria/autorizaciones"]',
+    );
+    const borLink = host(fixture).querySelector<HTMLAnchorElement>(
+      'a[href="/mensajeria/borradores"]',
+    );
+    expect(autLink?.querySelector('.nav-badge')?.textContent?.trim()).toBe('4');
+    expect(borLink?.querySelector('.nav-badge')?.textContent?.trim()).toBe('3');
   });
 });

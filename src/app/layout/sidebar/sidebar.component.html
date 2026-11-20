@@ -272,6 +272,11 @@
                 ariaCurrentWhenActive="page"
               >
                 <span class="item-label">Autorizaciones</span>
+                @if (pendientesCount() > 0) {
+                  <span class="nav-badge" [attr.aria-label]="pendientesCount() + ' pendientes'">
+                    {{ pendientesCount() }}
+                  </span>
+                }
               </a>
             </li>
             <li>
@@ -282,6 +287,11 @@
                 ariaCurrentWhenActive="page"
               >
                 <span class="item-label">Borradores</span>
+                @if (borradoresCount() > 0) {
+                  <span class="nav-badge" [attr.aria-label]="borradoresCount() + ' borradores'">
+                    {{ borradoresCount() }}
+                  </span>
+                }
               </a>
             </li>
           </ul>
@@ -429,10 +439,16 @@
       Correos masivos
     </a>
     <a class="rail-submenu-item" routerLink="/mensajeria/autorizaciones" routerLinkActive="is-active">
-      Autorizaciones
+      <span>Autorizaciones</span>
+      @if (pendientesCount() > 0) {
+        <span class="nav-badge">{{ pendientesCount() }}</span>
+      }
     </a>
     <a class="rail-submenu-item" routerLink="/mensajeria/borradores" routerLinkActive="is-active">
-      Borradores
+      <span>Borradores</span>
+      @if (borradoresCount() > 0) {
+        <span class="nav-badge">{{ borradoresCount() }}</span>
+      }
     </a>
   </div>
 }

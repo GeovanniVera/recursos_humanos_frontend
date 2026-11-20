@@ -29,11 +29,12 @@ import {
   TableDensity,
   TableRow,
 } from '../../../shared/ui/data-table/data-table.component';
-import { Modal } from '../../../shared/ui/modal/modal.component';
+import { Drawer } from '../../../shared/ui/drawer/drawer.component';
 import { Pagination } from '../../../shared/ui/pagination/pagination.component';
 import { RowFlag, RowFlagTone } from '../../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../../shared/ui/row-link/row-link.component';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
+import { MailPreview } from '../mail-preview/mail-preview.component';
 
 interface FiltroTab {
   readonly id: Extract<FiltroBandejaComunicados, 'pendientes' | 'aprobados' | 'rechazados'>;
@@ -71,8 +72,9 @@ const DENSIDADES: readonly { id: TableDensity; label: string }[] = [
     RowLink,
     Pagination,
     Button,
-    Modal,
+    Drawer,
     AlertBanner,
+    MailPreview,
   ],
   templateUrl: './autorizaciones-page.component.html',
   styleUrl: './autorizaciones-page.component.scss',
@@ -110,8 +112,8 @@ export class AutorizacionesPage {
   readonly cargando = signal(false);
   readonly errorCarga = signal<string | null>(null);
 
-  // Modal de vista previa y resolución
-  readonly modalOpen = signal(false);
+  // Drawer de vista previa y resolución
+  readonly drawerOpen = signal(false);
   readonly seleccionado = signal<ComunicadoDto | null>(null);
   readonly rejectFormOpen = signal(false);
   readonly rejectFeedbackText = signal('');
@@ -266,7 +268,7 @@ export class AutorizacionesPage {
     return 'casi_completo';
   }
 
-  abrirModal(row: TableRow): void {
+  abrirDrawer(row: TableRow): void {
     const id = Number(row['id']);
     const encontrado = this.comunicados().find((c) => c.id === id);
     if (!encontrado) {
@@ -276,12 +278,12 @@ export class AutorizacionesPage {
     this.rejectFormOpen.set(false);
     this.rejectFeedbackText.set('');
     this.cargarImagenes(encontrado);
-    this.modalOpen.set(true);
+    this.drawerOpen.set(true);
   }
 
   abrirDesdeEnlace(event: Event, row: TableRow): void {
     event.stopPropagation();
-    this.abrirModal(row);
+    this.abrirDrawer(row);
   }
 
   aprobar(item: ComunicadoDto): void {
@@ -291,7 +293,7 @@ export class AutorizacionesPage {
       .pipe(finalize(() => this.resolviendo.set(false)))
       .subscribe({
         next: (res) => {
-          this.modalOpen.set(false);
+          this.drawerOpen.set(false);
           this.toast.show({
             type: 'success',
             title: `Comunicado ${res.comunicado.folio ?? ''} aprobado y encolado.`,
@@ -326,7 +328,7 @@ export class AutorizacionesPage {
       .pipe(finalize(() => this.resolviendo.set(false)))
       .subscribe({
         next: (res) => {
-          this.modalOpen.set(false);
+          this.drawerOpen.set(false);
           this.toast.show({
             type: 'info',
             title: `Solicitud ${res.comunicado.folio ?? ''} rechazada con observaciones.`,
@@ -348,7 +350,7 @@ export class AutorizacionesPage {
   }
 
   editarRechazado(item: ComunicadoDto): void {
-    this.modalOpen.set(false);
+    this.drawerOpen.set(false);
     void this.router.navigate(['/mensajeria'], { queryParams: { borrador: item.id } });
   }
 

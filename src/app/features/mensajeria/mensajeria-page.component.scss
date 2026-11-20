@@ -9,7 +9,7 @@
 .mode-list,
 .segment-list,
 .segment-panel,
-.preview-modal-body,
+.preview-drawer-body,
 .confirm-body,
 .attachment-card,
 .attachment-meta,
@@ -354,12 +354,23 @@
   color: var(--text-muted);
 }
 
-.rich-editor ::ng-deep img.embedded-mail-img {
+.rich-editor ::ng-deep img {
   display: block;
+  width: auto;
   max-width: 100%;
   height: auto;
-  margin: var(--space-3) 0;
+  max-height: 280px;
+  margin: var(--space-3) auto var(--space-3) 0;
+  object-fit: contain;
   border-radius: var(--radius-md);
+}
+
+.rich-editor ::ng-deep img[data-align='center'] {
+  margin: var(--space-3) auto;
+}
+
+.rich-editor ::ng-deep img[data-align='right'] {
+  margin: var(--space-3) 0 var(--space-3) auto;
 }
 
 .rich-editor ::ng-deep .var-token {
@@ -534,34 +545,6 @@
 .total-count {
   font: var(--text-display);
   color: var(--color-text-overline);
-}
-
-.mail-preview-frame {
-  overflow: hidden;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-paper);
-  color: var(--color-paper-text);
-}
-
-.mail-preview-header {
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-action-primary);
-  color: var(--color-action-on-primary);
-  font: var(--text-nav-branch);
-}
-
-.mail-preview-meta {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-width) solid var(--color-border-default);
-  background: var(--bg-subtle);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-}
-
-.mail-preview-body {
-  padding: var(--space-4);
-  font: var(--text-body);
 }
 
 @include bp.down(bp.$bp-md) {

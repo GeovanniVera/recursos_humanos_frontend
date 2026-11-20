@@ -40,13 +40,15 @@ import {
 import { MensajeriaService } from '../../core/mensajeria/mensajeria.service';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
+import { Drawer } from '../../shared/ui/drawer/drawer.component';
 import { Modal } from '../../shared/ui/modal/modal.component';
 import { PageHeader } from '../../shared/ui/page-header/page-header.component';
 import { ToastService } from '../../shared/ui/toast/toast.service';
+import { MailPreview } from './mail-preview/mail-preview.component';
 
 @Component({
   selector: 'app-mensajeria-page',
-  imports: [FormsModule, PageHeader, AlertBanner, Button, Modal],
+  imports: [FormsModule, PageHeader, AlertBanner, Button, Drawer, Modal, MailPreview],
   templateUrl: './mensajeria-page.component.html',
   styleUrl: './mensajeria-page.component.scss',
   host: {
@@ -85,6 +87,10 @@ export class MensajeriaPage {
   readonly underlineActive = signal(false);
   readonly ulActive = signal(false);
   readonly olActive = signal(false);
+  readonly alignLeftActive = signal(false);
+  readonly alignCenterActive = signal(false);
+  readonly alignRightActive = signal(false);
+  readonly alignJustifyActive = signal(false);
 
   // Segmentación
   readonly resumen = signal<SegmentacionResumen | null>(null);
@@ -118,8 +124,8 @@ export class MensajeriaPage {
   readonly submitting = signal(false);
   readonly sendingTest = signal(false);
 
-  // Modales
-  readonly previewModalOpen = signal(false);
+  // Drawers y modales
+  readonly previewDrawerOpen = signal(false);
   readonly confirmSendModalOpen = signal(false);
   readonly authSubmittedModalOpen = signal(false);
   readonly submittedFolio = signal<string | null>(null);
@@ -127,6 +133,7 @@ export class MensajeriaPage {
 
   private savedSelectionRange: Range | null = null;
   private activeLinkEl: HTMLAnchorElement | null = null;
+  private activeImageEl: HTMLImageElement | null = null;
   private readonly objectUrls: string[] = [];
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -467,8 +474,12 @@ export class MensajeriaPage {
     if (!editor || !sel || sel.rangeCount === 0) {
       return;
     }
-    const node = sel.getRangeAt(0).commonAncestorContainer;
+    const range = sel.getRangeAt(0);
+    const node = range.commonAncestorContainer;
     if (editor.contains(node)) {
+      if (this.activeImageEl && !range.intersectsNode(this.activeImageEl)) {
+        this.activeImageEl = null;
+      }
       this.actualizarEstadoFormato();
       this.actualizarEnlaceActivo(node);
     }
@@ -477,6 +488,23 @@ export class MensajeriaPage {
   onEditorClick(event: MouseEvent): void {
     const editor = this.richEditorRef()?.nativeElement;
     const target = event.target as HTMLElement | null;
+    if (target instanceof HTMLImageElement && editor?.contains(target)) {
+      this.activeImageEl = target;
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNode(target);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        this.savedSelectionRange = range.cloneRange();
+      }
+      this.activeLinkEl = null;
+      this.activeLinkHref.set(null);
+      this.actualizarEstadoFormato();
+      return;
+    }
+
+    this.activeImageEl = null;
     const anchor = target?.closest('a') ?? null;
 
     if (anchor && editor?.contains(anchor)) {
@@ -523,6 +551,40 @@ export class MensajeriaPage {
     } else {
       document.execCommand(command, false);
     }
+    this.onEditorInput();
+    this.saveEditorSelection();
+    this.actualizarEstadoFormato();
+  }
+
+  execAlign(align: 'left' | 'center' | 'right' | 'justify'): void {
+    this.restoreEditorSelection();
+    const editor = this.richEditorRef()?.nativeElement;
+
+    if (this.activeImageEl && editor?.contains(this.activeImageEl)) {
+      if (align !== 'justify') {
+        this.activeImageEl.setAttribute('data-align', align);
+      }
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNode(this.activeImageEl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } else {
+      const cmdMap: Record<'left' | 'center' | 'right' | 'justify', string> = {
+        left: 'justifyLeft',
+        center: 'justifyCenter',
+        right: 'justifyRight',
+        justify: 'justifyFull',
+      };
+      document.execCommand(cmdMap[align], false);
+
+      if (editor && align !== 'justify') {
+        this.sincronizarAlineacionImagenesEnSeleccion(editor, align);
+      }
+    }
+
     this.onEditorInput();
     this.saveEditorSelection();
     this.actualizarEstadoFormato();
@@ -708,6 +770,7 @@ export class MensajeriaPage {
     this.saving.set(true);
     try {
       const saved = await this.persistirComunicado();
+      this.mensajeria.refrescarConteos();
       const hora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
       this.lastSavedLabel.set(`Guardado · ${hora}`);
       if (!silencioso) {
@@ -746,7 +809,7 @@ export class MensajeriaPage {
 
   abrirVistaPrevia(): void {
     this.sampleIndex.set(0);
-    this.previewModalOpen.set(true);
+    this.previewDrawerOpen.set(true);
   }
 
   handlePrimaryAction(): void {
@@ -765,6 +828,7 @@ export class MensajeriaPage {
     try {
       const saved = await this.persistirComunicado();
       const res = await firstValueFrom(this.mensajeria.solicitarAutorizacion(saved.id));
+      this.mensajeria.refrescarConteos();
       this.submittedFolio.set(res.comunicado.folio);
       this.resetComposer();
       this.authSubmittedModalOpen.set(true);
@@ -784,6 +848,7 @@ export class MensajeriaPage {
     try {
       const saved = await this.persistirComunicado();
       const res = await firstValueFrom(this.mensajeria.enviarDirecto(saved.id));
+      this.mensajeria.refrescarConteos();
       this.confirmSendModalOpen.set(false);
       this.toast.show({
         type: 'success',
@@ -817,6 +882,15 @@ export class MensajeriaPage {
   }
 
   private actualizarEstadoFormato(): void {
+    const editor = this.richEditorRef()?.nativeElement;
+    if (this.activeImageEl && editor?.contains(this.activeImageEl)) {
+      const align = this.activeImageEl.getAttribute('data-align') || 'left';
+      this.alignLeftActive.set(align === 'left');
+      this.alignCenterActive.set(align === 'center');
+      this.alignRightActive.set(align === 'right');
+      this.alignJustifyActive.set(false);
+    }
+
     if (typeof document.queryCommandState !== 'function') {
       return;
     }
@@ -826,8 +900,66 @@ export class MensajeriaPage {
       this.underlineActive.set(document.queryCommandState('underline'));
       this.ulActive.set(document.queryCommandState('insertUnorderedList'));
       this.olActive.set(document.queryCommandState('insertOrderedList'));
+
+      if (!this.activeImageEl || !editor?.contains(this.activeImageEl)) {
+        const left = document.queryCommandState('justifyLeft');
+        const center = document.queryCommandState('justifyCenter');
+        const right = document.queryCommandState('justifyRight');
+        const justify = document.queryCommandState('justifyFull');
+
+        if (left || center || right || justify) {
+          this.alignLeftActive.set(left);
+          this.alignCenterActive.set(center);
+          this.alignRightActive.set(right);
+          this.alignJustifyActive.set(justify);
+        } else {
+          const blockAlign = this.leerAlineacionBloqueActual(editor);
+          this.alignLeftActive.set(blockAlign === 'left');
+          this.alignCenterActive.set(blockAlign === 'center');
+          this.alignRightActive.set(blockAlign === 'right');
+          this.alignJustifyActive.set(blockAlign === 'justify');
+        }
+      }
     } catch {
       // Algunos entornos de pruebas o navegadores restringen queryCommandState fuera de foco.
+    }
+  }
+
+  private leerAlineacionBloqueActual(editor: HTMLElement | undefined): string {
+    const sel = window.getSelection();
+    if (!editor || !sel || sel.rangeCount === 0) {
+      return 'left';
+    }
+    let node: Node | null = sel.getRangeAt(0).startContainer;
+    while (node && node !== editor) {
+      if (node instanceof HTMLElement) {
+        const inlineAlign = node.style.textAlign;
+        if (inlineAlign) {
+          return inlineAlign.toLowerCase();
+        }
+      }
+      node = node.parentNode;
+    }
+    return 'left';
+  }
+
+  private sincronizarAlineacionImagenesEnSeleccion(
+    editor: HTMLElement,
+    align: 'left' | 'center' | 'right',
+  ): void {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    for (const img of Array.from(editor.querySelectorAll('img'))) {
+      try {
+        if (range.intersectsNode(img) || img.parentElement?.contains(range.startContainer)) {
+          img.setAttribute('data-align', align);
+        }
+      } catch {
+        // Ignora nodos fuera de rango
+      }
     }
   }
 
@@ -1038,6 +1170,7 @@ export class MensajeriaPage {
     this.imagePreviewUrls.set(new Map());
     this.linkPopoverOpen.set(false);
     this.activeLinkEl = null;
+    this.activeImageEl = null;
     this.activeLinkHref.set(null);
     this.savedSelectionRange = null;
     this.boldActive.set(false);
@@ -1045,6 +1178,10 @@ export class MensajeriaPage {
     this.underlineActive.set(false);
     this.ulActive.set(false);
     this.olActive.set(false);
+    this.alignLeftActive.set(false);
+    this.alignCenterActive.set(false);
+    this.alignRightActive.set(false);
+    this.alignJustifyActive.set(false);
     const editor = this.richEditorRef()?.nativeElement;
     if (editor) {
       editor.innerHTML = '';

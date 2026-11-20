@@ -56,3 +56,5 @@ Thumbs.db
 # Reference only: the mockups are the author's source material, not part of the
 # app. The code that implements them is versioned; the images are not uploaded.
 /docs/design
+/docs/evidence/
+/docs/historico/evidence/
