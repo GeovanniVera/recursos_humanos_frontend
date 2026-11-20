@@ -332,6 +332,38 @@
         </a>
       </li>
 
+      @if (puedeVerBitacora()) {
+        <li>
+          <a
+            class="item"
+            routerLink="/bitacora"
+            routerLinkActive="is-active"
+            ariaCurrentWhenActive="page"
+            data-tooltip-key="bitacora"
+            [attr.aria-label]="collapsed() ? 'Bitácora' : null"
+            [attr.title]="collapsed() ? 'Bitácora' : null"
+            [attr.aria-describedby]="tooltipFor('bitacora')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M7 4.5h7l3 3V19a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 5.5 19V6A1.5 1.5 0 0 1 7 4.5Z" />
+              <path d="M14 4.5V8h3.5" />
+              <path d="M9 12h6" />
+              <path d="M9 15.5h6" />
+            </svg>
+            <span class="item-label">Bitácora</span>
+          </a>
+        </li>
+      }
+
       <li>
         <a
           class="item"

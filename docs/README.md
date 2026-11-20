@@ -35,6 +35,7 @@ Si encontrás una contradicción, gana el código y la documentación se corrige
 | [`modulos/auth.md`](./modulos/auth.md) | Login OTP, sesión Bearer, guards, roles | Tocar el acceso o la autorización |
 | [`modulos/empleados.md`](./modulos/empleados.md) | Ficha, alta, edición, baja, validación CURP | Cualquier cambio sobre el expediente |
 | [`modulos/padron.md`](./modulos/padron.md) | `/empleados`: pestañas por estatus, búsqueda, filas | La vista de entrada al expediente |
+| [`modulos/bitacora.md`](./modulos/bitacora.md) | `/bitacora`: consulta de movimientos, filtros y detalle | Auditoría y trazabilidad del backoffice |
 | [`modulos/paginacion.md`](./modulos/paginacion.md) | `PaginatedBuffer`: página lógica vs bloque de red | Paginar contra un backend con bloques grandes |
 | [`modulos/semaforo.md`](./modulos/semaforo.md) | `/semaforo-documentos`: completitud | Quién debe documentos |
 | [`modulos/catalogos.md`](./modulos/catalogos.md) | `/admin/catalogos`: puestos, categorías, áreas | Administrar catálogos |
@@ -51,6 +52,7 @@ documentación de módulos los referencia pero no los reemplaza.
 | Documento | Qué es | Estado |
 | --- | --- | --- |
 | [`requerimiento-16-us-05-consultar-padron.md`](./requerimiento-16-us-05-consultar-padron.md) | Requerimiento de producto del padrón: actores, reglas de negocio, criterios de aceptación | Vigente. `validacion-busqueda.ts` es su espejo en código |
+| [`requerimiento-b01-consultar-bitacora.md`](./requerimiento-b01-consultar-bitacora.md) | Requerimiento de producto y plan de la pantalla de bitácora (B-01): contrato HTTP, filtros, estados y criterios | Vigente como autoridad de producto; implementación descrita en [`modulos/bitacora.md`](./modulos/bitacora.md) |
 | [`nota-tecnica-entidad-nacimiento-curp.md`](./nota-tecnica-entidad-nacimiento-curp.md) | Diseño cross-repo para derivar la entidad de nacimiento desde la CURP | **Abierta.** `entidades-federativas.ts` sigue siendo un fallback temporal |
 | [`matriz-permisos-expediente.md`](./matriz-permisos-expediente.md) | Permisos que el backend debe configurar para que padrón, semáforo y expediente coincidan | Vigente, dirigida al backend |
 
@@ -71,6 +73,7 @@ docs/
   arquitectura.md                  capas, routing, HTTP, entornos, build
   modulos/                         un documento por dominio
   requerimiento-16-*.md            autoridad de producto
+  requerimiento-b01-*.md           autoridad de producto de bitácora
   nota-tecnica-entidad-*.md        pendiente cross-repo
   matriz-permisos-expediente.md    contrato dirigido al backend
   historico/                       registro congelado; ver su README

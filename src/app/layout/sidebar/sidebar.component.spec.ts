@@ -320,20 +320,37 @@ describe('Sidebar', () => {
     // is the one that refuses a role without `E-13`. The screen explains the 403.
     const entrada = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
     expect(entrada?.textContent).toContain('Catálogos');
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).toBeNull();
 
     await conRol('SECRETARIA');
     expect(host(fixture).querySelector('a[href="/admin/catalogos"]')).not.toBeNull();
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).toBeNull();
 
     await conRol('SUPER_ADMIN');
     expect(host(fixture).querySelector('a[href="/admin/catalogos"]')).not.toBeNull();
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).not.toBeNull();
+
+    await conRol('SISTEMAS');
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).not.toBeNull();
+
+    await conRol('ADMIN');
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).toBeNull();
+
+    await conRol('SECRETARIA_CIRCULARES');
+    expect(host(fixture).querySelector('a[href="/bitacora"]')).toBeNull();
 
     // The rail keeps an accessible name, since the label leaves the tree.
+    await conRol('SUPER_ADMIN');
     TestBed.inject(SidebarStateService).setCollapsed(true);
     await fixture.whenStable();
 
-    const rail = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
-    expect(rail?.getAttribute('aria-label')).toBe('Catálogos');
-    expect(rail?.getAttribute('title')).toBe('Catálogos');
+    const railCatalogos = host(fixture).querySelector<HTMLAnchorElement>('a[href="/admin/catalogos"]');
+    expect(railCatalogos?.getAttribute('aria-label')).toBe('Catálogos');
+    expect(railCatalogos?.getAttribute('title')).toBe('Catálogos');
+
+    const railBitacora = host(fixture).querySelector<HTMLAnchorElement>('a[href="/bitacora"]');
+    expect(railBitacora?.getAttribute('aria-label')).toBe('Bitácora');
+    expect(railBitacora?.getAttribute('title')).toBe('Bitácora');
   });
 
   it('renders the role code as its readable label, and falls back for an unknown one', async () => {
