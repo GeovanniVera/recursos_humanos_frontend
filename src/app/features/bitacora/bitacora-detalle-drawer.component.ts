@@ -1,8 +1,10 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, model, output } from '@angular/core';
+import {
+  claveEtiqueta,
+  EtiquetasSnapshot,
+} from '../../core/bitacora/bitacora-etiquetas.service';
 import { BitacoraDetalle } from '../../core/bitacora/bitacora.models';
-import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
-import { Button } from '../../shared/ui/button/button.component';
 import { Drawer } from '../../shared/ui/drawer/drawer.component';
 
 export interface FallaDetalleVista {
@@ -22,9 +24,14 @@ export interface EntradaSnapshot {
   valor: ValorLegible;
 }
 
+interface SelloVista {
+  texto: string;
+  tono: 'ok' | 'aviso' | 'mal';
+}
+
 const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
-  dateStyle: 'short',
-  timeStyle: 'medium',
+  dateStyle: 'long',
+  timeStyle: 'short',
   timeZone: 'America/Mexico_City',
 });
 
@@ -79,9 +86,24 @@ const ETIQUETAS_CAMPOS: Record<string, string> = {
   updated_at: 'Fecha de actualización',
 };
 
+const ETIQUETAS_ACCIONES: Record<string, string> = {
+  alta: 'Alta',
+  baja: 'Baja',
+  creacion: 'Creación',
+  edicion: 'Edición',
+  actualizacion: 'Actualización',
+  modificacion: 'Modificación',
+  eliminacion: 'Eliminación',
+  reactivacion: 'Reactivación',
+  reingreso: 'Reingreso',
+  restauracion: 'Restauración',
+  cambio: 'Cambio',
+  consulta: 'Consulta',
+};
+
 @Component({
   selector: 'app-bitacora-detalle-drawer',
-  imports: [Drawer, AlertBanner, Button, NgTemplateOutlet],
+  imports: [Drawer, NgTemplateOutlet],
   templateUrl: './bitacora-detalle-drawer.component.html',
   styleUrl: './bitacora-detalle-drawer.component.scss',
 })
@@ -119,7 +141,10 @@ export class BitacoraDetalleDrawerComponent {
   private etiquetaCampo(campo: string): string {
     const directa = ETIQUETAS_CAMPOS[campo];
     if (directa) return directa;
-    const normalizado = campo.replace(/_/g, ' ').replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2').trim();
+    const normalizado = campo
+      .replace(/_/g, ' ')
+      .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
+      .trim();
     if (!normalizado) return 'Campo';
     return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
   }
@@ -152,7 +177,10 @@ export class BitacoraDetalleDrawerComponent {
       if (entradas.length === 0) return { tipo: 'texto', texto: 'Sin información' };
       return {
         tipo: 'tabla',
-        filas: entradas.map(([k, v]) => ({ etiqueta: this.etiquetaCampo(k), valor: this.valorLegible(v, k) })),
+        filas: entradas.map(([k, v]) => ({
+          etiqueta: this.etiquetaCampo(k),
+          valor: this.valorLegible(v, k),
+        })),
       };
     }
     return { tipo: 'texto', texto: String(valor) };
@@ -206,15 +234,48 @@ export class BitacoraDetalleDrawerComponent {
   }
 
   actorLabel(detalle: BitacoraDetalle): string {
-    return detalle.usuario_id === null ? `${detalle.usuario_historico} · Sistema` : detalle.usuario_historico;
+    return detalle.usuario_id === null
+      ? `${detalle.usuario_historico} · Sistema`
+      : detalle.usuario_historico;
   }
 
   usuarioLabel(detalle: BitacoraDetalle): string {
-    return detalle.usuario_id === null ? 'Sistema' : String(detalle.usuario_id);
+    if (detalle.usuario_id === null) return 'Sistema';
+    const nombre = detalle.usuario_historico.trim();
+    return nombre ? `${nombre} · ID ${detalle.usuario_id}` : `ID ${detalle.usuario_id}`;
   }
 
   ipLabel(detalle: BitacoraDetalle): string {
     return detalle.ip ?? 'No registrada';
+  }
+
+  accionLabel(detalle: BitacoraDetalle): string {
+    const clave = this.claveAccion(detalle);
+    return ETIQUETAS_ACCIONES[clave] ?? this.humanizarTexto(clave, 'accion');
+  }
+
+  moduloLabel(detalle: BitacoraDetalle): string {
+    const modulo = detalle.modulo.trim();
+    if (!modulo) return 'Sin módulo';
+    const legible = this.humanizarTexto(modulo, 'modulo');
+    return legible.charAt(0).toUpperCase() + legible.slice(1);
+  }
+
+  // The seal repeats the act in one word: a termination is stamped in red, an
+  // alta or a reingreso in green, and every other movement in the amber of a
+  // leave, so the tone never invents a state the movement does not have.
+  sello(detalle: BitacoraDetalle): SelloVista {
+    const clave = this.claveAccion(detalle);
+    const tono: SelloVista['tono'] = /baja|elimin|borr|anul/.test(clave)
+      ? 'mal'
+      : /alta|crea|registr|reactiv|reingres|restaur/.test(clave)
+        ? 'ok'
+        : 'aviso';
+    return { texto: this.accionLabel(detalle), tono };
+  }
+
+  private claveAccion(detalle: BitacoraDetalle): string {
+    return (detalle.accion.split('.').pop() ?? detalle.accion).trim().toLowerCase();
   }
 
   onOpenChange(valor: boolean): void {
@@ -224,4 +285,3 @@ export class BitacoraDetalleDrawerComponent {
     }
   }
 }
-

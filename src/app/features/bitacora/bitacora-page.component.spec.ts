@@ -7,7 +7,15 @@ import { BitacoraPage } from './bitacora-page.component';
 
 const URL_BITACORA = `${environment.apiBaseUrl}/bitacora`;
 
-function respuestaListado(overrides: Partial<{ datos: unknown[]; pagina: number; por_pagina: number; total: number; total_paginas: number }> = {}) {
+function respuestaListado(
+  overrides: Partial<{
+    datos: unknown[];
+    pagina: number;
+    por_pagina: number;
+    total: number;
+    total_paginas: number;
+  }> = {},
+) {
   const datos = overrides.datos ?? [
     {
       id: 1,
@@ -38,7 +46,10 @@ describe('BitacoraPage', () => {
     TestBed.configureTestingModule({
       imports: [BitacoraPage],
       providers: [
-        provideRouter([{ path: 'bitacora', component: BitacoraPage }, { path: 'login', component: BitacoraPage }]),
+        provideRouter([
+          { path: 'bitacora', component: BitacoraPage },
+          { path: 'login', component: BitacoraPage },
+        ]),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -60,7 +71,9 @@ describe('BitacoraPage', () => {
     const fixture = await create();
     const req = http.expectOne((r) => r.url === URL_BITACORA);
     expect(req.request.method).toBe('GET');
-    expect(req.request.params.keys().length).toBe(0);
+    expect(req.request.params.get('pagina')).toBe('1');
+    expect(req.request.params.get('por_pagina')).toBe('20');
+    expect(req.request.params.keys().length).toBe(2);
     req.flush(respuestaListado());
     await fixture.whenStable();
 
@@ -70,18 +83,23 @@ describe('BitacoraPage', () => {
 
   it('cambiar un filtro vuelve a la página 1 y recarga', async () => {
     const fixture = await create('/bitacora?pagina=2');
-    http.expectOne((r) => r.url === URL_BITACORA && r.params.get('pagina') === '2')
+    http
+      .expectOne((r) => r.url === URL_BITACORA && r.params.get('pagina') === '2')
       .flush(respuestaListado({ pagina: 2, total_paginas: 3, total: 50 }));
     await fixture.whenStable();
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector('#bitacora-modulo') as HTMLInputElement;
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-modulo',
+    ) as HTMLInputElement;
     input.value = 'expediente';
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
-    const req = http.expectOne((r) => r.url === URL_BITACORA && r.params.get('modulo') === 'expediente');
-    expect(req.request.params.has('pagina')).toBe(false);
+    const req = http.expectOne(
+      (r) => r.url === URL_BITACORA && r.params.get('modulo') === 'expediente',
+    );
+    expect(req.request.params.get('pagina')).toBe('1');
     req.flush(respuestaListado());
     await fixture.whenStable();
 
@@ -91,17 +109,20 @@ describe('BitacoraPage', () => {
 
   it('cambiar el orden vuelve a la página 1 y envía orden', async () => {
     const fixture = await create('/bitacora?pagina=2');
-    http.expectOne((r) => r.url === URL_BITACORA && r.params.get('pagina') === '2')
+    http
+      .expectOne((r) => r.url === URL_BITACORA && r.params.get('pagina') === '2')
       .flush(respuestaListado({ pagina: 2, total_paginas: 3, total: 50 }));
     await fixture.whenStable();
 
-    const select = (fixture.nativeElement as HTMLElement).querySelector('#bitacora-orden') as HTMLSelectElement;
+    const select = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-orden',
+    ) as HTMLSelectElement;
     select.value = 'asc';
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     const req = http.expectOne((r) => r.url === URL_BITACORA && r.params.get('orden') === 'asc');
-    expect(req.request.params.has('pagina')).toBe(false);
+    expect(req.request.params.get('pagina')).toBe('1');
     req.flush(respuestaListado());
     await fixture.whenStable();
 
@@ -111,7 +132,8 @@ describe('BitacoraPage', () => {
 
   it('pagina los resultados', async () => {
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
       .flush(respuestaListado({ pagina: 1, total_paginas: 3, total: 50 }));
     await fixture.whenStable();
 
@@ -127,7 +149,8 @@ describe('BitacoraPage', () => {
 
   it('muestra estado vacío', async () => {
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
       .flush(respuestaListado({ datos: [], total: 0, total_paginas: 0 }));
     await fixture.whenStable();
 
@@ -140,14 +163,19 @@ describe('BitacoraPage', () => {
     http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
     await fixture.whenStable();
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector('#bitacora-modulo') as HTMLInputElement;
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-modulo',
+    ) as HTMLInputElement;
     input.value = 'expediente';
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     const req = http.expectOne((r) => r.url === URL_BITACORA);
-    req.flush({ mensaje: 'El módulo no es válido.', codigo: 'parametros_invalidos', campo: 'modulo' }, { status: 400, statusText: 'Bad Request' });
+    req.flush(
+      { mensaje: 'El módulo no es válido.', codigo: 'parametros_invalidos', campo: 'modulo' },
+      { status: 400, statusText: 'Bad Request' },
+    );
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -157,7 +185,8 @@ describe('BitacoraPage', () => {
 
   it('muestra aviso y acción para 401', async () => {
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
       .flush({ mensaje: 'No autenticado' }, { status: 401, statusText: 'Unauthorized' });
     fixture.detectChanges();
     await fixture.whenStable();
@@ -169,8 +198,12 @@ describe('BitacoraPage', () => {
 
   it('muestra aviso final sin reintento para 403', async () => {
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
-      .flush({ message: 'No tienes permiso para esta acción.', codigo: 'permiso_denegado' }, { status: 403, statusText: 'Forbidden' });
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
+      .flush(
+        { message: 'No tienes permiso para esta acción.', codigo: 'permiso_denegado' },
+        { status: 403, statusText: 'Forbidden' },
+      );
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -182,8 +215,12 @@ describe('BitacoraPage', () => {
   it('maneja 429 con cuenta regresiva y bloquea controles', async () => {
     vi.useFakeTimers();
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
-      .flush({ mensaje: 'Límite', codigo: 'limite_consultas', reintentar_en_segundos: 2 }, { status: 429, statusText: 'Too Many Requests' });
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
+      .flush(
+        { mensaje: 'Límite', codigo: 'limite_consultas', reintentar_en_segundos: 2 },
+        { status: 429, statusText: 'Too Many Requests' },
+      );
     fixture.detectChanges();
 
     expect(fixture.componentInstance.espera()).toBe(2);
@@ -200,8 +237,15 @@ describe('BitacoraPage', () => {
 
   it('muestra error recuperable en 503', async () => {
     const fixture = await create();
-    http.expectOne((r) => r.url === URL_BITACORA)
-      .flush({ mensaje: 'Servicio no disponible temporalmente. Intenta más tarde.', codigo: 'servicio_no_disponible' }, { status: 503, statusText: 'Service Unavailable' });
+    http
+      .expectOne((r) => r.url === URL_BITACORA)
+      .flush(
+        {
+          mensaje: 'Servicio no disponible temporalmente. Intenta más tarde.',
+          codigo: 'servicio_no_disponible',
+        },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
     fixture.detectChanges();
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -214,7 +258,15 @@ describe('BitacoraPage', () => {
     http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
     fixture.detectChanges();
 
-    fixture.componentInstance.abrirDetalle({ id: 1, fecha: '', usuario_id: 12, usuario_historico: 'Ana', accion: 'a', modulo: 'm', descripcion: 'd' });
+    fixture.componentInstance.abrirDetalle({
+      id: 1,
+      fecha: '',
+      usuario_id: 12,
+      usuario_historico: 'Ana',
+      accion: 'a',
+      modulo: 'm',
+      descripcion: 'd',
+    });
     fixture.detectChanges();
 
     const req = http.expectOne(`${URL_BITACORA}/1`);
@@ -248,9 +300,22 @@ describe('BitacoraPage', () => {
     http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
     fixture.detectChanges();
 
-    fixture.componentInstance.abrirDetalle({ id: 99, fecha: '', usuario_id: null, usuario_historico: 'Sistema', accion: 'a', modulo: 'm', descripcion: 'd' });
+    fixture.componentInstance.abrirDetalle({
+      id: 99,
+      fecha: '',
+      usuario_id: null,
+      usuario_historico: 'Sistema',
+      accion: 'a',
+      modulo: 'm',
+      descripcion: 'd',
+    });
     fixture.detectChanges();
-    http.expectOne(`${URL_BITACORA}/99`).flush({ mensaje: 'El registro de bitácora no existe.', codigo: 'no_encontrado' }, { status: 404, statusText: 'Not Found' });
+    http
+      .expectOne(`${URL_BITACORA}/99`)
+      .flush(
+        { mensaje: 'El registro de bitácora no existe.', codigo: 'no_encontrado' },
+        { status: 404, statusText: 'Not Found' },
+      );
     fixture.detectChanges();
 
     expect(fixture.componentInstance.fallaDetalle()?.status).toBe(404);
@@ -262,7 +327,9 @@ describe('BitacoraPage', () => {
     http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
     fixture.detectChanges();
 
-    const buscar = (fixture.nativeElement as HTMLElement).querySelector('#bitacora-buscar') as HTMLInputElement;
+    const buscar = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-buscar',
+    ) as HTMLInputElement;
     buscar.value = 'Ana';
     buscar.dispatchEvent(new Event('input'));
     fixture.detectChanges();

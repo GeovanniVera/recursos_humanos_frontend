@@ -1,87 +1,268 @@
-.detalle-cargando {
-  padding: var(--space-4);
-  color: var(--color-text-secondary);
+@use '../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// The diary
+//
+// The detail of a movement is written on the same paper world as the
+// expediente: a desk, a notebook cover and a sheet with a ruled margin. Geometry is in
+// pixels on purpose — the gutter and the line spacing carry the metaphor —
+// while colour, radius, shadow and motion come from the paper tokens.
+// ---------------------------------------------------------------------------
+
+:host {
+  display: contents;
 }
 
-.detalle {
-  display: grid;
-  gap: var(--space-5);
+.cuaderno {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 14px;
+  background: var(--color-desk);
 }
 
-.detalle-header {
-  display: grid;
-  gap: var(--space-2);
+// ---------------------------------------------------------------------------
+// Bar — the name of the entry and the way out
+// ---------------------------------------------------------------------------
+
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 2px 10px;
 }
 
-.detalle-fecha,
-.detalle-actor,
-.detalle-descripcion {
+.bar-title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.detalle-fecha {
-  color: var(--color-text-secondary);
-  font: var(--text-label);
+.action {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-paper-ink);
+  border-radius: var(--radius-paper-sm);
+  background: var(--color-surface-ghost);
+  color: var(--color-paper-ink);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.detalle-actor {
-  color: var(--color-text-primary);
-  font: var(--text-heading);
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.detalle-descripcion {
-  color: var(--color-text-primary);
-  font: var(--text-body);
+.action.is-danger {
+  border-color: var(--color-stamp);
+  color: var(--color-stamp);
 }
 
-.detalle-ficha {
+@media (hover: hover) {
+  .action:hover:not(:disabled) {
+    background: var(--color-paper-ink);
+    color: var(--color-desk);
+  }
+
+  .action.is-danger:hover:not(:disabled) {
+    background: var(--color-stamp);
+    color: var(--color-paper);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cover — the notebook holding the sheet
+// ---------------------------------------------------------------------------
+
+.cover {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 14px 14px 32px;
+  border: 1px solid var(--color-manila-edge);
+  border-radius: var(--radius-paper-md);
+  background: var(--color-manila);
+  box-shadow: var(--shadow-paper-cover);
+}
+
+.cover::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: var(--radius-paper-md);
+  background-image: var(--paper-cover-texture);
+  pointer-events: none;
+}
+
+// The wire binding: punched holes with the desk showing through, and the ink
+// of the ring around each one.
+.binding {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  bottom: 22px;
+  left: 6px;
+  width: 18px;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--color-desk) 0 3px,
+    var(--color-paper-ink) 3px 4.5px,
+    var(--color-surface-ghost) 4.5px 6px,
+    var(--transparent) 6px
+  );
+  background-repeat: repeat-y;
+  background-size: 18px 34px;
+  pointer-events: none;
+}
+
+// ---------------------------------------------------------------------------
+// Sheet — plain paper with the red margin of a notebook. The ruled lines were
+// removed: behind the fields and the snapshots they made the text harder to
+// read, and the margin is enough to keep the sheet of a diary.
+// ---------------------------------------------------------------------------
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 26px 24px 28px;
+  overflow-y: auto;
+  background: var(--color-paper);
+  background-image: linear-gradient(
+    90deg,
+    var(--transparent) var(--paper-gutter),
+    var(--color-stamp-soft) var(--paper-gutter) calc(var(--paper-gutter) + 1px),
+    var(--transparent) calc(var(--paper-gutter) + 1px)
+  );
+  background-attachment: local;
+  box-shadow: var(--shadow-paper-sheet);
+  color: var(--color-paper-text);
+}
+
+.head {
+  padding-bottom: 8px;
+  padding-left: var(--paper-indent);
+  border-bottom: 2px solid var(--color-paper-line);
+}
+
+.head-overline {
+  margin: 0 0 2px;
+  color: var(--color-stamp);
+  font-family: var(--font-paper);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.head-title {
   margin: 0;
+  padding-right: 108px;
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.head-meta {
+  margin: 4px 0 0;
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.asunto {
+  margin: 16px 0 0;
+  padding-left: var(--paper-indent);
+  color: var(--color-paper-text);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+// ---------------------------------------------------------------------------
+// Fields and snapshots — written as lines of the sheet, not as cards
+// ---------------------------------------------------------------------------
+
+.ficha {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: 12px 18px;
+  margin: 16px 0 0;
+  padding-left: var(--paper-indent);
 }
 
 .campo {
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
 .campo dt {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font: var(--text-label);
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .campo dd {
   margin: 0;
-  color: var(--color-text-primary);
-  font: var(--text-body);
+  padding-bottom: 3px;
   overflow-wrap: anywhere;
+  border-bottom: 1px dotted var(--color-paper-line);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 14px;
+  line-height: 1.35;
 }
 
-.mono {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+.entrada {
+  margin-top: 22px;
+  padding-left: var(--paper-indent);
 }
 
-.snapshot {
-  display: grid;
-  gap: var(--space-2);
+.entrada-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
 }
 
-.snapshot h3 {
-  margin: 0;
-  color: var(--color-text-primary);
-  font: var(--text-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.entrada-title::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 1px dashed var(--color-paper-line);
 }
 
 .snapshot-table-wrap {
-  overflow: auto;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-glass);
+  overflow-x: auto;
 }
 
 .snapshot-table {
@@ -91,19 +272,32 @@
 
 .snapshot-table th,
 .snapshot-table td {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--color-border-default);
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px dotted var(--color-paper-line);
+  color: var(--color-paper-value);
+  font-family: var(--font-paper-mono);
+  font-size: 13px;
+  line-height: 1.4;
   text-align: left;
   vertical-align: top;
-  color: var(--color-text-primary);
-  font: var(--text-body);
   overflow-wrap: anywhere;
 }
 
 .snapshot-table thead th {
-  color: var(--color-text-secondary);
-  font: var(--text-label);
-  background: var(--color-surface-overlay);
+  border-bottom: 1px solid var(--color-paper-ink);
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.snapshot-table tbody th {
+  width: 42%;
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .snapshot-table tbody tr:last-child th,
@@ -111,16 +305,11 @@
   border-bottom: 0;
 }
 
-.snapshot-table tbody th {
-  width: 40%;
-  font-weight: 600;
-}
-
 .valor-lista {
-  margin: 0;
-  padding-left: var(--space-4);
   display: grid;
-  gap: var(--space-1);
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
 }
 
 .valor-subtabla {
@@ -130,11 +319,18 @@
 
 .valor-subtabla th,
 .valor-subtabla td {
-  padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border-default);
+  padding: 2px 6px 2px 0;
+  border-bottom: 1px dotted var(--color-paper-line);
+  font: inherit;
   text-align: left;
   vertical-align: top;
-  font: var(--text-body);
+}
+
+.valor-subtabla th {
+  width: 45%;
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-weight: 500;
 }
 
 .valor-subtabla tr:last-child th,
@@ -142,14 +338,169 @@
   border-bottom: 0;
 }
 
-.valor-subtabla th {
-  width: 45%;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-
 .sin-datos {
   margin: 0;
-  color: var(--color-text-secondary);
-  font: var(--text-body);
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 13px;
+  font-style: italic;
+}
+
+// ---------------------------------------------------------------------------
+// Seal, folio, loading and failure
+// ---------------------------------------------------------------------------
+
+.stamp {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  max-width: 42%;
+  padding: 3px 10px;
+  transform: rotate(-9deg);
+  border: 3px double currentColor;
+  border-radius: var(--radius-paper-xs);
+  font-family: var(--font-paper-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  opacity: 0.82;
+}
+
+.stamp.is-ok {
+  color: var(--color-stamp-ok);
+}
+
+.stamp.is-warn {
+  color: var(--color-stamp-warn);
+}
+
+.stamp.is-bad {
+  color: var(--color-stamp);
+}
+
+.foot {
+  margin: 24px 0 0;
+  padding-left: var(--paper-indent);
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper-mono);
+  font-size: 12px;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.state-title {
+  margin: 0;
+  color: var(--color-stamp);
+  font-family: var(--font-paper-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.state-text {
+  margin: 0;
+  color: var(--color-paper-muted);
+  font-family: var(--font-paper);
+  font-size: 14px;
+}
+
+// The failure lives on the sheet, not on the desk, so its action is inked with
+// the value colour of the paper instead of the light ink of the bar.
+.state .action {
+  align-self: flex-start;
+  border-color: var(--color-paper-value);
+  color: var(--color-paper-value);
+}
+
+.state .action.is-danger {
+  border-color: var(--color-stamp);
+  color: var(--color-stamp);
+}
+
+@media (hover: hover) {
+  .state .action:hover:not(:disabled) {
+    background: var(--color-paper-value);
+    color: var(--color-paper);
+  }
+
+  .state .action.is-danger:hover:not(:disabled) {
+    background: var(--color-stamp);
+    color: var(--color-paper);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
+
+@include bp.down(bp.$bp-sm) {
+  // A phone has no room for a binding: the sheet is the whole cover.
+  .cover {
+    padding-left: 14px;
+  }
+
+  .binding {
+    display: none;
+  }
+
+  .sheet {
+    padding: 22px 16px 24px;
+  }
+
+  .head-title {
+    padding-right: 0;
+  }
+
+  .stamp {
+    position: static;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+
+  .ficha {
+    grid-template-columns: 1fr;
+  }
+}
+
+@include bp.down(bp.$bp-xs) {
+  .cuaderno {
+    padding: 0;
+  }
+
+  .bar {
+    padding: 12px 16px;
+  }
+
+  .cover {
+    border-inline: 0;
+    border-radius: var(--radius-none);
+  }
+}
+
+// No rotation when the reader asked for stillness: the seal prints straight.
+@media (prefers-reduced-motion: reduce) {
+  .stamp {
+    transform: none;
+  }
+}
+
+// High contrast: the seal and the primary actions keep their rank with a line.
+@media (forced-colors: active) {
+  .stamp {
+    opacity: 1;
+  }
+
+  .action.is-danger {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+
+  .binding {
+    display: none;
+  }
 }

@@ -77,7 +77,9 @@
         placeholder="Nombre o descripción"
         [value]="filtros().buscar"
         [attr.aria-invalid]="erroresCampos().buscar ? 'true' : null"
-        [attr.aria-describedby]="erroresCampos().buscar ? 'bitacora-buscar-error' : 'bitacora-buscar-hint'"
+        [attr.aria-describedby]="
+          erroresCampos().buscar ? 'bitacora-buscar-error' : 'bitacora-buscar-hint'
+        "
         [disabled]="espera() > 0"
         (input)="onBuscar($any($event.target).value)"
       />
@@ -140,24 +142,45 @@
     </div>
 
     <div class="field field-actions">
-      <app-button variant="secondary" [disabled]="espera() > 0" (click)="limpiarFiltros()">Limpiar</app-button>
+      <app-button variant="secondary" [disabled]="espera() > 0" (click)="limpiarFiltros()"
+        >Limpiar</app-button
+      >
     </div>
   </form>
 
   @if (falla(); as fallo) {
     @if (fallo.status === 429) {
-      <app-alert-banner variant="warning" [message]="'Has superado el límite de consultas. Intenta de nuevo en ' + espera() + ' segundos.'" [code]="fallo.codigo">
-        <app-button alert-actions variant="secondary" [disabled]="espera() > 0" (click)="reintentar()">Reintentar</app-button>
+      <app-alert-banner
+        variant="warning"
+        [message]="
+          'Has superado el límite de consultas. Intenta de nuevo en ' + espera() + ' segundos.'
+        "
+        [code]="fallo.codigo"
+      >
+        <app-button
+          alert-actions
+          variant="secondary"
+          [disabled]="espera() > 0"
+          (click)="reintentar()"
+          >Reintentar</app-button
+        >
       </app-alert-banner>
     } @else {
       <app-alert-banner variant="error" [message]="fallo.mensaje" [code]="fallo.codigo">
         @if (fallo.accion === 'reintentar') {
-          <app-button alert-actions variant="secondary" [disabled]="cargando() || espera() > 0" (click)="reintentar()">
+          <app-button
+            alert-actions
+            variant="secondary"
+            [disabled]="cargando() || espera() > 0"
+            (click)="reintentar()"
+          >
             Reintentar
           </app-button>
         }
         @if (fallo.accion === 'iniciar-sesion') {
-          <app-button alert-actions variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+          <app-button alert-actions variant="secondary" (click)="iniciarSesion()"
+            >Iniciar sesión</app-button
+          >
         }
       </app-alert-banner>
     }
@@ -171,6 +194,7 @@
     <app-data-table
       variant="ledger"
       density="compact"
+      [fitWidth]="true"
       mobileMode="cards"
       [columns]="columnas"
       [rows]="filas()"

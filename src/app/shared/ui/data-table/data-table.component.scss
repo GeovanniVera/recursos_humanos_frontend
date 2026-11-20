@@ -61,6 +61,30 @@
   --table-cell-pad-y: var(--space-4);
 }
 
+// ---------------------------------------------------------------------------
+// Fit — a compact sheet that never scrolls sideways
+//
+// The caller owns the full value (a `title`, a drawer) and the table keeps only
+// the line that fits. Opt-in, so every other table keeps the natural width of a
+// card and the scroll hint that comes with it.
+// ---------------------------------------------------------------------------
+.wrap.is-fit {
+  overflow-x: hidden;
+}
+
+.table.is-fit {
+  table-layout: fixed;
+}
+
+.table.is-fit .head-cell,
+.table.is-fit .cell {
+  box-sizing: border-box;
+  padding-inline: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sort-button {
   display: inline-flex;
   align-items: center;
@@ -294,6 +318,9 @@
     padding: var(--space-1) 0;
     border-bottom: 0;
     text-align: end;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
     overflow-wrap: anywhere;
   }
 

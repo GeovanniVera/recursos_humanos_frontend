@@ -106,6 +106,14 @@ export class DataTable {
   readonly variant = input<TableVariant>('plain');
 
   /**
+   * Fits the table to the width it is given instead of letting its columns grow
+   * past the card. With `table-layout: fixed` the cells clip with an ellipsis,
+   * so the caller must expose the whole value through `title` (or a detail
+   * drawer). Opt-in: the rest of the tables keep their natural layout.
+   */
+  readonly fitWidth = input(false);
+
+  /**
    * Vertical padding of a row, through one custom property.
    *
    * `standard` (default) resolves to the padding the table has always used, so

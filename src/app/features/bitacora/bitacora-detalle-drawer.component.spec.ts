@@ -47,7 +47,10 @@ describe('BitacoraDetalleDrawerComponent', () => {
 
   it('muestra "Sin datos" cuando los snapshots son nulos', async () => {
     fixture.componentRef.setInput('open', true);
-    fixture.componentRef.setInput('detalle', detalleBase({ datos_antes: null, datos_despues: null }));
+    fixture.componentRef.setInput(
+      'detalle',
+      detalleBase({ datos_antes: null, datos_despues: null }),
+    );
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -81,5 +84,18 @@ describe('BitacoraDetalleDrawerComponent', () => {
     expect(text).toContain('Sin información');
     expect(text).toContain('No registrada');
     expect(text).toContain('Sistema');
+    // El detalle humaniza el identificador técnico de la acción y del módulo.
+    expect(text).toContain('Baja');
+    expect(text).toContain('Expediente');
+  });
+
+  it('muestra el usuario con nombre e identificador legibles', async () => {
+    fixture.componentRef.setInput('open', true);
+    fixture.componentRef.setInput('detalle', detalleBase());
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Ana López · ID 12');
   });
 });

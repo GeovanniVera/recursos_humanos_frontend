@@ -123,11 +123,11 @@ export class BitacoraPage {
   readonly tamanosPagina = TAMANOS_PAGINA;
 
   readonly columnas: readonly TableColumn[] = [
-    { key: 'fecha', header: 'Fecha', width: '9.5rem' },
-    { key: 'usuario_historico', header: 'Actor', width: '11rem' },
-    { key: 'accion', header: 'Acción', width: '9rem' },
-    { key: 'modulo', header: 'Módulo', width: '8rem' },
-    { key: 'descripcion', header: 'Descripción' },
+    { key: 'fecha', header: 'Fecha', width: '18%' },
+    { key: 'usuario_historico', header: 'Actor', width: '22%' },
+    { key: 'accion', header: 'Acción', width: '17%' },
+    { key: 'modulo', header: 'Módulo', width: '15%' },
+    { key: 'descripcion', header: 'Descripción', width: '28%' },
   ];
 
   private readonly terminos = new Subject<string>();
@@ -137,12 +137,17 @@ export class BitacoraPage {
   private busquedaDiferida: string | null = null;
   private sincronizandoUrl = false;
   private clavesUrlActuales = '';
+  // La falla 429 que ya inició su cuenta regresiva: el efecto no debe volver a
+  // arrancarla cuando el contador llega a cero mientras la misma falla siga viva.
+  private esperaFuente: FallaListado | FallaDetalle | null = null;
 
   readonly cargandoInicial = computed(() => this.cargando() && this.respuesta() === null);
   readonly controlesDeshabilitados = computed(() => this.cargando() || this.espera() > 0);
 
   readonly falla = computed<FallaListado | null>(() => this.describirError(this.error()));
-  readonly fallaDetalle = computed<FallaDetalle | null>(() => this.describirErrorDetalle(this.detalleError()));
+  readonly fallaDetalle = computed<FallaDetalle | null>(() =>
+    this.describirErrorDetalle(this.detalleError()),
+  );
 
   readonly filas = computed<readonly TableRow[]>(() =>
     (this.respuesta()?.datos ?? []).map((movimiento) => ({
@@ -187,7 +192,10 @@ export class BitacoraPage {
     const ordenLabel = this.orden() === 'desc' ? 'Más recientes primero' : 'Más antiguos primero';
     let ventana = 'Últimos 30 días';
     if (f.fechaDesde && f.fechaHasta) {
-      ventana = f.fechaDesde === f.fechaHasta ? `Día ${f.fechaDesde}` : `Del ${f.fechaDesde} al ${f.fechaHasta}`;
+      ventana =
+        f.fechaDesde === f.fechaHasta
+          ? `Día ${f.fechaDesde}`
+          : `Del ${f.fechaDesde} al ${f.fechaHasta}`;
     } else if (f.fechaDesde) {
       ventana = `Desde ${f.fechaDesde}`;
     } else if (f.fechaHasta) {
@@ -223,20 +231,21 @@ export class BitacoraPage {
       .pipe(debounceTime(RETRASO_BUSQUEDA), takeUntilDestroyed(this.destroyRef))
       .subscribe((termino) => this.aplicarTermino(termino));
 
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => this.alCambiarUrl(params));
-
     // Manejo de cuenta regresiva compartida 429
     effect(() => {
       const listado = this.falla();
       const detalle = this.fallaDetalle();
       const fuente = listado?.status === 429 ? listado : detalle?.status === 429 ? detalle : null;
-      if (fuente && fuente.segundos !== null && fuente.segundos > 0 && this.espera() === 0 && this.relojId === null) {
-        this.iniciarEspera(fuente.segundos);
-      }
-      if (listado?.status !== 429 && detalle?.status !== 429 && this.espera() === 0) {
-        this.detenerReloj();
+      if (fuente && fuente.segundos !== null && fuente.segundos > 0) {
+        if (this.esperaFuente !== fuente && this.relojId === null) {
+          this.esperaFuente = fuente;
+          this.iniciarEspera(fuente.segundos);
+        }
+      } else {
+        this.esperaFuente = null;
+        if (listado?.status !== 429 && detalle?.status !== 429 && this.espera() === 0) {
+          this.detenerReloj();
+        }
       }
     });
 
@@ -248,11 +257,18 @@ export class BitacoraPage {
 
     const inicial = this.leerUrl(this.route.snapshot.queryParamMap);
     this.aplicarEstado(inicial.filtros, inicial.pagina, inicial.orden);
+    // Se fija antes de escuchar la URL: la primera emisión de `queryParamMap`
+    // trae los mismos parámetros y no debe repetir la carga inicial.
     this.clavesUrlActuales = this.clavesUrl(inicial.filtros, inicial.pagina, inicial.orden);
 
     if (inicial.huboNormalizacion) {
       void this.sincronizarUrl(inicial.filtros, inicial.pagina, inicial.orden, true);
     }
+
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.alCambiarUrl(params));
+
     this.cargar();
   }
 
@@ -352,7 +368,11 @@ export class BitacoraPage {
     }
 
     this.clavesUrlActuales = nuevasClaves;
-    this.aplicarEstado({ ...estado.filtros, buscar: this.filtros().buscar }, estado.pagina, estado.orden);
+    this.aplicarEstado(
+      { ...estado.filtros, buscar: this.filtros().buscar },
+      estado.pagina,
+      estado.orden,
+    );
 
     if (estado.huboNormalizacion) {
       void this.sincronizarUrl(estado.filtros, estado.pagina, estado.orden, true);
@@ -429,10 +449,14 @@ export class BitacoraPage {
 
   private validarTodos(f: FiltrosBitacora): ErroresCampos {
     const errores: ErroresCampos = {};
-    const m = this.validarModulo(f.modulo); if (m) errores.modulo = m;
-    const a = this.validarAccion(f.accion); if (a) errores.accion = a;
-    const u = this.validarUsuarioId(f.usuarioId); if (u) errores.usuarioId = u;
-    const b = this.validarBuscar(f.buscar); if (b) errores.buscar = b;
+    const m = this.validarModulo(f.modulo);
+    if (m) errores.modulo = m;
+    const a = this.validarAccion(f.accion);
+    if (a) errores.accion = a;
+    const u = this.validarUsuarioId(f.usuarioId);
+    if (u) errores.usuarioId = u;
+    const b = this.validarBuscar(f.buscar);
+    if (b) errores.buscar = b;
     const fechas = this.validarFechas(f.fechaDesde, f.fechaHasta);
     if (fechas.desde) errores.fechaDesde = fechas.desde;
     if (fechas.hasta) errores.fechaHasta = fechas.hasta;
@@ -440,7 +464,14 @@ export class BitacoraPage {
   }
 
   private tieneErroresBloqueantes(errores: ErroresCampos): boolean {
-    return !!(errores.modulo || errores.accion || errores.usuarioId || errores.buscar || errores.fechaDesde || errores.fechaHasta);
+    return !!(
+      errores.modulo ||
+      errores.accion ||
+      errores.usuarioId ||
+      errores.buscar ||
+      errores.fechaDesde ||
+      errores.fechaHasta
+    );
   }
 
   private construirConsulta(): ConsultaBitacora | null {
@@ -457,9 +488,12 @@ export class BitacoraPage {
     };
     if (this.orden() === 'asc') consulta.orden = 'asc';
 
-    const modulo = f.modulo.trim(); if (modulo) consulta.modulo = modulo;
-    const accion = f.accion.trim(); if (accion) consulta.accion = accion;
-    const buscar = f.buscar.trim(); if (buscar) consulta.buscar = buscar;
+    const modulo = f.modulo.trim();
+    if (modulo) consulta.modulo = modulo;
+    const accion = f.accion.trim();
+    if (accion) consulta.accion = accion;
+    const buscar = f.buscar.trim();
+    if (buscar) consulta.buscar = buscar;
     const usuarioRaw = f.usuarioId.trim();
     if (usuarioRaw) {
       const n = Number(usuarioRaw);
@@ -526,12 +560,16 @@ export class BitacoraPage {
     this.filtros.update((f) => ({ ...f, [campo]: valor }));
     const errores = { ...this.erroresCampos() };
     const msg = campo === 'modulo' ? this.validarModulo(valor) : this.validarAccion(valor);
-    if (msg) errores[campo] = msg; else delete errores[campo];
+    if (msg) errores[campo] = msg;
+    else delete errores[campo];
     this.erroresCampos.set(errores);
   }
 
   confirmarFiltroTexto(campo: 'modulo' | 'accion'): void {
-    const msg = campo === 'modulo' ? this.validarModulo(this.filtros().modulo) : this.validarAccion(this.filtros().accion);
+    const msg =
+      campo === 'modulo'
+        ? this.validarModulo(this.filtros().modulo)
+        : this.validarAccion(this.filtros().accion);
     if (msg) return;
     this.aplicarCambioFiltros();
   }
@@ -540,7 +578,8 @@ export class BitacoraPage {
     this.filtros.update((f) => ({ ...f, usuarioId: valor }));
     const errores = { ...this.erroresCampos() };
     const msg = this.validarUsuarioId(valor);
-    if (msg) errores.usuarioId = msg; else delete errores.usuarioId;
+    if (msg) errores.usuarioId = msg;
+    else delete errores.usuarioId;
     this.erroresCampos.set(errores);
   }
 
@@ -554,8 +593,10 @@ export class BitacoraPage {
     const f = this.filtros();
     const errores = { ...this.erroresCampos() };
     const fechas = this.validarFechas(f.fechaDesde, f.fechaHasta);
-    if (fechas.desde) errores.fechaDesde = fechas.desde; else delete errores.fechaDesde;
-    if (fechas.hasta) errores.fechaHasta = fechas.hasta; else delete errores.fechaHasta;
+    if (fechas.desde) errores.fechaDesde = fechas.desde;
+    else delete errores.fechaDesde;
+    if (fechas.hasta) errores.fechaHasta = fechas.hasta;
+    else delete errores.fechaHasta;
     this.erroresCampos.set(errores);
     if (!fechas.desde && !fechas.hasta) {
       this.aplicarCambioFiltros();
@@ -566,7 +607,8 @@ export class BitacoraPage {
     this.filtros.update((f) => ({ ...f, buscar: valor }));
     const errores = { ...this.erroresCampos() };
     const msg = this.validarBuscar(valor);
-    if (msg) errores.buscar = msg; else delete errores.buscar;
+    if (msg) errores.buscar = msg;
+    else delete errores.buscar;
     this.erroresCampos.set(errores);
     this.terminos.next(valor);
   }
@@ -645,7 +687,8 @@ export class BitacoraPage {
   }
 
   actorDe(movimiento: TableRow): string {
-    const nombre = typeof movimiento['usuario_historico'] === 'string' ? movimiento['usuario_historico'] : '';
+    const nombre =
+      typeof movimiento['usuario_historico'] === 'string' ? movimiento['usuario_historico'] : '';
     const id = movimiento['usuario_id'];
     return id === null || id === undefined ? `${nombre} · Sistema` : nombre;
   }
@@ -785,7 +828,8 @@ export class BitacoraPage {
           segundos: null,
         };
       case 429: {
-        const segundos = typeof body?.reintentar_en_segundos === 'number' ? body.reintentar_en_segundos : null;
+        const segundos =
+          typeof body?.reintentar_en_segundos === 'number' ? body.reintentar_en_segundos : null;
         return {
           status,
           mensaje:
@@ -831,13 +875,32 @@ export class BitacoraPage {
 
     switch (status) {
       case 401:
-        return { status, mensaje: 'Tu sesión venció. Vuelve a iniciar sesión.', codigo, accion: 'ninguna', segundos: null };
+        return {
+          status,
+          mensaje: 'Tu sesión venció. Vuelve a iniciar sesión.',
+          codigo,
+          accion: 'ninguna',
+          segundos: null,
+        };
       case 403:
-        return { status, mensaje: 'No tienes permiso para consultar la bitácora.', codigo: codigo ?? 'permiso_denegado', accion: 'ninguna', segundos: null };
+        return {
+          status,
+          mensaje: 'No tienes permiso para consultar la bitácora.',
+          codigo: codigo ?? 'permiso_denegado',
+          accion: 'ninguna',
+          segundos: null,
+        };
       case 404:
-        return { status, mensaje: 'El movimiento ya no existe.', codigo: codigo ?? 'no_encontrado', accion: 'recargar', segundos: null };
+        return {
+          status,
+          mensaje: 'El movimiento ya no existe.',
+          codigo: codigo ?? 'no_encontrado',
+          accion: 'recargar',
+          segundos: null,
+        };
       case 429: {
-        const segundos = typeof body?.reintentar_en_segundos === 'number' ? body.reintentar_en_segundos : null;
+        const segundos =
+          typeof body?.reintentar_en_segundos === 'number' ? body.reintentar_en_segundos : null;
         return {
           status,
           mensaje:
@@ -850,7 +913,13 @@ export class BitacoraPage {
         };
       }
       case 503:
-        return { status, mensaje: mensajeBody ?? 'Servicio no disponible temporalmente. Intenta más tarde.', codigo: codigo ?? 'servicio_no_disponible', accion: 'reintentar', segundos: null };
+        return {
+          status,
+          mensaje: mensajeBody ?? 'Servicio no disponible temporalmente. Intenta más tarde.',
+          codigo: codigo ?? 'servicio_no_disponible',
+          accion: 'reintentar',
+          segundos: null,
+        };
       default:
         return {
           status,
