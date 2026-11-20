@@ -104,3 +104,21 @@ describe('app.routes · empleados', () => {
     expect(router.url).toBe('/empleados');
   });
 });
+
+describe('app.routes · bitácora', () => {
+  function shellChildren(): readonly Route[] {
+    const shell = routes.find((route) => route.path === '' && route.children !== undefined);
+    if (shell?.children === undefined) {
+      throw new Error('No shell route with children');
+    }
+    return shell.children;
+  }
+
+  it('declares /bitacora with breadcrumb and lazy component', () => {
+    const route = shellChildren().find((child) => child.path === 'bitacora');
+
+    expect(route).toBeDefined();
+    expect(route?.data?.['breadcrumb']).toBe('Bitácora');
+    expect(route?.loadComponent).toBeTypeOf('function');
+  });
+});

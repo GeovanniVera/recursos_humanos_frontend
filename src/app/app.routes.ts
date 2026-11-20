@@ -102,6 +102,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'bitacora',
+        data: { breadcrumb: 'Bitácora' },
+        loadComponent: () =>
+          import('./features/bitacora/bitacora-page.component').then((m) => m.BitacoraPage),
+      },
+      {
         path: 'ajustes',
         data: { breadcrumb: 'Ajustes' },
         loadComponent: () =>

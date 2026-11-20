@@ -183,6 +183,11 @@ export class Sidebar {
   /** Readable label of the role. The raw code is a wire format, not a name. */
   readonly roleText = computed(() => roleLabel(this.userRole()));
 
+  readonly puedeVerBitacora = computed(() => {
+    const rol = this.auth.rol();
+    return rol === 'SUPER_ADMIN' || rol === 'SISTEMAS';
+  });
+
   /** Two initials for the avatar; `NA` while the session is not loaded. */
   readonly initials = computed(() => {
     const name = this.auth.sesion()?.nombre?.trim();
