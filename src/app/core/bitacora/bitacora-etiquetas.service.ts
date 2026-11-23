@@ -19,7 +19,12 @@ export function claveEtiqueta(campo: string, valor: unknown): string {
 /** Mapa de `campo:valor` a texto legible para los snapshots de la bitácora. */
 export type EtiquetasSnapshot = Record<string, string>;
 
-type CatalogoConNombre = { id: number; nombre?: string | null; descripcion?: string | null; clave?: string };
+type CatalogoConNombre = {
+  id: number;
+  nombre?: string | null;
+  descripcion?: string | null;
+  clave?: string;
+};
 
 /**
  * Catálogos que el endpoint del formulario puede resolver.
@@ -64,20 +69,19 @@ export class BitacoraEtiquetasService {
       (campo) => (valores.get(campo)?.length ?? 0) > 0,
     );
 
-    const catalogos$ = hayCatalogos
-      ? this.catalogos()
-      : of(null as FormularioCatalogos | null);
+    const catalogos$ = hayCatalogos ? this.catalogos() : of(null as FormularioCatalogos | null);
 
-    const empleados$: Observable<ReadonlyArray<readonly [number, string | null]>> = idsEmpleado.length
-      ? forkJoin(
-          idsEmpleado.map((id) =>
-            this.nombreEmpleado(id).pipe(
-              map((nombre) => [id, nombre] as const),
-              catchError(() => of([id, null] as const)),
+    const empleados$: Observable<ReadonlyArray<readonly [number, string | null]>> =
+      idsEmpleado.length
+        ? forkJoin(
+            idsEmpleado.map((id) =>
+              this.nombreEmpleado(id).pipe(
+                map((nombre) => [id, nombre] as const),
+                catchError(() => of([id, null] as const)),
+              ),
             ),
-          ),
-        )
-      : of([]);
+          )
+        : of([]);
 
     return forkJoin({ catalogos: catalogos$, empleados: empleados$ }).pipe(
       map(({ catalogos, empleados }) => {

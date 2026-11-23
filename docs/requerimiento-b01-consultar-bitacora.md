@@ -39,7 +39,7 @@ Ocultar la entrada del menú es comodidad, no seguridad.
 ### Objetivo
 
 Permitir que un usuario con capacidad `B-01` consulte la bitácora de forma paginada, la
-filtre por módulo, acción, actor, texto y rango de fechas, cambie el sentido del orden y abra
+filtre por módulo, acción, correo, nombre y rango de fechas, cambie el sentido del orden y abra
 el detalle de un movimiento para revisar sus snapshots y su IP, sin exponer más información
 de la necesaria.
 
@@ -49,8 +49,8 @@ Incluye:
 
 - Ruta `/bitacora` dentro del `AppShell`, con entrada en la sección «Sistema» del sidebar.
 - Listado paginado de movimientos (`GET /api/bitacora`).
-- Filtros exactos por `modulo`, `accion` y `usuario_id`.
-- Búsqueda parcial por nombre histórico del actor o descripción.
+- Filtros exactos por `modulo` y `accion`; búsqueda del actor por `correo`.
+- Búsqueda parcial solo por nombre histórico del usuario (la descripción ya no es criterio).
 - Rango de fechas inclusivo, expresado como días del calendario local.
 - Orden `asc` / `desc` con valor por defecto `desc`.
 - Paginación con `pagina` y `por_pagina`, sin contadores agregados.
@@ -64,9 +64,9 @@ No incluye:
 - Escritura, corrección o borrado de registros de bitácora.
 - Exportación a CSV, Excel o PDF.
 - Filtros por empleado afectado, IP o contenido de los snapshots JSON.
-- Catálogo cerrado de módulos o acciones: el usuario escribe el código.
+- Catálogo cerrado de módulos y acciones: ambos se eligen en un selector; los códigos nuevos que lleguen en la URL se conservan como opción «Código: …».
 - Contadores agregados por módulo, acción o usuario.
-- Etiquetas legibles para `accion` o `modulo`; la pantalla muestra el código crudo.
+- Etiquetas legibles para `modulo`; la pantalla muestra el código crudo del módulo.
 - Consulta de logs técnicos (`bitacora.consulta`, `bitacora.acceso_denegado`, etc.).
 - Retención, purga o archivado de la bitácora.
 
@@ -98,8 +98,8 @@ La política vigente de `config/permisos.php` declara `B-01` solo para `SUPER_AD
 | RN-04 | Rendimiento | El listado debe responder en ≤ 1 s (p95) y todo acceso queda registrado. | Backend; el frontend pagina en servidor, sin traer bloques gigantes. |
 | RN-05 | Autorización | Solo roles con `B-01` acceden al listado y al detalle. | Backend (`permiso:B-01`); el sidebar oculta la entrada a los demás. |
 | RN-06 | Ventana de fechas | Sin fechas se consultan los últimos 30 días. El rango es inclusivo y se interpreta en `America/Mexico_City`. | Backend. La pantalla no envía fechas si el usuario no las eligió. |
-| RN-07 | Búsqueda | `buscar` es parcial sobre `usuario_historico` y `descripcion`, máximo 150 caracteres. Los comodines SQL se escapan con `!`. | Backend; el frontend no escapa nada, solo recorta y valida longitud. |
-| RN-08 | Filtros exactos | `modulo`, `accion` y `usuario_id` se comparan por igualdad. `modulo` y `accion` aceptan `[A-Za-z0-9._-]`. | Backend; el frontend valida el patrón y los largos 100 / 50. |
+| RN-07 | Búsqueda | `buscar` es parcial solo sobre `usuario_historico`, máximo 150 caracteres. Los comodines SQL se escapan con `!`. | Backend; el frontend no escapa nada, solo recorta y valida longitud. |
+| RN-08 | Filtros | `modulo` y `accion` se comparan por igualdad y aceptan `[A-Za-z0-9._-]`. `correo` resuelve al usuario antes de filtrar. | Backend; el frontend valida el patrón y los largos 100 / 50 / 150. |
 | RN-09 | Paginación | `pagina` inicia en 1. `por_pagina` vale 20 por defecto y 100 como máximo. | Backend; el paginador ofrece 10, 20, 50 y 100. |
 | RN-10 | Orden | `orden` acepta `asc` o `desc`; por defecto `desc`. Siempre desempata por `id` en el mismo sentido. | Backend; la pantalla ofrece un control de dos valores. |
 | RN-11 | Detalle | Un `id` inexistente devuelve `404` con `codigo=no_encontrado`. | Backend; el drawer muestra el mensaje y permite volver al listado. |
@@ -114,8 +114,8 @@ La política vigente de `config/permisos.php` declara `B-01` solo para `SUPER_AD
 | Ausente o vacío | Sin filtro | Todas las filas de la ventana. | `GET /api/bitacora` |
 | `modulo=expediente` | Coincidencia exacta | `modulo = 'expediente'` | Movimientos de expediente. |
 | `accion=empleado.baja` | Coincidencia exacta | `accion = 'empleado.baja'` | Solo bajas. |
-| `usuario_id=12` | Identificador del actor | `usuario_id = 12` | Movimientos del usuario 12. |
-| `buscar=Ana` | Parcial, sin distinguir mayúsculas según la colación | `usuario_historico LIKE %Ana% OR descripcion LIKE %Ana%` | Coincidencias por actor o texto. |
+| `correo=ana@utn.edu.mx` | Correo del actor | Resolver usuario y filtrar por su ID | Movimientos de ese usuario. |
+| `buscar=Ana` | Parcial, sin distinguir mayúsculas según la colación | `usuario_historico LIKE %Ana%` | Coincidencias solo por nombre. |
 | `buscar=50%` | Parcial literal | `LIKE %50!%% ESCAPE '!'` | Busca el texto `50%`, no un comodín. |
 | `fecha_desde` / `fecha_hasta` | Días completos en `America/Mexico_City` | `fecha >= desde 00:00 UTC-6 AND fecha < hasta+1 00:00 UTC-6` | `2026-11-10` a `2026-11-10` cubre ese día local. |
 
@@ -149,7 +149,7 @@ Criterios de la pantalla, a verificar cuando se implemente:
 | AC-F01 | Un `SUPER_ADMIN` o `SISTEMAS` entra a `/bitacora`. | Ve el listado de los últimos 30 días, orden descendente y la ventana explicada en el subtítulo. | ✅ |
 | AC-F02 | Un `ADMIN` o `SECRETARIA` mira el sidebar. | No ve la entrada «Bitácora». | ✅ |
 | AC-F03 | Un rol sin `B-01` entra a `/bitacora` por URL. | La pantalla muestra el `403` con un mensaje final, sin botón de reintentar. | ✅ |
-| AC-F04 | El usuario escribe un módulo con `%` o un `usuario_id` en cero. | El campo explica el formato y no se envía la consulta. | ✅ |
+| AC-F04 | El usuario escribe un correo sin `@` o un módulo con `%`. | El campo explica el formato y no se envía la consulta. | ✅ |
 | AC-F05 | El usuario cambia cualquier filtro. | La página vuelve a 1 y la tabla se recarga una sola vez. | ✅ |
 | AC-F06 | El usuario escribe en «Buscar». | La consulta sale tras 300 ms de silencio, sin meter el término en la URL. | ✅ |
 | AC-F07 | El usuario cambia el orden. | La página vuelve a 1 y el listado se invierte con desempate estable. | ✅ |
@@ -159,13 +159,16 @@ Criterios de la pantalla, a verificar cuando se implemente:
 | AC-F11 | La API responde `503` o no hay red. | El aviso ofrece «Reintentar» sin perder los filtros ni la página. | ✅ |
 | AC-F12 | El usuario recarga con filtros en la URL. | La pantalla abre con esos filtros, esa página y ese orden. | ✅ |
 | AC-F13 | El usuario limpia los filtros. | La URL vuelve a `/bitacora` y se consulta la ventana por defecto. | ✅ |
+| AC-F14 | El usuario abre los filtros «Módulo» y «Acción». | Ve catálogos legibles en vez de códigos; la consulta y la apertura de movimientos ya no aparecen en el catálogo de acciones. | ✅ |
+| AC-F15 | El usuario mira la tabla. | No hay columna «Acción»; «Descripción» muestra el nombre de la acción («Alta de empleado»), con el texto original en `title`. | ✅ |
+| AC-F16 | El usuario filtra por correo. | El parámetro `correo` viaja al backend en lugar de `usuario_id`. | ✅ |
 
 ## Flujo feliz
 
 | Paso | Actor | Acción en la interfaz | Procesamiento del backend | Resultado |
 |---|---|---|---|---|
 | 1 | Auditor | Entra a «Bitácora» desde la sección «Sistema». | `auth:sanctum` valida el token; `sesion.inactividad` renueva o vence; `modulo:rh_backoffice` valida empleado y rol; `permiso:B-01` resuelve la capacidad. | La pantalla muestra el esqueleto de carga. |
-| 2 | Sistema | — | `ConsultarBitacoraRequest` aplica la ventana de 30 días y valida parámetros; `ConsultarBitacora` filtra y pagina. | Tabla con fecha, actor, acción, módulo y descripción. |
+| 2 | Sistema | — | `ConsultarBitacoraRequest` aplica la ventana de 30 días y valida parámetros; `ConsultarBitacora` filtra y pagina. | Tabla con fecha, nombre, módulo y descripción genérica de la acción. |
 | 3 | Auditor | Ajusta filtros, busca texto, cambia de página u ordena. | La consulta usa bindings, escapa comodines y conserva el orden determinista. | Resultados filtrados con la misma paginación. |
 | 4 | Sistema | — | Se responde con `BitacoraListadoResource` y se registra `bitacora.consulta`. | Tabla actualizada con total y páginas disponibles. |
 | 5 | Auditor | Abre un movimiento. | `GET /api/bitacora/{id}` busca el registro y registra `bitacora.detalle`. | Drawer con snapshots e IP. |
@@ -224,8 +227,8 @@ Ambas rutas comparten la cadena `auth:sanctum`, `sesion.inactividad`, `auditar.b
 |---|---|---|---|---|
 | `modulo` | string | No | Máximo 100. Solo `[A-Za-z0-9._-]`. Coincidencia exacta. | Sin filtro |
 | `accion` | string | No | Máximo 50. Solo `[A-Za-z0-9._-]`. Coincidencia exacta. | Sin filtro |
-| `usuario_id` | integer | No | ≥ 1. Coincidencia exacta. | Sin filtro |
-| `buscar` | string | No | Máximo 150. Parcial sobre `usuario_historico` y `descripcion`. | Sin filtro |
+| `correo` | string | No | Correo válido, máx. 150. El backend resuelve el usuario. | Sin filtro |
+| `buscar` | string | No | Máximo 150. Parcial solo sobre `usuario_historico`. | Sin filtro |
 | `fecha_desde` | string | No | `Y-m-d`. Inclusiva, en `America/Mexico_City`. | Hace 29 días |
 | `fecha_hasta` | string | No | `Y-m-d`, mayor o igual a `fecha_desde`. Inclusiva. | Hoy |
 | `orden` | string | No | `asc` o `desc`. | `desc` |
@@ -553,8 +556,8 @@ Barra de filtros sobre la tabla, con `PageHeader` para el título y el subtítul
 | Control | Tipo | Validación en cliente | Nota |
 |---|---|---|---|
 | Módulo | `<input type="text">` | Máx. 100; `^[A-Za-z0-9._-]*$` | Placeholder `expediente`. No es un `<select>`: no hay catálogo. |
-| Acción | `<input type="text">` | Máx. 50; `^[A-Za-z0-9._-]*$` | Placeholder `empleado.baja`. |
-| Usuario | `<input type="number" min="1" step="1">` | Entero ≥ 1 o vacío | Se envía como `usuario_id`. |
+| Acción | `<select>` con `optgroup` por módulo | El valor siempre sale del catálogo (`bitacora-acciones.ts`) | «Todas las acciones» por defecto; un código desconocido de la URL se conserva como opción «Código: …». |
+| Correo del usuario | `<input type="email" maxlength="150">` | Correo válido o vacío | Se envía como `correo`; requiere soporte en el backend. |
 | Buscar | `<input type="search" maxlength="150">` | Máx. 150 | Debounce de 300 ms. No entra a la URL. |
 | Desde | `<input type="date">` | `YYYY-MM-DD` | Inclusivo. |
 | Hasta | `<input type="date">` | `>= desde` | Inclusivo. |
@@ -626,8 +629,8 @@ listado porque le faltan los campos pesados.
 
 Contenido del drawer:
 
-1. Encabezado: fecha, actor y descripción.
-2. Ficha: `accion`, `modulo`, `usuario_id` (o «Sistema») e `ip` (o «No registrada»).
+1. Encabezado: fecha, nombre del usuario y descripción.
+2. Ficha: `accion`, `modulo`, «Usuario» (nombre), «Correo» (el valor enviado por el backend en `correo` / `usuario_correo`) e `ip` (o «No registrada»). El `usuario_id` nunca se imprime.
 3. `datos_antes` y `datos_despues` en tablas legibles (campo/valor), con etiquetas y valores en lenguaje claro.
 4. Si un snapshot es `null` o no tiene datos, se muestra «Sin datos».
 5. Botón «Cerrar» y, si el detalle falló con `404`, un botón «Recargar listado».
@@ -653,7 +656,7 @@ limpia:
 | `orden` | Es distinto de `desc`. |
 | `modulo` | Tiene valor. |
 | `accion` | Tiene valor. |
-| `usuario_id` | Tiene valor. |
+| `correo` | Tiene valor. |
 | `fecha_desde` | Tiene valor. |
 | `fecha_hasta` | Tiene valor. |
 

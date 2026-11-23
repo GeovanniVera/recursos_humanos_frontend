@@ -1,9 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, model, output } from '@angular/core';
-import {
-  claveEtiqueta,
-  EtiquetasSnapshot,
-} from '../../core/bitacora/bitacora-etiquetas.service';
+import { claveEtiqueta, EtiquetasSnapshot } from '../../core/bitacora/bitacora-etiquetas.service';
 import { BitacoraDetalle } from '../../core/bitacora/bitacora.models';
 import { Drawer } from '../../shared/ui/drawer/drawer.component';
 
@@ -69,6 +66,10 @@ const ETIQUETAS_CAMPOS: Record<string, string> = {
   puesto_id: 'Puesto',
   categoria: 'Categoría',
   categoria_id: 'Categoría',
+  categoria_cct_id: 'Categoría',
+  estado_civil_id: 'Estado civil',
+  nivel_estudios_id: 'Nivel de estudios',
+  motivo_baja_id: 'Motivo de baja',
   modulo: 'Módulo',
   accion: 'Acción',
   ip: 'Dirección IP',
@@ -113,6 +114,8 @@ export class BitacoraDetalleDrawerComponent {
   readonly detalle = input<BitacoraDetalle | null>(null);
   readonly falla = input<FallaDetalleVista | null>(null);
   readonly esperaActiva = input(false);
+  /** Nombres ya resueltos por la página para los IDs de los snapshots. */
+  readonly etiquetas = input<EtiquetasSnapshot>({});
 
   readonly reintentar = output<void>();
   readonly recargarListado = output<void>();
@@ -132,16 +135,49 @@ export class BitacoraDetalleDrawerComponent {
 
   entradasSnapshot(valor: Record<string, unknown> | null): EntradaSnapshot[] | null {
     if (valor === null) return null;
-    return Object.entries(valor).map(([campo, contenido]) => ({
+    const entradas = Object.entries(valor).map(([campo, contenido]) => ({
       etiqueta: this.etiquetaCampo(campo),
       valor: this.valorLegible(contenido, campo),
     }));
+    return this.sinDuplicados(entradas);
+  }
+
+  /**
+   * Un snapshot puede traer la llave y su descripción (`estado_civil_id` y
+   * `estado_civil`). Las dos se leen igual en la libreta, así que se imprime
+   * una sola, quedándose con el valor con nombre cuando uno no lo tiene.
+   */
+  private sinDuplicados(entradas: EntradaSnapshot[]): EntradaSnapshot[] {
+    const unicas = new Map<string, EntradaSnapshot>();
+    for (const entrada of entradas) {
+      const anterior = unicas.get(entrada.etiqueta);
+      if (!anterior || this.esMejor(entrada.valor, anterior.valor)) {
+        unicas.set(entrada.etiqueta, entrada);
+      }
+    }
+    return [...unicas.values()];
+  }
+
+  private esMejor(candidato: ValorLegible, anterior: ValorLegible): boolean {
+    return this.conNombre(candidato) && !this.conNombre(anterior);
+  }
+
+  private conNombre(valor: ValorLegible): boolean {
+    if (valor.tipo !== 'texto') return true;
+    return (
+      valor.texto !== '' &&
+      valor.texto !== 'Sin información' &&
+      !valor.texto.includes('(sin nombre disponible)')
+    );
   }
 
   private etiquetaCampo(campo: string): string {
     const directa = ETIQUETAS_CAMPOS[campo];
     if (directa) return directa;
-    const normalizado = campo
+    // Un campo terminado en `_id` se lee como el nombre del recurso: nadie
+    // necesita que la etiqueta repita la palabra «id».
+    const base = campo.replace(/_id$/, '');
+    const normalizado = base
       .replace(/_/g, ' ')
       .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
       .trim();
@@ -152,6 +188,10 @@ export class BitacoraDetalleDrawerComponent {
   private valorLegible(valor: unknown, campo?: string): ValorLegible {
     if (valor === null || valor === undefined) {
       return { tipo: 'texto', texto: 'Sin información' };
+    }
+    if (campo) {
+      const resuelto = this.etiquetas()[claveEtiqueta(campo, valor)];
+      if (resuelto) return { tipo: 'texto', texto: resuelto };
     }
     if (typeof valor === 'boolean') {
       return { tipo: 'texto', texto: valor ? 'Sí' : 'No' };
@@ -233,7 +273,7 @@ export class BitacoraDetalleDrawerComponent {
     return mapa[valor] ?? this.humanizarTexto(valor);
   }
 
-  actorLabel(detalle: BitacoraDetalle): string {
+  nombreLabel(detalle: BitacoraDetalle): string {
     return detalle.usuario_id === null
       ? `${detalle.usuario_historico} · Sistema`
       : detalle.usuario_historico;
@@ -241,8 +281,14 @@ export class BitacoraDetalleDrawerComponent {
 
   usuarioLabel(detalle: BitacoraDetalle): string {
     if (detalle.usuario_id === null) return 'Sistema';
-    const nombre = detalle.usuario_historico.trim();
-    return nombre ? `${nombre} · ID ${detalle.usuario_id}` : `ID ${detalle.usuario_id}`;
+    return detalle.usuario_historico.trim() || 'Sin información';
+  }
+
+  /** Correo del usuario, tal como lo envía `BitacoraDetalleResource`. */
+  correoLabel(detalle: BitacoraDetalle): string {
+    if (detalle.usuario_id === null) return 'Sistema';
+    const correo = (detalle.correo ?? detalle.usuario_correo ?? '').trim();
+    return correo || 'Sin información';
   }
 
   ipLabel(detalle: BitacoraDetalle): string {

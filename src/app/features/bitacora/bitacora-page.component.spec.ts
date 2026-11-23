@@ -88,12 +88,12 @@ describe('BitacoraPage', () => {
       .flush(respuestaListado({ pagina: 2, total_paginas: 3, total: 50 }));
     await fixture.whenStable();
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector(
+    const select = (fixture.nativeElement as HTMLElement).querySelector(
       '#bitacora-modulo',
-    ) as HTMLInputElement;
-    input.value = 'expediente';
-    input.dispatchEvent(new Event('input'));
-    input.dispatchEvent(new Event('change'));
+    ) as HTMLSelectElement;
+    expect(select.querySelector('option[value="expediente"]')?.textContent).toContain('Expediente');
+    select.value = 'expediente';
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     const req = http.expectOne(
@@ -105,6 +105,84 @@ describe('BitacoraPage', () => {
 
     expect(router.url).toContain('modulo=expediente');
     expect(router.url).not.toContain('pagina=');
+  });
+
+  it('filtra por una acción legible del catálogo', async () => {
+    const fixture = await create();
+    http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
+    await fixture.whenStable();
+
+    const select = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-accion',
+    ) as HTMLSelectElement;
+    expect(select.querySelector('option[value="empleado.baja"]')?.textContent).toContain(
+      'Baja de empleado',
+    );
+    select.value = 'empleado.baja';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    const req = http.expectOne(
+      (r) => r.url === URL_BITACORA && r.params.get('accion') === 'empleado.baja',
+    );
+    expect(req.request.params.get('pagina')).toBe('1');
+    req.flush(respuestaListado());
+    await fixture.whenStable();
+
+    expect(router.url).toContain('accion=empleado.baja');
+  });
+
+  it('conserva como opción un código de acción que no está en el catálogo', async () => {
+    const fixture = await create('/bitacora?accion=empleado.auditoria');
+    http
+      .expectOne((r) => r.url === URL_BITACORA && r.params.get('accion') === 'empleado.auditoria')
+      .flush(respuestaListado());
+    await fixture.whenStable();
+
+    const select = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-accion',
+    ) as HTMLSelectElement;
+    expect(select.querySelector('option[value="empleado.auditoria"]')?.textContent).toContain(
+      'Código: empleado.auditoria',
+    );
+  });
+
+  it('busca por correo en vez de por identificador', async () => {
+    const fixture = await create();
+    http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
+    await fixture.whenStable();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      '#bitacora-correo',
+    ) as HTMLInputElement;
+    input.value = 'ana@utn.edu.mx';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    const req = http.expectOne(
+      (r) => r.url === URL_BITACORA && r.params.get('correo') === 'ana@utn.edu.mx',
+    );
+    expect(req.request.params.has('usuario_id')).toBe(false);
+    req.flush(respuestaListado());
+    await fixture.whenStable();
+
+    expect(router.url).toContain('correo=');
+    expect(router.url).not.toContain('usuario_id');
+  });
+
+  it('muestra la descripción genérica de la acción y no la columna acción', async () => {
+    const fixture = await create();
+    http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
+    await fixture.whenStable();
+
+    const raiz = fixture.nativeElement as HTMLElement;
+    const cabeceras = Array.from(raiz.querySelectorAll('thead th')).map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(cabeceras).not.toContain('Acción');
+    expect(cabeceras).toContain('Nombre');
+    expect(raiz.textContent).toContain('Baja de empleado');
   });
 
   it('cambiar el orden vuelve a la página 1 y envía orden', async () => {
@@ -163,12 +241,11 @@ describe('BitacoraPage', () => {
     http.expectOne((r) => r.url === URL_BITACORA).flush(respuestaListado());
     await fixture.whenStable();
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector(
+    const select = (fixture.nativeElement as HTMLElement).querySelector(
       '#bitacora-modulo',
-    ) as HTMLInputElement;
-    input.value = 'expediente';
-    input.dispatchEvent(new Event('input'));
-    input.dispatchEvent(new Event('change'));
+    ) as HTMLSelectElement;
+    select.value = 'expediente';
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     const req = http.expectOne((r) => r.url === URL_BITACORA);
@@ -179,7 +256,7 @@ describe('BitacoraPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(select.getAttribute('aria-invalid')).toBe('true');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('El módulo no es válido.');
   });
 

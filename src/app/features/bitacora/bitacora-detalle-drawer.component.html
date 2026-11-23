@@ -56,7 +56,7 @@
 
           <header class="head">
             <p class="head-overline">Registro de bitácora</p>
-            <h2 class="head-title">{{ actorLabel(movimiento) }}</h2>
+            <h2 class="head-title">{{ nombreLabel(movimiento) }}</h2>
             <p class="head-meta">{{ formatearFecha(movimiento.fecha) }}</p>
           </header>
 
@@ -74,6 +74,10 @@
             <div class="campo">
               <dt>Usuario</dt>
               <dd>{{ usuarioLabel(movimiento) }}</dd>
+            </div>
+            <div class="campo">
+              <dt>Correo</dt>
+              <dd class="correo">{{ correoLabel(movimiento) }}</dd>
             </div>
             <div class="campo">
               <dt>IP</dt>
