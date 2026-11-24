@@ -302,10 +302,11 @@ export class Sidebar {
       const hostRect = hostEl.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
       const railWidth = hostRect.width > 0 ? hostRect.width : 76;
+      const rightEdge = hostRect.right > 0 ? hostRect.right : railWidth;
       this.hideTooltip();
       this.railSubmenuPos.set({
-        top: btnRect.top - hostRect.top,
-        left: railWidth + 10,
+        top: btnRect.top,
+        left: rightEdge + 10,
       });
       return;
     }

@@ -270,6 +270,35 @@ export class DashboardPage {
     void this.router.navigate(['/login']);
   }
 
+  alNavegarTabs(event: KeyboardEvent): void {
+    const tabs: readonly DashboardTab[] = ['plantilla', 'semaforo', 'movimientos', 'comunicacion'];
+    const current = tabs.indexOf(this.tabActiva());
+    let next = current;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (current + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (current - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    this.tabActiva.set(tabs[next]);
+    const list = event.currentTarget as HTMLElement | null;
+    const buttons = list?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    buttons?.[next]?.focus();
+  }
+
   /** Maps an HTTP failure to the sentence and the action the user gets. */
   private manejarError(error: unknown): void {
     const status = error instanceof HttpErrorResponse ? error.status : 0;

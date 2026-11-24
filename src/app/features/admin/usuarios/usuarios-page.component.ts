@@ -115,6 +115,7 @@ export class UsuariosPage implements OnInit {
   readonly elegibleSeleccionado = signal<EmpleadoElegibleItem | null>(null);
   readonly listaElegiblesAbierta = signal(false);
   readonly buscandoElegibles = signal(false);
+  readonly indiceElegibleActivo = signal(-1);
   readonly rolNuevoUsuarioId = signal<number | null>(null);
   readonly guardandoUsuario = signal(false);
   private timerElegible: ReturnType<typeof setTimeout> | null = null;
@@ -308,6 +309,38 @@ export class UsuariosPage implements OnInit {
     });
   }
 
+  alNavegarTabs(event: KeyboardEvent): void {
+    const tabs: readonly TabAdmin[] = this.puedeGestionarRoles()
+      ? ['usuarios', 'roles']
+      : ['usuarios'];
+    if (tabs.length <= 1) return;
+
+    const current = tabs.indexOf(this.tab());
+    let next = current;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (current + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (current - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    this.tab.set(tabs[next]);
+    const list = event.currentTarget as HTMLElement | null;
+    list?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  }
+
   abrirAlta(): void {
     this.tab.set('usuarios');
     this.altaAbierta.set(true);
@@ -316,13 +349,77 @@ export class UsuariosPage implements OnInit {
     this.elegibleSeleccionado.set(null);
     this.terminoElegible.set('');
     this.listaElegiblesAbierta.set(false);
+    this.indiceElegibleActivo.set(-1);
     this.rolNuevoUsuarioId.set(this.rolesAsignables()[0]?.id ?? null);
     this.buscarEmpleadosElegibles();
+    setTimeout(() => document.getElementById('buscar-elegible')?.focus());
+  }
+
+  cerrarAlta(): void {
+    this.altaAbierta.set(false);
+    this.listaElegiblesAbierta.set(false);
+    this.indiceElegibleActivo.set(-1);
+    setTimeout(() => document.getElementById('btn-nueva-cuenta')?.focus());
+  }
+
+  toggleNuevoRol(): void {
+    if (this.nuevoRolAbierto()) {
+      this.cerrarNuevoRol();
+      return;
+    }
+    this.nuevoRolAbierto.set(true);
+    setTimeout(() => document.getElementById('nuevo-rol-nombre')?.focus());
+  }
+
+  cerrarNuevoRol(): void {
+    this.nuevoRolAbierto.set(false);
+    setTimeout(() => document.getElementById('btn-nuevo-rol')?.focus());
+  }
+
+  alTeclearCombobox(event: KeyboardEvent): void {
+    const lista = this.elegibles();
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        if (!this.listaElegiblesAbierta()) {
+          this.listaElegiblesAbierta.set(true);
+        }
+        if (lista.length > 0) {
+          this.indiceElegibleActivo.update((i) => (i + 1) % lista.length);
+        }
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        if (!this.listaElegiblesAbierta()) {
+          this.listaElegiblesAbierta.set(true);
+        }
+        if (lista.length > 0) {
+          this.indiceElegibleActivo.update((i) => (i <= 0 ? lista.length - 1 : i - 1));
+        }
+        break;
+      case 'Enter': {
+        const idx = this.indiceElegibleActivo();
+        if (this.listaElegiblesAbierta() && idx >= 0 && idx < lista.length) {
+          event.preventDefault();
+          this.seleccionarElegible(lista[idx]);
+        }
+        break;
+      }
+      case 'Escape':
+        if (this.listaElegiblesAbierta()) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.listaElegiblesAbierta.set(false);
+          this.indiceElegibleActivo.set(-1);
+        }
+        break;
+    }
   }
 
   alEscribirElegible(texto: string): void {
     this.terminoElegible.set(texto);
     this.listaElegiblesAbierta.set(true);
+    this.indiceElegibleActivo.set(-1);
 
     if (this.timerElegible !== null) {
       clearTimeout(this.timerElegible);

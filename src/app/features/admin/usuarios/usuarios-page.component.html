@@ -11,12 +11,15 @@
 
     <div class="head-actions">
       @if (tab() === 'usuarios' && puedeCrearUsuario()) {
-        <button type="button" class="primary-pill" (click)="abrirAlta()">Nueva cuenta</button>
+        <button id="btn-nueva-cuenta" type="button" class="primary-pill" (click)="abrirAlta()">
+          Nueva cuenta
+        </button>
       } @else if (tab() === 'roles' && puedeGestionarRoles()) {
         <button
+          id="btn-nuevo-rol"
           type="button"
           class="primary-pill"
-          (click)="nuevoRolAbierto.set(!nuevoRolAbierto())"
+          (click)="toggleNuevoRol()"
         >
           {{ nuevoRolAbierto() ? 'Cancelar nuevo rol' : 'Nuevo rol' }}
         </button>
@@ -28,13 +31,19 @@
     </div>
   </header>
 
-  <div class="mode-switch" role="tablist" aria-label="Vistas de seguridad">
+  <div
+    class="mode-switch"
+    role="tablist"
+    aria-label="Vistas de seguridad"
+    (keydown)="alNavegarTabs($event)"
+  >
     <button
       type="button"
       role="tab"
       class="mode-btn"
       [class.is-active]="tab() === 'usuarios'"
       [attr.aria-selected]="tab() === 'usuarios'"
+      [attr.tabindex]="tab() === 'usuarios' ? 0 : -1"
       (click)="tab.set('usuarios')"
     >
       Cuentas de usuario ({{ usuarios().length }})
@@ -46,6 +55,7 @@
         class="mode-btn"
         [class.is-active]="tab() === 'roles'"
         [attr.aria-selected]="tab() === 'roles'"
+        [attr.tabindex]="tab() === 'roles' ? 0 : -1"
         (click)="tab.set('roles')"
       >
         Roles y permisos ({{ roles().length }})
@@ -92,7 +102,7 @@
     </div>
 
     @if (altaAbierta()) {
-      <section class="form-card" aria-label="Crear cuenta de usuario">
+      <section class="form-card" aria-label="Crear cuenta de usuario" (keydown.escape)="cerrarAlta()">
         <div class="form-card-head">
           <h2 class="form-card-title">Crear cuenta de usuario</h2>
           <p class="form-card-sub">
@@ -123,15 +133,25 @@
                   id="buscar-elegible"
                   type="search"
                   class="search-field"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="lista-elegibles"
+                  [attr.aria-expanded]="listaElegiblesAbierta()"
                   autocomplete="off"
                   placeholder="Escribe nombre, correo institucional o núm. de empleado..."
                   [ngModel]="terminoElegible()"
                   (focus)="listaElegiblesAbierta.set(true)"
+                  (keydown)="alTeclearCombobox($event)"
                   (ngModelChange)="alEscribirElegible($event)"
                 />
 
                 @if (listaElegiblesAbierta()) {
-                  <ul class="combobox-list" role="listbox" aria-label="Colaboradores disponibles">
+                  <ul
+                    id="lista-elegibles"
+                    class="combobox-list"
+                    role="listbox"
+                    aria-label="Colaboradores disponibles"
+                  >
                     @if (buscandoElegibles()) {
                       <li class="combobox-empty">Buscando colaboradores…</li>
                     } @else if (elegibles().length === 0) {
@@ -143,7 +163,11 @@
                         <li>
                           <button
                             type="button"
+                            role="option"
+                            tabindex="-1"
                             class="combobox-option"
+                            [class.is-highlighted]="indiceElegibleActivo() === $index"
+                            [attr.aria-selected]="indiceElegibleActivo() === $index"
                             (click)="seleccionarElegible(e)"
                           >
                             <span class="combobox-title">
@@ -181,7 +205,7 @@
         </div>
 
         <div class="actions-end">
-          <app-button variant="secondary" (click)="altaAbierta.set(false)">Cancelar</app-button>
+          <app-button variant="secondary" (click)="cerrarAlta()">Cancelar</app-button>
           <app-button
             variant="primary"
             [disabled]="
@@ -299,7 +323,7 @@
     </div>
   } @else {
     @if (nuevoRolAbierto()) {
-      <section class="form-card" aria-label="Crear nuevo rol">
+      <section class="form-card" aria-label="Crear nuevo rol" (keydown.escape)="cerrarNuevoRol()">
         <div class="form-card-head">
           <h2 class="form-card-title">Nuevo rol personalizado</h2>
           <p class="form-card-sub">
@@ -349,7 +373,7 @@
         </div>
 
         <div class="actions-end">
-          <app-button variant="secondary" (click)="nuevoRolAbierto.set(false)">Cancelar</app-button>
+          <app-button variant="secondary" (click)="cerrarNuevoRol()">Cancelar</app-button>
           <app-button
             variant="primary"
             [disabled]="guardandoRol() || !nuevoRolNombre().trim()"

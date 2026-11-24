@@ -211,7 +211,9 @@
           type="button"
           class="item is-branch"
           [class.is-branch-active]="isComunicadosRoute()"
-          aria-controls="submenu-comunicados"
+          [attr.aria-controls]="
+            isRailMode() ? 'rail-submenu-comunicados' : 'submenu-comunicados'
+          "
           [attr.aria-expanded]="isRailMode() ? railSubmenuPos() !== null : comunicadosOpen()"
           data-tooltip-key="comunicados"
           [attr.aria-label]="collapsed() ? 'Comunicados' : null"
@@ -249,6 +251,46 @@
             </svg>
           }
         </button>
+
+        @if (collapsed() && !isMobile() && railSubmenuPos(); as submenu) {
+          <div
+            id="rail-submenu-comunicados"
+            class="rail-submenu"
+            role="menu"
+            aria-label="Submenú Comunicados"
+            [style.transform]="'translate3d(' + submenu.left + 'px, ' + submenu.top + 'px, 0)'"
+          >
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria"
+              routerLinkActive="is-active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="onNuevoCorreoClick()"
+            >
+              Correos masivos
+            </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/autorizaciones"
+              routerLinkActive="is-active"
+            >
+              <span>Autorizaciones</span>
+              @if (pendientesCount() > 0) {
+                <span class="nav-badge">{{ pendientesCount() }}</span>
+              }
+            </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/borradores"
+              routerLinkActive="is-active"
+            >
+              <span>Borradores</span>
+              @if (borradoresCount() > 0) {
+                <span class="nav-badge">{{ borradoresCount() }}</span>
+              }
+            </a>
+          </div>
+        }
 
         @if ((!collapsed() || isMobile()) && comunicadosOpen()) {
           <ul id="submenu-comunicados" class="sublist">
@@ -450,38 +492,6 @@
     (signOut)="cerrarSesion()"
   />
 </footer>
-
-@if (collapsed() && !isMobile() && railSubmenuPos(); as submenu) {
-  <div
-    id="rail-submenu-comunicados"
-    class="rail-submenu"
-    role="menu"
-    aria-label="Submenú Comunicados"
-    [style.transform]="'translate3d(' + submenu.left + 'px, ' + submenu.top + 'px, 0)'"
-  >
-    <a
-      class="rail-submenu-item"
-      routerLink="/mensajeria"
-      routerLinkActive="is-active"
-      [routerLinkActiveOptions]="{ exact: true }"
-      (click)="onNuevoCorreoClick()"
-    >
-      Correos masivos
-    </a>
-    <a class="rail-submenu-item" routerLink="/mensajeria/autorizaciones" routerLinkActive="is-active">
-      <span>Autorizaciones</span>
-      @if (pendientesCount() > 0) {
-        <span class="nav-badge">{{ pendientesCount() }}</span>
-      }
-    </a>
-    <a class="rail-submenu-item" routerLink="/mensajeria/borradores" routerLinkActive="is-active">
-      <span>Borradores</span>
-      @if (borradoresCount() > 0) {
-        <span class="nav-badge">{{ borradoresCount() }}</span>
-      }
-    </a>
-  </div>
-}
 
 @if (collapsed() && !isMobile() && railTooltip(); as tooltip) {
   <div

@@ -141,6 +141,11 @@
   color: var(--color-text-primary);
 }
 
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
 // The accent that names the state, on the top edge of the selected tab.
 .tab.is-active::before {
   content: '';

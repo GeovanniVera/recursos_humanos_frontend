@@ -86,6 +86,20 @@
   color: var(--color-text-primary);
 }
 
+.mode-btn:focus-visible,
+.primary-pill:focus-visible,
+.search-field:focus-visible,
+.inline-select:focus-visible,
+.perm-check input[type='checkbox']:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
 .filters-row {
   display: flex;
   flex-wrap: wrap;
@@ -193,7 +207,8 @@
 }
 
 .combobox-option:hover,
-.combobox-option:focus-visible {
+.combobox-option:focus-visible,
+.combobox-option.is-highlighted {
   background: var(--color-surface-overlay);
 }
 

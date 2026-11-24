@@ -46,13 +46,19 @@
       aria-label="Analítica detallada del sistema"
       [attr.aria-busy]="loading() ? 'true' : null"
     >
-      <div class="tabs" role="tablist" aria-label="Vistas analíticas">
+      <div
+        class="tabs"
+        role="tablist"
+        aria-label="Vistas analíticas"
+        (keydown)="alNavegarTabs($event)"
+      >
         <button
           type="button"
           role="tab"
           class="tab"
           [class.is-active]="tabActiva() === 'plantilla'"
           [attr.aria-selected]="tabActiva() === 'plantilla'"
+          [attr.tabindex]="tabActiva() === 'plantilla' ? 0 : -1"
           (click)="tabActiva.set('plantilla')"
         >
           <span class="tab-title">Plantilla</span>
@@ -64,6 +70,7 @@
           class="tab"
           [class.is-active]="tabActiva() === 'semaforo'"
           [attr.aria-selected]="tabActiva() === 'semaforo'"
+          [attr.tabindex]="tabActiva() === 'semaforo' ? 0 : -1"
           (click)="tabActiva.set('semaforo')"
         >
           <span class="tab-title">Semáforo y formación</span>
@@ -75,6 +82,7 @@
           class="tab"
           [class.is-active]="tabActiva() === 'movimientos'"
           [attr.aria-selected]="tabActiva() === 'movimientos'"
+          [attr.tabindex]="tabActiva() === 'movimientos' ? 0 : -1"
           (click)="tabActiva.set('movimientos')"
         >
           <span class="tab-title">Movimientos</span>
@@ -86,6 +94,7 @@
           class="tab"
           [class.is-active]="tabActiva() === 'comunicacion'"
           [attr.aria-selected]="tabActiva() === 'comunicacion'"
+          [attr.tabindex]="tabActiva() === 'comunicacion' ? 0 : -1"
           (click)="tabActiva.set('comunicacion')"
         >
           <span class="tab-title">Comunicación</span>
