@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { EMPTY, Subject, catchError, finalize, of, switchMap, tap, timer } from 'rxjs';
@@ -7,8 +7,10 @@ import { AuthService } from '../../core/auth/auth.service';
 import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
 import { FichaEmpleado } from '../../core/empleados/ficha.models';
 import {
+  ConfigRecordatoriosSemaforo,
   ConsultaSemaforo,
   EstadoExpediente,
+  EstadoRecordatorioEmpleado,
   OrdenSemaforo,
   SemaforoResponse,
 } from '../../core/semaforo/semaforo.models';
@@ -16,13 +18,16 @@ import { SemaforoService } from '../../core/semaforo/semaforo.service';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
 import { DataTable, TableColumn, TableDensity, TableRow } from '../../shared/ui/data-table/data-table.component';
+import { Modal } from '../../shared/ui/modal/modal.component';
 import { PageHeader } from '../../shared/ui/page-header/page-header.component';
 import { Pagination } from '../../shared/ui/pagination/pagination.component';
 import { RowFlag } from '../../shared/ui/row-flag/row-flag.component';
 import { RowLink } from '../../shared/ui/row-link/row-link.component';
+import { ToastService } from '../../shared/ui/toast/toast.service';
 import { EditarDrawer } from '../empleados/editar-drawer/editar-drawer.component';
 import { FichaDrawer } from '../empleados/ficha-drawer/ficha-drawer.component';
 import { ESTADOS_EXPEDIENTE } from './estado-expediente.component';
+import { RecordatoriosDrawer } from './recordatorios-drawer/recordatorios-drawer.component';
 
 /** Placeholder for a footer value with nothing to report. */
 const SIN_DATO = '—';
@@ -35,8 +40,10 @@ const SIN_DATO = '—';
     DataTable,
     EditarDrawer,
     FichaDrawer,
+    Modal,
     PageHeader,
     Pagination,
+    RecordatoriosDrawer,
     RowFlag,
     RowLink,
   ],
@@ -47,6 +54,8 @@ export class SemaforoPage {
   private readonly api = inject(SemaforoService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly requests = new Subject<{
     consulta: ConsultaSemaforo;
     debounce: boolean;
@@ -83,6 +92,20 @@ export class SemaforoPage {
    * and the route guard is not needed because nothing navigates.
    */
   readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
+
+  /** Only roles with `empleados.gestionar_recordatorios` manage reminders. */
+  readonly puedeGestionarRecordatorios = computed(() =>
+    this.auth.tienePermiso('empleados.gestionar_recordatorios'),
+  );
+
+  readonly recordatoriosConfig = signal<ConfigRecordatoriosSemaforo | null>(null);
+  readonly recordatoriosPorEmpleado = signal<Record<string, EstadoRecordatorioEmpleado>>({});
+  readonly recordatoriosDrawerOpen = signal(false);
+  readonly enviandoEmpleadoId = signal<number | null>(null);
+  readonly loteEnviando = signal<'incompleto' | 'casi_completo' | null>(null);
+  readonly confirmLoteGrupo = signal<'incompleto' | 'casi_completo' | null>(null);
+  readonly confirmLoteOpen = computed(() => this.confirmLoteGrupo() !== null);
+  readonly ahoraMs = signal(Date.now());
 
   /**
    * Completeness of the worker on screen, read from the row the user opened.
@@ -142,12 +165,23 @@ export class SemaforoPage {
   ];
 
   readonly etiquetasEstado: Readonly<Record<string, string>> = ESTADOS_EXPEDIENTE;
-  readonly columnas: readonly TableColumn[] = [
+
+  private readonly columnasBase: readonly TableColumn[] = [
     { key: 'num_empleado', header: 'No.', sortable: true },
     { key: 'nombre', header: 'Nombre', sortable: true },
     { key: 'adscripcion', header: 'Adscripción y plaza' },
     { key: 'campos_faltantes', header: 'Completitud', align: 'end', sortable: true },
   ];
+
+  readonly columnas = computed<readonly TableColumn[]>(() =>
+    this.puedeGestionarRecordatorios()
+      ? [
+          ...this.columnasBase,
+          { key: 'recordatorio', header: 'Recordatorio', align: 'end' },
+        ]
+      : this.columnasBase,
+  );
+
   readonly sort = computed(() => ({
     key: this.orden(),
     direction: this.direccion(),
@@ -215,6 +249,25 @@ export class SemaforoPage {
   );
 
   constructor() {
+    if (typeof window !== 'undefined') {
+      const ticker = setInterval(() => this.ahoraMs.set(Date.now()), 60_000);
+      this.destroyRef.onDestroy(() => clearInterval(ticker));
+    }
+
+    effect(() => {
+      const puede = this.puedeGestionarRecordatorios();
+      const resp = this.respuesta();
+      if (!puede || !resp) {
+        if (!puede) {
+          this.recordatoriosConfig.set(null);
+          this.recordatoriosPorEmpleado.set({});
+        }
+        return;
+      }
+      const ids = resp.datos.map((d) => d.id);
+      this.cargarEstadoRecordatorios(ids);
+    });
+
     this.requests
       .pipe(
         switchMap(({ consulta, debounce, id }) => {
@@ -251,7 +304,7 @@ export class SemaforoPage {
             }),
           );
         }),
-        takeUntilDestroyed(inject(DestroyRef)),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
     this.solicitar();
@@ -390,5 +443,224 @@ export class SemaforoPage {
 
   iniciarSesion(): void {
     void this.router.navigate(['/login']);
+  }
+
+  abrirRecordatoriosDrawer(): void {
+    this.recordatoriosDrawerOpen.set(true);
+  }
+
+  alGuardarConfiguracion(cfg: ConfigRecordatoriosSemaforo): void {
+    this.recordatoriosConfig.set(cfg);
+    const ids = (this.respuesta()?.datos ?? []).map((d) => d.id);
+    this.cargarEstadoRecordatorios(ids);
+  }
+
+  estadoRecordatorioDe(empleadoId: number): EstadoRecordatorioEmpleado | null {
+    return this.recordatoriosPorEmpleado()[String(empleadoId)] ?? null;
+  }
+
+  segundosRestantesManual(empleadoId: number): number {
+    const estado = this.estadoRecordatorioDe(empleadoId);
+    if (!estado?.manual_disponible_desde) {
+      return 0;
+    }
+    const target = Date.parse(estado.manual_disponible_desde);
+    if (Number.isNaN(target)) {
+      return estado.manual_en_cooldown ? estado.manual_segundos_restantes : 0;
+    }
+    return Math.max(0, Math.ceil((target - this.ahoraMs()) / 1000));
+  }
+
+  puedeEnviarManualRow(empleadoId: number): boolean {
+    const estado = this.estadoRecordatorioDe(empleadoId);
+    if (!estado || !estado.tiene_correo) {
+      return false;
+    }
+    if (this.enviandoEmpleadoId() === empleadoId) {
+      return false;
+    }
+    return this.segundosRestantesManual(empleadoId) === 0;
+  }
+
+  etiquetaBotonManual(empleadoId: number): string {
+    if (this.enviandoEmpleadoId() === empleadoId) {
+      return 'Enviando…';
+    }
+    const estado = this.estadoRecordatorioDe(empleadoId);
+    if (!estado) {
+      return 'Cargando…';
+    }
+    if (!estado.tiene_correo) {
+      return 'Sin correo';
+    }
+    const restante = this.segundosRestantesManual(empleadoId);
+    if (restante > 0) {
+      return `Espera ${this.formatearDuracion(restante)}`;
+    }
+    return 'Enviar aviso';
+  }
+
+  textoAutoRecordatorio(empleadoId: number): string {
+    const estado = this.estadoRecordatorioDe(empleadoId);
+    if (!estado) {
+      return 'Consultando…';
+    }
+    if (!estado.tiene_correo) {
+      return 'Sin correo institucional';
+    }
+    if (!estado.proximo_envio_at) {
+      return 'Auto: primer ciclo pendiente';
+    }
+    const target = Date.parse(estado.proximo_envio_at);
+    if (Number.isNaN(target)) {
+      return 'Auto: programado';
+    }
+    const segs = Math.max(0, Math.ceil((target - this.ahoraMs()) / 1000));
+    return segs === 0 ? 'Auto: listo para envío' : `Auto en ${this.formatearDuracion(segs)}`;
+  }
+
+  segundosLoteRestantes(grupo: 'incompleto' | 'casi_completo'): number {
+    const lote = this.recordatoriosConfig()?.lotes[grupo];
+    if (!lote?.disponible_desde) {
+      return 0;
+    }
+    const target = Date.parse(lote.disponible_desde);
+    if (Number.isNaN(target)) {
+      return lote.en_cooldown ? lote.segundos_restantes : 0;
+    }
+    return Math.max(0, Math.ceil((target - this.ahoraMs()) / 1000));
+  }
+
+  loteDeshabilitado(grupo: 'incompleto' | 'casi_completo'): boolean {
+    if (this.loteEnviando() !== null || !this.recordatoriosConfig()) {
+      return true;
+    }
+    const contadores = this.respuesta()?.contadores;
+    const totalGrupo =
+      grupo === 'incompleto' ? (contadores?.incompletos ?? 0) : (contadores?.casi_completos ?? 0);
+    if (totalGrupo === 0) {
+      return true;
+    }
+    return this.segundosLoteRestantes(grupo) > 0;
+  }
+
+  etiquetaBotonLote(grupo: 'incompleto' | 'casi_completo'): string {
+    const base = grupo === 'incompleto' ? 'Enviar a Incompletos' : 'Enviar a Casi completos';
+    const restante = this.segundosLoteRestantes(grupo);
+    if (restante > 0) {
+      return `${base} (${this.formatearDuracion(restante)})`;
+    }
+    return base;
+  }
+
+  enviarRecordatorioIndividual(row: TableRow): void {
+    const id = Number(row['id']);
+    if (!this.puedeEnviarManualRow(id)) {
+      return;
+    }
+    this.enviandoEmpleadoId.set(id);
+    this.api
+      .enviarRecordatorioIndividual(id)
+      .pipe(finalize(() => this.enviandoEmpleadoId.set(null)))
+      .subscribe({
+        next: (res) => {
+          this.recordatoriosPorEmpleado.update((prev) => ({
+            ...prev,
+            [String(id)]: res.datos.empleado_estado,
+          }));
+          this.toast.show({
+            type: 'success',
+            title: 'Recordatorio enviado',
+            message: `Se notificó a ${String(row['nombre'])} y se reinició su contador automático.`,
+          });
+        },
+        error: (err: unknown) => {
+          this.toast.show({
+            type: 'error',
+            title: 'No se pudo enviar el aviso',
+            message: this.extraerMensajeError(err, 'Ocurrió un error al enviar el correo.'),
+          });
+        },
+      });
+  }
+
+  solicitarConfirmacionLote(grupo: 'incompleto' | 'casi_completo'): void {
+    if (this.loteDeshabilitado(grupo)) {
+      return;
+    }
+    this.confirmLoteGrupo.set(grupo);
+  }
+
+  cerrarConfirmacionLote(open: boolean): void {
+    if (!open) {
+      this.confirmLoteGrupo.set(null);
+    }
+  }
+
+  confirmarEnvioLote(): void {
+    const grupo = this.confirmLoteGrupo();
+    if (!grupo || this.loteEnviando() !== null) {
+      return;
+    }
+    this.loteEnviando.set(grupo);
+    this.api
+      .enviarRecordatorioLote(grupo)
+      .pipe(finalize(() => this.loteEnviando.set(null)))
+      .subscribe({
+        next: (res) => {
+          this.confirmLoteGrupo.set(null);
+          this.recordatoriosConfig.set(res.datos.config);
+          const ids = (this.respuesta()?.datos ?? []).map((d) => d.id);
+          this.cargarEstadoRecordatorios(ids);
+          this.toast.show({
+            type: 'success',
+            title: 'Envío por lote completado',
+            message: `${res.datos.enviados} enviados, ${res.datos.omitidos_cooldown} en espera y ${res.datos.omitidos_sin_correo} sin correo.`,
+          });
+        },
+        error: (err: unknown) => {
+          this.confirmLoteGrupo.set(null);
+          this.toast.show({
+            type: 'error',
+            title: 'No se pudo completar el envío por lote',
+            message: this.extraerMensajeError(err, 'Intenta nuevamente más tarde.'),
+          });
+        },
+      });
+  }
+
+  private cargarEstadoRecordatorios(ids: readonly number[]): void {
+    this.api.obtenerEstadoRecordatorios(ids).subscribe({
+      next: (res) => {
+        this.recordatoriosConfig.set(res.datos.config);
+        this.recordatoriosPorEmpleado.set(res.datos.empleados);
+      },
+      error: () => {
+        // Keep listing usable even if reminder metadata request fails transiently.
+      },
+    });
+  }
+
+  private formatearDuracion(segundos: number): string {
+    const dias = Math.floor(segundos / 86400);
+    const horas = Math.floor((segundos % 86400) / 3600);
+    const minutos = Math.max(1, Math.floor((segundos % 3600) / 60));
+    if (dias > 0) {
+      return horas > 0 ? `${dias}d ${horas}h` : `${dias}d`;
+    }
+    if (horas > 0) {
+      return `${horas}h`;
+    }
+    return `${minutos}m`;
+  }
+
+  private extraerMensajeError(err: unknown, fallback: string): string {
+    if (err instanceof HttpErrorResponse) {
+      const msg = err.error?.message;
+      if (typeof msg === 'string' && msg.trim().length > 0) {
+        return msg;
+      }
+    }
+    return fallback;
   }
 }

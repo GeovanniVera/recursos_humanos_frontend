@@ -1,4 +1,4 @@
-<div class="stack" aria-live="polite" aria-atomic="false">
+<div #stack class="stack" popover="manual" aria-live="polite" aria-atomic="false">
   @for (toast of toasts(); track toast.id) {
     <article
       class="toast is-{{ toast.type }}"
