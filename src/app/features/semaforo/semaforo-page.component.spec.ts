@@ -284,10 +284,8 @@ describe('SemaforoPage', () => {
       'Identifica la información pendiente de cada expediente. Consulta los campos faltantes para conocer qué hace falta completar.',
     );
 
-    // The way back is the page's one trailing action, projected into the header.
-    const back = header?.querySelector<HTMLAnchorElement>('.back');
-    expect(normalize(back?.textContent)).toBe('Volver al panel');
-    expect(back?.getAttribute('href')).toBe('/');
+    // The back-to-panel link was removed from the semáforo letterhead.
+    expect(header?.querySelector('.back')).toBeNull();
 
     // The head owns the page's only h1; the screen keeps no second one.
     expect(root().querySelectorAll('h1')).toHaveLength(1);
@@ -956,5 +954,136 @@ describe('SemaforoPage', () => {
     expect(root().querySelector('[role="alert"].jump-error')).toBeNull();
     expect(root().querySelector<HTMLInputElement>('.jump-field')?.getAttribute('aria-invalid')).toBeNull();
     expect(root().querySelector('.pager-page')?.textContent?.trim()).toBe('Página 3 de 6');
+  });
+
+  it('keeps reminder controls hidden for ADMIN and exposes them for SUPER_ADMIN', async () => {
+    await conRol('ADMIN');
+    await loaded();
+    http.expectNone((r) => r.url.includes('/semaforo/recordatorios'));
+    expect(root().querySelector('.recordatorios-bar')).toBeNull();
+    expect(root().querySelectorAll('thead th')).toHaveLength(4);
+
+    await conRol('SUPER_ADMIN');
+    const estadoReq = http.expectOne((r) => r.url === `${URL}/recordatorios/estado`);
+    expect(estadoReq.request.params.get('empleado_ids')).toBe('7,8,9');
+    const en24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    const en2d = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+
+    estadoReq.flush({
+      datos: {
+        config: {
+          activo: true,
+          dias_incompleto: 2,
+          dias_casi_completo: 5,
+          cooldown_manual_horas: 24,
+          asunto_incompleto: '[URGENTE] Expediente pendiente',
+          mensaje_incompleto: 'Acude a Recursos Humanos para proporcionar tus datos.',
+          asunto_casi_completo: 'Expediente casi completo',
+          mensaje_casi_completo: 'Pasa a Recursos Humanos para concluir tu registro.',
+          ultima_ejecucion_auto_at: null,
+          lotes: {
+            incompleto: {
+              ultimo_envio_at: null,
+              en_cooldown: false,
+              disponible_desde: null,
+              segundos_restantes: 0,
+            },
+            casi_completo: {
+              ultimo_envio_at: null,
+              en_cooldown: false,
+              disponible_desde: null,
+              segundos_restantes: 0,
+            },
+          },
+        },
+        empleados: {
+          '7': {
+            empleado_id: 7,
+            tiene_correo: true,
+            correo_institucional: 'ana@utn.edu.mx',
+            estado_expediente: 'incompleto',
+            ultimo_envio_at: null,
+            ultimo_envio_manual_at: null,
+            ultimo_tipo: null,
+            proximo_envio_at: null,
+            auto_segundos_restantes: null,
+            manual_en_cooldown: false,
+            manual_disponible_desde: null,
+            manual_segundos_restantes: 0,
+          },
+          '8': {
+            empleado_id: 8,
+            tiene_correo: true,
+            correo_institucional: 'luis@utn.edu.mx',
+            estado_expediente: 'casi_completo',
+            ultimo_envio_at: new Date().toISOString(),
+            ultimo_envio_manual_at: new Date().toISOString(),
+            ultimo_tipo: 'manual',
+            proximo_envio_at: en2d,
+            auto_segundos_restantes: 172800,
+            manual_en_cooldown: true,
+            manual_disponible_desde: en24h,
+            manual_segundos_restantes: 86400,
+          },
+          '9': {
+            empleado_id: 9,
+            tiene_correo: true,
+            correo_institucional: 'eva@utn.edu.mx',
+            estado_expediente: 'completo',
+            ultimo_envio_at: null,
+            ultimo_envio_manual_at: null,
+            ultimo_tipo: null,
+            proximo_envio_at: null,
+            auto_segundos_restantes: null,
+            manual_en_cooldown: false,
+            manual_disponible_desde: null,
+            manual_segundos_restantes: 0,
+          },
+        },
+      },
+    });
+    await fixture.whenStable();
+
+    expect(root().querySelector('.recordatorios-bar')).not.toBeNull();
+    expect(root().querySelectorAll('thead th')).toHaveLength(5);
+
+    const filasButtons = Array.from(
+      root().querySelectorAll<HTMLButtonElement>('tbody .reminder-cell app-button button'),
+    );
+    expect(filasButtons).toHaveLength(2);
+    // Row 7 (incompleto) enabled, Row 8 (casi_completo in 24h cooldown) disabled
+    expect(filasButtons[0].disabled).toBe(false);
+    expect(filasButtons[0].textContent?.trim()).toBe('Enviar aviso');
+    expect(filasButtons[1].disabled).toBe(true);
+    expect(filasButtons[1].textContent?.trim()).toContain('Espera');
+
+    // Click individual send on row 7 -> triggers POST /enviar and locks button for 24h
+    filasButtons[0].click();
+    const indReq = http.expectOne(`${URL}/recordatorios/enviar`);
+    expect(indReq.request.body).toEqual({ empleado_id: 7 });
+    indReq.flush({
+      datos: {
+        envio: { id: 10 },
+        empleado_estado: {
+          empleado_id: 7,
+          tiene_correo: true,
+          correo_institucional: 'ana@utn.edu.mx',
+          estado_expediente: 'incompleto',
+          ultimo_envio_at: new Date().toISOString(),
+          ultimo_envio_manual_at: new Date().toISOString(),
+          ultimo_tipo: 'manual',
+          proximo_envio_at: en2d,
+          auto_segundos_restantes: 172800,
+          manual_en_cooldown: true,
+          manual_disponible_desde: en24h,
+          manual_segundos_restantes: 86400,
+        },
+      },
+    });
+    await fixture.whenStable();
+    expect(
+      root().querySelectorAll<HTMLButtonElement>('tbody .reminder-cell app-button button')[0]
+        .disabled,
+    ).toBe(true);
   });
 });

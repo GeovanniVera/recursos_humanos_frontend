@@ -1,9 +1,17 @@
-// The stack is anchored to the top-right corner of the viewport, above the
-// page but below the top layer of a native modal.
+// The stack is anchored to the top-right corner of the viewport and promoted
+// into the top layer via `popover="manual"` so it remains above open drawers
+// and modals. User-agent `[popover]` defaults are explicitly reset.
 .stack {
   position: fixed;
   inset-block-start: var(--space-4);
   inset-inline-end: var(--space-4);
+  inset-block-end: auto;
+  inset-inline-start: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--transparent);
+  overflow: visible;
   // Wide enough for a full sentence, narrow enough to leave the page readable
   // behind it, and never wider than the viewport on a phone with symmetric inset.
   width: min(var(--toast-width), calc(100vw - var(--space-4) * 2));

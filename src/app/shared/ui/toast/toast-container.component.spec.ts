@@ -61,6 +61,7 @@ describe('ToastContainer', () => {
 
     expect(live?.getAttribute('aria-live')).toBe('polite');
     expect(live?.getAttribute('aria-atomic')).toBe('false');
+    expect(live?.getAttribute('popover')).toBe('manual');
   });
 
   it('closes a toast from its own button after its exit animation', () => {
