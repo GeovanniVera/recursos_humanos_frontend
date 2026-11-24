@@ -102,7 +102,7 @@ const TABS: readonly Tab[] = [
  * vocabularies meet in this map instead of guessing from the name.
  */
 const CAMPOS_POR_TAB: Readonly<Record<TabId, readonly string[]>> = {
-  identificacion: ['estado_civil_id'],
+  identificacion: [],
   plaza: [],
   formacion: ['exp_publico_anios', 'exp_privado_anios', 'observaciones'],
 };
@@ -217,10 +217,9 @@ export class EditarDrawer {
   readonly maxNota = MAX_NOTA;
 
   // -------------------------------------------------------------------------
-  // Draft of the four scalars
+  // Draft of the three scalars
   // -------------------------------------------------------------------------
 
-  readonly estadoCivilId = signal<number | null>(null);
   readonly expPublico = signal<number>(0);
   readonly expPrivado = signal<number>(0);
   readonly observaciones = signal('');
@@ -264,12 +263,11 @@ export class EditarDrawer {
     return this.camposEditables().has(campo);
   }
 
-  /** The record's four scalars, which is what the draft is compared against. */
+  /** The record's three scalars, which is what the draft is compared against. */
   private readonly original = computed(() => {
     const ficha = this.registroActual();
 
     return {
-      estado_civil_id: ficha?.identificacion.estado_civil_id ?? null,
       exp_publico_anios: ficha?.experiencia.exp_publico_anios ?? 0,
       exp_privado_anios: ficha?.experiencia.exp_privado_anios ?? 0,
       observaciones: (ficha?.gestion_interna.observaciones ?? '').trim() || null,
@@ -286,9 +284,6 @@ export class EditarDrawer {
     const original = this.original();
     const cambios: EdicionEmpleadoRequest = {};
 
-    if (original.estado_civil_id !== this.estadoCivilId()) {
-      cambios.estado_civil_id = this.estadoCivilId();
-    }
     if (original.exp_publico_anios !== this.expPublico()) {
       cambios.exp_publico_anios = this.expPublico();
     }
@@ -388,6 +383,7 @@ export class EditarDrawer {
       fecha_nacimiento: this.fecha(identificacion?.fecha_nacimiento ?? null),
       sexo: identificacion?.sexo ?? null,
       entidad_nacimiento: identificacion?.entidad_nacimiento ?? null,
+      estado_civil: identificacion?.estado_civil ?? null,
       correo_institucional: ficha?.contacto.correo_institucional ?? null,
       area: plaza?.area ?? null,
       puesto: plaza?.puesto ?? null,
@@ -414,6 +410,7 @@ export class EditarDrawer {
   readonly identidadFecha = signal('');
   readonly identidadSexo = signal('');
   readonly identidadEntidad = signal('');
+  readonly identidadEstadoCivilId = signal<number | null>(null);
   readonly identidadCorreo = signal('');
   readonly identidadMotivo = signal('');
   readonly identidadErrores = signal<Record<string, string[]>>({});
@@ -600,7 +597,6 @@ export class EditarDrawer {
       return;
     }
 
-    this.estadoCivilId.set(ficha.identificacion.estado_civil_id);
     this.expPublico.set(ficha.experiencia.exp_publico_anios ?? 0);
     this.expPrivado.set(ficha.experiencia.exp_privado_anios ?? 0);
     this.observaciones.set(ficha.gestion_interna.observaciones ?? '');
@@ -663,6 +659,7 @@ export class EditarDrawer {
     this.identidadFecha.set(identificacion.fecha_nacimiento ?? '');
     this.identidadSexo.set(identificacion.sexo ?? '');
     this.identidadEntidad.set(entidad?.clave ?? '');
+    this.identidadEstadoCivilId.set(identificacion.estado_civil_id ?? null);
     this.identidadCorreo.set(ficha.contacto.correo_institucional ?? '');
     this.identidadMotivo.set('');
     this.identidadErrores.set({});
@@ -680,6 +677,7 @@ export class EditarDrawer {
       fecha_nacimiento: this.identidadFecha().trim() || null,
       sexo: this.identidadSexo().trim() || null,
       entidad_nacimiento: this.identidadEntidad().trim() || null,
+      estado_civil_id: this.identidadEstadoCivilId(),
       correo_institucional: this.identidadCorreo().trim() || null,
       motivo_rectificacion: this.identidadMotivo().trim(),
     };

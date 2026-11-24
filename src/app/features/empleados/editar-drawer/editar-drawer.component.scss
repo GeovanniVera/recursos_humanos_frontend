@@ -161,6 +161,16 @@
   margin-top: var(--space-4);
 }
 
+app-grados-academicos {
+  display: block;
+}
+
+app-grados-academicos + .group {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) dashed var(--color-paper-line);
+}
+
 // ---------------------------------------------------------------------------
 // 1:N folders
 // ---------------------------------------------------------------------------

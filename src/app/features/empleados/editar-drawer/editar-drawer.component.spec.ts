@@ -46,7 +46,7 @@ const CATALOGOS: FormularioCatalogos = {
   trabaja_otro_lugar: ['No', 'Publico', 'Privado'],
 };
 
-const CAMPOS = ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'];
+const CAMPOS = ['exp_publico_anios', 'exp_privado_anios', 'observaciones'];
 
 function ficha(cambios: Partial<FichaEmpleado> = {}): FichaEmpleado {
   return {
@@ -243,7 +243,8 @@ describe('EditarDrawer', () => {
 
     expect(valorDe(fixture, 'Número de empleado')).toBe('US08-17');
     expect(valorDe(fixture, 'CURP')).toBe('HEGG560427MVZRRL04');
-    expect(campo(fixture, 'estado_civil_id')).not.toBeNull();
+    expect(valorDe(fixture, 'Estado civil')).toBe('Soltero');
+    expect(campo(fixture, 'estado_civil_id')).toBeNull();
 
     // El 404 del historial de campos no se consulta nunca.
     httpMock.expectNone((peticion) => peticion.url.includes('informacion-historial'));
@@ -251,11 +252,12 @@ describe('EditarDrawer', () => {
 
   it('sends only the changed scalar together with the concurrency token', async () => {
     const fixture = await abrir();
+    await abrirTab(fixture, 'Formación');
 
     // Sin cambios no hay nada que guardar.
     expect(boton(fixture, 'Guardar cambios')?.disabled).toBe(true);
 
-    await elegir(fixture, 'estado_civil_id', '2');
+    await escribir(fixture, 'observaciones', 'Observación actualizada');
 
     expect(boton(fixture, 'Guardar cambios')?.disabled).toBe(false);
     boton(fixture, 'Guardar cambios')?.click();
@@ -264,7 +266,7 @@ describe('EditarDrawer', () => {
     const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}`);
     expect(peticion.request.method).toBe('PATCH');
     expect(peticion.request.body).toEqual({
-      estado_civil_id: 2,
+      observaciones: 'Observación actualizada',
       updated_at: '2026-01-01T00:00:00+00:00',
     });
 
@@ -273,7 +275,7 @@ describe('EditarDrawer', () => {
       data: {
         ...guardada,
         actualizado_en: '2026-02-02T10:00:00+00:00',
-        identificacion: { ...guardada.identificacion, estado_civil_id: 2, estado_civil: 'Casado' },
+        gestion_interna: { ...guardada.gestion_interna, observaciones: 'Observación actualizada' },
       },
     });
     await fixture.whenStable();
@@ -286,8 +288,9 @@ describe('EditarDrawer', () => {
 
   it('shows the conflict and offers reloading the record', async () => {
     const fixture = await abrir();
+    await abrirTab(fixture, 'Formación');
 
-    await elegir(fixture, 'estado_civil_id', '2');
+    await escribir(fixture, 'observaciones', 'Cambio en conflicto');
     boton(fixture, 'Guardar cambios')?.click();
     await fixture.whenStable();
 
@@ -370,11 +373,46 @@ describe('EditarDrawer', () => {
   });
 
   it('disables the scalars the actor cannot write', async () => {
-    const fixture = await abrir(ficha({ edicion: { campos_editables: ['estado_civil_id'] } }));
+    const fixture = await abrir(ficha({ edicion: { campos_editables: [] } }));
     await abrirTab(fixture, 'Formación');
 
     expect(campo<HTMLTextAreaElement>(fixture, 'observaciones')?.disabled).toBe(true);
     expect(campo<HTMLInputElement>(fixture, 'exp_publico_anios')?.disabled).toBe(true);
+  });
+
+  it('rectifies civil status inside the identity annex', async () => {
+    const fixture = await abrir();
+
+    boton(fixture, 'Rectificar datos de identidad →')?.click();
+    await fixture.whenStable();
+
+    await elegir(fixture, 'identidad-estado-civil', '2');
+    await escribir(fixture, 'identidad-motivo', 'Actualización de estado civil por acta');
+
+    boton(fixture, 'Rectificar identidad')?.click();
+    await fixture.whenStable();
+
+    const peticion = httpMock.expectOne(`${URL_EMPLEADOS}/${EMPLEADO_ID}/identidad`);
+    expect(peticion.request.method).toBe('PATCH');
+    expect(peticion.request.body.estado_civil_id).toBe(2);
+    expect(peticion.request.body.motivo_rectificacion).toBe(
+      'Actualización de estado civil por acta',
+    );
+
+    const actualizada = ficha();
+    peticion.flush({
+      data: {
+        ...actualizada,
+        identificacion: {
+          ...actualizada.identificacion,
+          estado_civil_id: 2,
+          estado_civil: 'Casado',
+        },
+      },
+    });
+    await fixture.whenStable();
+
+    expect(valorDe(fixture, 'Estado civil')).toBe('Casado');
   });
 
   it('shows the appointment history in its annex', async () => {

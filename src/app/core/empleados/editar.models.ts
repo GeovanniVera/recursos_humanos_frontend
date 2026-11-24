@@ -16,7 +16,6 @@
  * each one against the actor's matrix and rejects anything it cannot write.
  */
 export interface EdicionEmpleadoRequest {
-  estado_civil_id?: number | null;
   exp_publico_anios?: number | null;
   exp_privado_anios?: number | null;
   observaciones?: string | null;
@@ -103,6 +102,7 @@ export interface RectificarIdentidadRequest {
   fecha_nacimiento?: string | null;
   sexo?: string | null;
   entidad_nacimiento?: string | null;
+  estado_civil_id?: number | null;
   correo_institucional?: string | null;
   motivo_rectificacion: string;
 }

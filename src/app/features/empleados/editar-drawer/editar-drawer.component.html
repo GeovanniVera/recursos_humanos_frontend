@@ -120,41 +120,11 @@
                   <span class="value" [class.is-empty]="correo.vacio">{{ correo.valor }}</span>
                 </div>
 
-                @if (puedeEditar('estado_civil_id')) {
-                  <div class="field">
-                    <label class="label" for="estado_civil_id">Estado civil</label>
-                    <select
-                      id="estado_civil_id"
-                      name="estado_civil_id"
-                      class="control"
-                      [class.is-invalid]="erroresServidor()['estado_civil_id'] !== undefined"
-                      (change)="
-                        estadoCivilId.set(
-                          $any($event.target).value === '' ? null : +$any($event.target).value
-                        )
-                      "
-                    >
-                      <option value="" [selected]="estadoCivilId() === null">
-                        Elige una opción
-                      </option>
-                      @for (estado of estadosCiviles(); track estado.id) {
-                        <option [value]="estado.id" [selected]="estadoCivilId() === estado.id">
-                          {{ estado.descripcion }}
-                        </option>
-                      }
-                    </select>
-
-                    @for (error of erroresServidor()['estado_civil_id'] ?? []; track error) {
-                      <p class="field-error" role="alert">{{ error }}</p>
-                    }
-                  </div>
-                } @else {
-                  @let civil = valorDe('estado_civil');
-                  <div class="field">
-                    <span class="label">Estado civil</span>
-                    <span class="value" [class.is-empty]="civil.vacio">{{ civil.valor }}</span>
-                  </div>
-                }
+                @let civil = valorDe('estado_civil');
+                <div class="field">
+                  <span class="label">Estado civil</span>
+                  <span class="value" [class.is-empty]="civil.vacio">{{ civil.valor }}</span>
+                </div>
               </div>
 
               <div class="group-actions">
@@ -839,6 +809,35 @@
                       }
                     </select>
                     @if (errorIdentidad('entidad_nacimiento'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-estado-civil">Estado civil</label>
+                    <select
+                      id="identidad-estado-civil"
+                      class="control"
+                      [class.is-invalid]="errorIdentidad('estado_civil_id') !== null"
+                      (change)="
+                        identidadEstadoCivilId.set(
+                          $any($event.target).value === '' ? null : +$any($event.target).value
+                        )
+                      "
+                    >
+                      <option value="" [selected]="identidadEstadoCivilId() === null">
+                        Sin dato
+                      </option>
+                      @for (estado of estadosCiviles(); track estado.id) {
+                        <option
+                          [value]="estado.id"
+                          [selected]="identidadEstadoCivilId() === estado.id"
+                        >
+                          {{ estado.descripcion }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorIdentidad('estado_civil_id'); as error) {
                       <p class="field-error" role="alert">{{ error }}</p>
                     }
                   </div>
