@@ -2,10 +2,16 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
-/** Mirrors E-04 including the existing institutional role hierarchy. */
+/** Checks `empleados.editar` from session permissions, with role fallback for legacy mocks. */
 export const puedeEditarEmpleado = (rol: string | null): boolean =>
   rol !== null && ['ADMIN', 'SUPER_ADMIN', 'SISTEMAS'].includes(rol);
 
-export const editarEmpleadoGuard: CanActivateFn = () =>
-  puedeEditarEmpleado(inject(AuthService).rol()) ||
-  inject(Router).createUrlTree(['/empleados']);
+export const editarEmpleadoGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const tienePermisos = (auth.permisos?.().size ?? 0) > 0;
+  const permitido = tienePermisos
+    ? auth.tienePermiso('empleados.editar')
+    : puedeEditarEmpleado(auth.rol());
+
+  return permitido || inject(Router).createUrlTree(['/empleados']);
+};

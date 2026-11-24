@@ -284,10 +284,7 @@ describe('SemaforoPage', () => {
       'Identifica la información pendiente de cada expediente. Consulta los campos faltantes para conocer qué hace falta completar.',
     );
 
-    // The way back is the page's one trailing action, projected into the header.
-    const back = header?.querySelector<HTMLAnchorElement>('.back');
-    expect(normalize(back?.textContent)).toBe('Volver al panel');
-    expect(back?.getAttribute('href')).toBe('/');
+    expect(header?.querySelector('.back')).toBeNull();
 
     // The head owns the page's only h1; the screen keeps no second one.
     expect(root().querySelectorAll('h1')).toHaveLength(1);

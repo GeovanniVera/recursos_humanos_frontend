@@ -68,7 +68,12 @@ export class MensajeriaPage {
   private readonly fileInputRef = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
   readonly variablesDinamicas = VARIABLES_DINAMICAS;
-  readonly esAutorizador = computed(() => esRolAutorizador(this.auth.rol()));
+  readonly esAutorizador = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return this.auth.tienePermiso('comunicados.autorizar');
+    }
+    return esRolAutorizador(this.auth.rol());
+  });
 
   // Estado del comunicado en edición
   readonly comunicadoId = signal<number | null>(null);

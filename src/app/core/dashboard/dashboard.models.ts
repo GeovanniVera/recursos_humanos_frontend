@@ -1,35 +1,87 @@
 /**
- * Payloads of `GET /dashboard/resumen`.
- *
- * Field names stay in snake_case on purpose: they are the wire format of the
- * backend, so every interface maps 1:1 to the JSON body and nothing has to be
- * transformed on the way in.
- *
- * The completion percentage is deliberately absent: the backend sends counts,
- * and the ratio is a presentation concern that the client computes.
+ * Payloads of `GET /dashboard/resumen` and `GET /dashboard/analitica`.
  */
 
 /** Counters of the general panel. */
 export interface ResumenDashboard {
-  /** `activo = true AND fecha_baja IS NULL`. */
   empleados_activos: number;
-  /** `activo = false`. */
   empleados_baja: number;
-  /** Active employees whose file is complete (the fifteen effective fields). */
   expedientes_completos: number;
 }
 
-/** `200` answer of `GET /dashboard/resumen`. */
 export interface ResumenDashboardResponse {
   datos: ResumenDashboard;
 }
 
-/**
- * Error envelope of the endpoint.
- *
- * `codigo` is a contract value (`permiso_denegado`, `servicio_no_disponible`),
- * not copy: it is shown to the user next to the message, untranslated.
- */
+export interface ConteoEtiqueta {
+  etiqueta: string;
+  total: number;
+}
+
+export interface SerieMensualItem {
+  mes: string;
+  altas: number;
+  bajas: number;
+}
+
+export interface PlantillaAnalitica {
+  activos: number;
+  en_licencia: number;
+  bajas_definitivas: number;
+  porcentaje_completitud: number;
+  con_empleo_externo_vigente: number;
+  antiguedad_promedio_anios: number;
+  por_categoria_cct: ConteoEtiqueta[];
+  por_tipo_personal: ConteoEtiqueta[];
+  por_jornada: ConteoEtiqueta[];
+  por_sexo: ConteoEtiqueta[];
+  top_areas: ConteoEtiqueta[];
+}
+
+export interface SemaforoAnalitica {
+  completos: number;
+  casi_completos: number;
+  incompletos: number;
+  sin_curp: number;
+  sin_grado_maximo: number;
+  por_nivel_estudios: ConteoEtiqueta[];
+}
+
+export interface MovimientosAnalitica {
+  altas_mes: number;
+  bajas_mes: number;
+  cambios_adscripcion_90d: number;
+  serie_mensual: SerieMensualItem[];
+  motivos_baja: ConteoEtiqueta[];
+}
+
+export interface ComunicacionAnalitica {
+  pendientes_autorizacion: number;
+  enviados_mes: number;
+  destinatarios_mes: number;
+  por_estatus: ConteoEtiqueta[];
+}
+
+export interface SeguridadAnalitica {
+  usuarios_activos: number;
+  usuarios_suspendidos: number;
+  eventos_fallidos_7d: number;
+  usuarios_por_rol: ConteoEtiqueta[];
+  bitacora_por_modulo_30d: ConteoEtiqueta[];
+}
+
+export interface AnaliticaDashboard {
+  plantilla: PlantillaAnalitica;
+  semaforo: SemaforoAnalitica;
+  movimientos: MovimientosAnalitica;
+  comunicacion: ComunicacionAnalitica;
+  seguridad: SeguridadAnalitica | null;
+}
+
+export interface AnaliticaDashboardResponse {
+  datos: AnaliticaDashboard;
+}
+
 export interface ResumenDashboardError {
   message?: string;
   codigo?: string;

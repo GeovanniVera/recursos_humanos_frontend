@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { EMPTY, Subject, catchError, finalize, of, switchMap, tap, timer } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { puedeEditarEmpleado } from '../../core/auth/editar-empleado.guard';
@@ -30,7 +30,6 @@ const SIN_DATO = '—';
 @Component({
   selector: 'app-semaforo-page',
   imports: [
-    RouterLink,
     AlertBanner,
     Button,
     DataTable,

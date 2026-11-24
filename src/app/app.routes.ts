@@ -102,6 +102,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'admin/usuarios',
+        data: { breadcrumb: 'Usuarios y roles' },
+        loadComponent: () =>
+          import('./features/admin/usuarios/usuarios-page.component').then(
+            (m) => m.UsuariosPage,
+          ),
+      },
+      {
         path: 'bitacora',
         data: { breadcrumb: 'Bitácora' },
         loadComponent: () =>

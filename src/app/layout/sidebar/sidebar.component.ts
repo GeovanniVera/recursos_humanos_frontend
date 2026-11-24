@@ -201,6 +201,20 @@ export class Sidebar {
   readonly roleText = computed(() => roleLabel(this.userRole()));
 
   readonly puedeVerBitacora = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return this.auth.tienePermiso('bitacora.consultar');
+    }
+    const rol = this.auth.rol();
+    return rol === 'SUPER_ADMIN' || rol === 'SISTEMAS';
+  });
+
+  readonly puedeGestionarUsuarios = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return (
+        this.auth.tienePermiso('usuarios.ver') ||
+        this.auth.tienePermiso('roles.gestionar')
+      );
+    }
     const rol = this.auth.rol();
     return rol === 'SUPER_ADMIN' || rol === 'SISTEMAS';
   });

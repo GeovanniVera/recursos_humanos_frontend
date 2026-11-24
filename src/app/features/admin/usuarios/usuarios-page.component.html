@@ -1,0 +1,478 @@
+<section class="page">
+  <header class="head">
+    <div class="identity">
+      <p class="overline">Seguridad y acceso</p>
+      <h1 class="title">Usuarios y roles</h1>
+      <p class="sub">
+        Administra las cuentas de acceso al backoffice y define qué puede hacer cada rol en el
+        sistema.
+      </p>
+    </div>
+
+    <div class="head-actions">
+      @if (tab() === 'usuarios' && puedeCrearUsuario()) {
+        <button type="button" class="primary-pill" (click)="abrirAlta()">Nueva cuenta</button>
+      } @else if (tab() === 'roles' && puedeGestionarRoles()) {
+        <button
+          type="button"
+          class="primary-pill"
+          (click)="nuevoRolAbierto.set(!nuevoRolAbierto())"
+        >
+          {{ nuevoRolAbierto() ? 'Cancelar nuevo rol' : 'Nuevo rol' }}
+        </button>
+      }
+
+      <app-button variant="secondary" [disabled]="cargando()" (click)="cargarTodo()">
+        Actualizar
+      </app-button>
+    </div>
+  </header>
+
+  <div class="mode-switch" role="tablist" aria-label="Vistas de seguridad">
+    <button
+      type="button"
+      role="tab"
+      class="mode-btn"
+      [class.is-active]="tab() === 'usuarios'"
+      [attr.aria-selected]="tab() === 'usuarios'"
+      (click)="tab.set('usuarios')"
+    >
+      Cuentas de usuario ({{ usuarios().length }})
+    </button>
+    @if (puedeGestionarRoles()) {
+      <button
+        type="button"
+        role="tab"
+        class="mode-btn"
+        [class.is-active]="tab() === 'roles'"
+        [attr.aria-selected]="tab() === 'roles'"
+        (click)="tab.set('roles')"
+      >
+        Roles y permisos ({{ roles().length }})
+      </button>
+    }
+  </div>
+
+  @if (error(); as msg) {
+    <app-alert-banner variant="error" [message]="msg" />
+  }
+  @if (exito(); as msg) {
+    <app-alert-banner variant="success" [message]="msg" />
+  }
+
+  @if (tab() === 'usuarios') {
+    <div class="filters-row">
+      <div class="search">
+        <label class="search-label" for="buscar-usuario">Buscar usuario</label>
+        <input
+          id="buscar-usuario"
+          class="search-field"
+          type="search"
+          placeholder="Nombre, correo o número de empleado"
+          [ngModel]="buscarUsuario()"
+          (ngModelChange)="buscarUsuario.set($event)"
+          (keyup.enter)="aplicarFiltros()"
+        />
+      </div>
+
+      <div class="search is-select">
+        <label class="search-label" for="filtro-rol">Filtrar por rol</label>
+        <select
+          id="filtro-rol"
+          class="search-field"
+          [ngModel]="filtroRolId()"
+          (ngModelChange)="filtroRolId.set($event); aplicarFiltros()"
+        >
+          <option [ngValue]="null">Todos los roles</option>
+          @for (r of roles(); track r.id) {
+            <option [ngValue]="r.id">{{ r.nombre }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (altaAbierta()) {
+      <section class="form-card" aria-label="Crear cuenta de usuario">
+        <div class="form-card-head">
+          <h2 class="form-card-title">Crear cuenta de usuario</h2>
+          <p class="form-card-sub">
+            Solo aparecen colaboradores activos que todavía no tienen acceso al sistema.
+          </p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field is-wide">
+            <label class="search-label" for="buscar-elegible">Colaborador</label>
+
+            @if (elegibleSeleccionado(); as elegido) {
+              <div class="selected-chip">
+                <div class="selected-chip-info">
+                  <strong>{{ elegido.nombre }}</strong>
+                  <span class="muted">
+                    {{ elegido.num_empleado }} · {{ elegido.correo_institucional }}
+                    @if (elegido.area) {
+                      · {{ elegido.area }}
+                    }
+                  </span>
+                </div>
+                <app-button variant="secondary" (click)="limpiarElegible()">Cambiar</app-button>
+              </div>
+            } @else {
+              <div class="combobox">
+                <input
+                  id="buscar-elegible"
+                  type="search"
+                  class="search-field"
+                  autocomplete="off"
+                  placeholder="Escribe nombre, correo institucional o núm. de empleado..."
+                  [ngModel]="terminoElegible()"
+                  (focus)="listaElegiblesAbierta.set(true)"
+                  (ngModelChange)="alEscribirElegible($event)"
+                />
+
+                @if (listaElegiblesAbierta()) {
+                  <ul class="combobox-list" role="listbox" aria-label="Colaboradores disponibles">
+                    @if (buscandoElegibles()) {
+                      <li class="combobox-empty">Buscando colaboradores…</li>
+                    } @else if (elegibles().length === 0) {
+                      <li class="combobox-empty">
+                        No hay colaboradores activos sin cuenta que coincidan.
+                      </li>
+                    } @else {
+                      @for (e of elegibles(); track e.id) {
+                        <li>
+                          <button
+                            type="button"
+                            class="combobox-option"
+                            (click)="seleccionarElegible(e)"
+                          >
+                            <span class="combobox-title">
+                              <span class="mono">{{ e.num_empleado }}</span> · {{ e.nombre }}
+                            </span>
+                            <span class="combobox-meta">
+                              {{ e.correo_institucional }}
+                              @if (e.area) {
+                                · {{ e.area }}
+                              }
+                            </span>
+                          </button>
+                        </li>
+                      }
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="field">
+            <label class="search-label" for="rol-nuevo">Rol asignado</label>
+            <select
+              id="rol-nuevo"
+              class="search-field"
+              [ngModel]="rolNuevoUsuarioId()"
+              (ngModelChange)="rolNuevoUsuarioId.set($event)"
+            >
+              @for (r of rolesAsignables(); track r.id) {
+                <option [ngValue]="r.id">{{ r.nombre }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="actions-end">
+          <app-button variant="secondary" (click)="altaAbierta.set(false)">Cancelar</app-button>
+          <app-button
+            variant="primary"
+            [disabled]="
+              guardandoUsuario() ||
+              elegibleSeleccionado() === null ||
+              rolNuevoUsuarioId() === null
+            "
+            (click)="crearUsuario()"
+          >
+            {{ guardandoUsuario() ? 'Creando…' : 'Crear cuenta' }}
+          </app-button>
+        </div>
+      </section>
+    }
+
+    <div class="ledger">
+      <div class="tabs" role="group" aria-label="Filtrar usuarios por estado">
+        <button
+          type="button"
+          class="tab is-todos"
+          [class.is-active]="filtroActivo() === 'todos'"
+          (click)="filtrarEstado('todos')"
+        >
+          <span class="tab-title">Todos</span>
+        </button>
+        <button
+          type="button"
+          class="tab is-activo"
+          [class.is-active]="filtroActivo() === 'activos'"
+          (click)="filtrarEstado('activos')"
+        >
+          <span class="tab-title">Activos</span>
+        </button>
+        <button
+          type="button"
+          class="tab is-baja_definitiva"
+          [class.is-active]="filtroActivo() === 'suspendidos'"
+          (click)="filtrarEstado('suspendidos')"
+        >
+          <span class="tab-title">Suspendidos</span>
+        </button>
+      </div>
+
+      <div class="sheet">
+        <app-data-table
+          variant="ledger"
+          [density]="densidad()"
+          mobileMode="cards"
+          [columns]="columnas"
+          [leadingDecoration]="true"
+          [rows]="filas()"
+          [loading]="cargando()"
+          emptyMessage="No hay cuentas de usuario con los filtros actuales."
+          caption="Listado de cuentas de usuario"
+          rowKey="id"
+        >
+          <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+            @let item = $any(row).raw;
+            @if (column.key === 'num_empleado') {
+              <app-row-flag [tone]="tonoDe(row)" [label]="item.activo ? 'Activo' : 'Suspendido'" />
+              <span class="mono">{{ value }}</span>
+            } @else if (column.key === 'nombre') {
+              <div class="user-cell">
+                <strong>{{ value }}</strong>
+                <span class="user-mail">{{ item.empleado.correo }}</span>
+              </div>
+            } @else if (column.key === 'rol') {
+              @if (item.editable && puedeEditarUsuario()) {
+                <select
+                  class="inline-select"
+                  [attr.aria-label]="'Rol de ' + item.empleado.nombre"
+                  [ngModel]="item.rol?.id ?? null"
+                  (ngModelChange)="cambiarRol(item, $event)"
+                >
+                  @for (r of rolesAsignables(); track r.id) {
+                    <option [ngValue]="r.id">{{ r.nombre }}</option>
+                  }
+                </select>
+              } @else {
+                <span class="mono">{{ value }}</span>
+              }
+            } @else if (column.key === 'estado') {
+              <span class="seal is-{{ item.activo ? 'activo' : 'baja' }}">
+                {{ value }}
+              </span>
+            } @else if (column.key === 'acciones') {
+              @if (item.editable && puedeCambiarEstado()) {
+                <app-button variant="secondary" (click)="alternarEstado(item)">
+                  {{ item.activo ? 'Suspender' : 'Reactivar' }}
+                </app-button>
+              } @else {
+                <span class="muted">Protegido</span>
+              }
+            } @else {
+              {{ value }}
+            }
+          </ng-template>
+        </app-data-table>
+
+        <div class="sheet-foot">
+          <div class="density" role="group" aria-label="Densidad de la tabla">
+            @for (opcion of densidades; track opcion.id) {
+              <button
+                type="button"
+                [attr.aria-pressed]="densidad() === opcion.id"
+                (click)="densidad.set(opcion.id)"
+              >
+                {{ opcion.label }}
+              </button>
+            }
+          </div>
+          <span class="range-text">Mostrando {{ filas().length }} cuenta(s)</span>
+        </div>
+      </div>
+    </div>
+  } @else {
+    @if (nuevoRolAbierto()) {
+      <section class="form-card" aria-label="Crear nuevo rol">
+        <div class="form-card-head">
+          <h2 class="form-card-title">Nuevo rol personalizado</h2>
+          <p class="form-card-sub">
+            Escribe un nombre claro para el perfil y elige su nivel de autoridad. Después podrás
+            marcar sus permisos módulo por módulo.
+          </p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label class="search-label" for="nuevo-rol-nombre">Nombre del rol</label>
+            <input
+              id="nuevo-rol-nombre"
+              type="text"
+              class="search-field"
+              placeholder="Ej. Auditor de nómina"
+              [ngModel]="nuevoRolNombre()"
+              (ngModelChange)="nuevoRolNombre.set($event)"
+            />
+          </div>
+
+          <div class="field">
+            <label class="search-label" for="nuevo-rol-nivel">Nivel de autoridad</label>
+            <select
+              id="nuevo-rol-nivel"
+              class="search-field"
+              [ngModel]="nuevoRolNivel()"
+              (ngModelChange)="nuevoRolNivel.set($event)"
+            >
+              @for (n of nivelesDisponibles(); track n.nivel) {
+                <option [ngValue]="n.nivel">{{ n.etiqueta }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="search-label" for="nuevo-rol-desc">Descripción breve (opcional)</label>
+            <input
+              id="nuevo-rol-desc"
+              type="text"
+              class="search-field"
+              placeholder="Ej. Solo consulta expedientes y bitácora"
+              [ngModel]="nuevoRolDescripcion()"
+              (ngModelChange)="nuevoRolDescripcion.set($event)"
+            />
+          </div>
+        </div>
+
+        <div class="actions-end">
+          <app-button variant="secondary" (click)="nuevoRolAbierto.set(false)">Cancelar</app-button>
+          <app-button
+            variant="primary"
+            [disabled]="guardandoRol() || !nuevoRolNombre().trim()"
+            (click)="crearRol()"
+          >
+            {{ guardandoRol() ? 'Creando…' : 'Crear rol' }}
+          </app-button>
+        </div>
+      </section>
+    }
+
+    <div class="roles-layout">
+      <aside class="roles-sidebar" aria-label="Lista de roles">
+        <h2 class="panel-heading">Roles disponibles</h2>
+        <ul class="rol-list">
+          @for (r of roles(); track r.id) {
+            <li>
+              <button
+                type="button"
+                class="rol-card"
+                [class.is-selected]="rolSeleccionadoId() === r.id"
+                (click)="seleccionarRol(r)"
+              >
+                <div class="rol-card-top">
+                  <span class="rol-card-name">{{ r.nombre }}</span>
+                  <span class="rol-tag">{{ r.editable ? 'Editable' : 'Sistema' }}</span>
+                </div>
+                <span class="rol-card-meta">
+                  {{ r.usuarios_count }} usuario(s) · {{ r.permisos.length }} permisos
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      </aside>
+
+      <section class="roles-detail" aria-label="Permisos del rol">
+        @if (rolSeleccionado(); as rol) {
+          <div class="roles-detail-head">
+            <div>
+              <h2 class="panel-heading">{{ rol.nombre }}</h2>
+              <p class="roles-detail-sub">
+                {{ totalPermisosActivos() }} de {{ catalogoPermisos().length }} permisos activos ·
+                {{
+                  rol.editable
+                    ? 'Marca las acciones que este perfil puede realizar.'
+                    : 'Este rol está protegido por jerarquía del sistema y es de solo lectura.'
+                }}
+              </p>
+            </div>
+
+            @if (rol.editable) {
+              <app-button
+                variant="primary"
+                [disabled]="guardandoPermisos()"
+                (click)="guardarPermisosRol()"
+              >
+                {{ guardandoPermisos() ? 'Guardando…' : 'Guardar permisos' }}
+              </app-button>
+            }
+          </div>
+
+          <div class="perm-search">
+            <input
+              type="search"
+              class="search-field"
+              placeholder="Filtrar permisos (ej. expediente, bitácora, baja, comunicados...)"
+              [ngModel]="buscarPermiso()"
+              (ngModelChange)="buscarPermiso.set($event)"
+            />
+          </div>
+
+          <div class="groups">
+            @for (grupo of gruposPermisos(); track grupo.recurso) {
+              <fieldset class="perm-group">
+                <div class="perm-group-head">
+                  <legend class="perm-legend">{{ grupo.titulo }}</legend>
+                  @if (rol.editable) {
+                    <button
+                      type="button"
+                      class="group-toggle"
+                      (click)="toggleGrupo(grupo, !grupoTieneTodos(grupo))"
+                    >
+                      {{ grupoTieneTodos(grupo) ? 'Quitar todo' : 'Marcar todo' }}
+                    </button>
+                  }
+                </div>
+
+                @for (p of grupo.permisos; track p.id) {
+                  @let activo = seleccionPermisos()[p.id] !== undefined;
+                  @let alcances = alcancesElegibles(p);
+                  <div class="perm-row" [class.is-checked]="activo">
+                    <label class="perm-check">
+                      <input
+                        type="checkbox"
+                        [checked]="activo"
+                        [disabled]="!rol.editable || !p.asignable"
+                        (change)="togglePermiso(p, $any($event.target).checked)"
+                      />
+                      <span class="perm-desc">{{ p.descripcion }}</span>
+                    </label>
+
+                    @if (activo && alcances.length > 1) {
+                      <select
+                        class="inline-select"
+                        [disabled]="!rol.editable || !p.asignable"
+                        [ngModel]="seleccionPermisos()[p.id]"
+                        (ngModelChange)="cambiarAlcancePermiso(p.id, $event)"
+                      >
+                        @for (alc of alcances; track alc) {
+                          <option [value]="alc">{{ etiquetaAlcance(alc) }}</option>
+                        }
+                      </select>
+                    }
+                  </div>
+                }
+              </fieldset>
+            }
+          </div>
+        } @else {
+          <p class="muted">Selecciona un rol para revisar sus responsabilidades.</p>
+        }
+      </section>
+    </div>
+  }
+</section>

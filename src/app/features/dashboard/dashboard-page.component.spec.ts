@@ -3,35 +3,51 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { AnaliticaDashboard } from '../../core/dashboard/dashboard.models';
 import { DashboardPage } from './dashboard-page.component';
 
 const URL_RESUMEN = `${environment.apiBaseUrl}/dashboard/resumen`;
+const URL_ANALITICA = `${environment.apiBaseUrl}/dashboard/analitica`;
 
-/** `200` body of the endpoint, straight from the contract. */
 const RESUMEN = { empleados_activos: 10, empleados_baja: 2, expedientes_completos: 4 };
 
-interface DialogPrototypePatch {
-  showModal: () => void;
-  close: () => void;
-}
-
-/**
- * jsdom ships `HTMLDialogElement` without `showModal` / `close`, so the layer
- * would never render. The stub reflects the `open` attribute and fires `close`,
- * which is exactly the part of the platform the modal component relies on.
- */
-function patchDialogPrototype(): void {
-  const proto = HTMLDialogElement.prototype as unknown as DialogPrototypePatch;
-
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute('open', '');
-  };
-
-  proto.close = function (this: HTMLDialogElement) {
-    this.removeAttribute('open');
-    this.dispatchEvent(new Event('close'));
-  };
-}
+const ANALITICA: AnaliticaDashboard = {
+  plantilla: {
+    activos: 10,
+    en_licencia: 1,
+    bajas_definitivas: 2,
+    porcentaje_completitud: 40,
+    con_empleo_externo_vigente: 3,
+    antiguedad_promedio_anios: 4.5,
+    top_areas: [{ etiqueta: 'Sistemas', total: 6 }],
+    por_categoria_cct: [{ etiqueta: 'Base', total: 8 }],
+    por_tipo_personal: [{ etiqueta: 'Sindicalizado', total: 7 }],
+    por_jornada: [{ etiqueta: 'Matutina', total: 10 }],
+    por_sexo: [{ etiqueta: 'Femenino', total: 5 }],
+  },
+  semaforo: {
+    completos: 4,
+    casi_completos: 3,
+    incompletos: 3,
+    sin_curp: 1,
+    sin_grado_maximo: 2,
+    por_nivel_estudios: [{ etiqueta: 'Licenciatura', total: 6 }],
+  },
+  movimientos: {
+    altas_mes: 2,
+    bajas_mes: 1,
+    cambios_adscripcion_90d: 1,
+    motivos_baja: [{ etiqueta: 'Renuncia', total: 1 }],
+    serie_mensual: [{ mes: '2026-11', altas: 2, bajas: 1 }],
+  },
+  comunicacion: {
+    pendientes_autorizacion: 1,
+    enviados_mes: 5,
+    destinatarios_mes: 50,
+    por_estatus: [{ etiqueta: 'Enviado', total: 5 }],
+  },
+  seguridad: null,
+};
 
 function host(fixture: ComponentFixture<DashboardPage>): HTMLElement {
   return fixture.nativeElement as HTMLElement;
@@ -41,40 +57,13 @@ function text(fixture: ComponentFixture<DashboardPage>): string {
   return host(fixture).textContent ?? '';
 }
 
-/** Values of the three cards, in the order they are rendered. */
-function valores(fixture: ComponentFixture<DashboardPage>): string[] {
-  return Array.from(host(fixture).querySelectorAll('app-kpi-card')).map(
-    (card) => card.querySelector('.value')?.textContent?.trim() ?? '',
-  );
+function miniKpis(fixture: ComponentFixture<DashboardPage>): { label: string; value: string }[] {
+  return Array.from(host(fixture).querySelectorAll('.mini-kpi')).map((el) => ({
+    label: el.querySelector('.mini-label')?.textContent?.trim() ?? '',
+    value: el.querySelector('.mini-val')?.textContent?.trim() ?? '',
+  }));
 }
 
-/** Hints of the three cards; an absent line reads as the empty string. */
-function pistas(fixture: ComponentFixture<DashboardPage>): string[] {
-  return Array.from(host(fixture).querySelectorAll('app-kpi-card')).map(
-    (card) => card.querySelector('.hint')?.textContent?.trim() ?? '',
-  );
-}
-
-function kpiRegion(fixture: ComponentFixture<DashboardPage>): HTMLElement {
-  const region = host(fixture).querySelector<HTMLElement>('section.kpis');
-  if (region === null) {
-    throw new Error('No KPI region rendered');
-  }
-  return region;
-}
-
-/** Third card, the one that opens the layer. */
-function expedientesButton(fixture: ComponentFixture<DashboardPage>): HTMLButtonElement {
-  const button = host(fixture)
-    .querySelectorAll('app-kpi-card')[2]
-    ?.querySelector<HTMLButtonElement>('button');
-  if (!button) {
-    throw new Error('The expedientes card is not a button');
-  }
-  return button;
-}
-
-/** Text of the projected action, whatever element wraps it. */
 function actionButton(
   fixture: ComponentFixture<DashboardPage>,
   label: string,
@@ -84,34 +73,10 @@ function actionButton(
   );
 }
 
-/** Layer of a given title: this screen mounts one per card. */
-function dialogo(fixture: ComponentFixture<DashboardPage>, titulo: string): HTMLDialogElement {
-  const found = Array.from(host(fixture).querySelectorAll<HTMLDialogElement>('dialog')).find(
-    (dialog) => dialog.querySelector('h2.title')?.textContent?.trim() === titulo,
-  );
-  if (!found) {
-    throw new Error(`No layer titled ${titulo}`);
-  }
-  return found;
-}
-
-/** The card whose text mentions a label, as the button it now renders. */
-function cardButton(fixture: ComponentFixture<DashboardPage>, label: string): HTMLButtonElement {
-  const card = Array.from(host(fixture).querySelectorAll('app-kpi-card')).find((element) =>
-    (element.textContent ?? '').includes(label),
-  );
-  const button = card?.querySelector<HTMLButtonElement>('button');
-  if (!button) {
-    throw new Error(`The card ${label} is not a button`);
-  }
-  return button;
-}
-
 describe('DashboardPage', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
-    patchDialogPrototype();
     sessionStorage.clear();
     await TestBed.configureTestingModule({
       imports: [DashboardPage],
@@ -121,64 +86,52 @@ describe('DashboardPage', () => {
   });
 
   afterEach(() => {
-    httpMock.verify();
-    TestBed.resetTestingModule();
+    for (const req of httpMock.match(URL_ANALITICA)) {
+      req.flush({ datos: null });
+    }
+    try {
+      httpMock.verify();
+    } finally {
+      TestBed.resetTestingModule();
+    }
   });
 
-  /** Creates the screen; the constructor already asked for the summary. */
   async function render(): Promise<ComponentFixture<DashboardPage>> {
     const fixture = TestBed.createComponent(DashboardPage);
     await fixture.whenStable();
     return fixture;
   }
 
-  it('renders the three counters of a successful answer', async () => {
+  it('renders the plantilla KPIs and omits antigüedad promedio and completitud documental', async () => {
     const fixture = await render();
 
     httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
+    httpMock.expectOne(URL_ANALITICA).flush({ datos: ANALITICA });
     await fixture.whenStable();
 
-    expect(valores(fixture)).toEqual(['10', '2', '4']);
-    expect(text(fixture)).toContain('Empleados activos');
-    expect(text(fixture)).toContain('Empleados baja');
-    expect(text(fixture)).toContain('Expedientes completos');
-    expect(kpiRegion(fixture).hasAttribute('aria-busy')).toBe(false);
+    expect(miniKpis(fixture)).toEqual([
+      { label: 'Activos', value: '10' },
+      { label: 'Bajas definitivas', value: '2' },
+      { label: 'En licencia', value: '1' },
+      { label: 'Con empleo externo', value: '3' },
+    ]);
+    expect(text(fixture)).not.toContain('Antigüedad promedio');
+    expect(text(fixture)).not.toContain('Completitud documental');
+    expect(host(fixture).querySelector('app-kpi-card')).toBeNull();
   });
 
-  it('computes the percentage of complete files over the active employees', async () => {
+  it('announces itself as busy while loading', async () => {
     const fixture = await render();
+
+    const busyRegion = host(fixture).querySelector('[aria-busy="true"]');
+    expect(busyRegion).not.toBeNull();
+    expect(text(fixture)).toContain('Cargando indicadores del panel');
 
     httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
+    httpMock.expectOne(URL_ANALITICA).flush({ datos: ANALITICA });
     await fixture.whenStable();
 
-    // 4 / 10 is not in the payload: the client derives it.
-    expect(pistas(fixture)[2]).toBe('40 % de los activos');
-  });
-
-  it('shows no percentage when there is no active employee to divide by', async () => {
-    const fixture = await render();
-
-    httpMock.expectOne(URL_RESUMEN).flush({
-      datos: { empleados_activos: 0, empleados_baja: 3, expedientes_completos: 0 },
-    });
-    await fixture.whenStable();
-
-    expect(valores(fixture)).toEqual(['0', '3', '0']);
-    expect(pistas(fixture)[2]).toBe('Sin porcentaje');
-  });
-
-  it('announces itself as busy and shows no figure while loading', async () => {
-    const fixture = await render();
-
-    expect(kpiRegion(fixture).getAttribute('aria-busy')).toBe('true');
-    // Never `0`: zero is a real answer of this endpoint.
-    expect(valores(fixture)).toEqual(['—', '—', '—']);
-    expect(text(fixture)).not.toContain('0 %');
-    // The only data-derived hint stays out of the screen while the data is unknown.
-    expect(pistas(fixture)).toEqual(['Activos y sin fecha de baja', 'Cuentas inactivas', '']);
-
-    httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
-    await fixture.whenStable();
+    expect(host(fixture).querySelector('[aria-busy="true"]')).toBeNull();
   });
 
   it('offers a retry when the service is unavailable, and the retry refetches', async () => {
@@ -198,9 +151,10 @@ describe('DashboardPage', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
+    httpMock.expectOne(URL_ANALITICA).flush({ datos: ANALITICA });
     await fixture.whenStable();
 
-    expect(valores(fixture)).toEqual(['10', '2', '4']);
+    expect(miniKpis(fixture)[0]).toEqual({ label: 'Activos', value: '10' });
   });
 
   it('explains a permission failure and shows the contract code', async () => {
@@ -216,7 +170,6 @@ describe('DashboardPage', () => {
 
     expect(text(fixture)).toContain('No tienes permisos para ver el panel.');
     expect(text(fixture)).toContain('permiso_denegado');
-    // Nothing to retry: the answer will not change by asking again.
     expect(actionButton(fixture, 'Reintentar')).toBeUndefined();
     expect(host(fixture).querySelector('[role="alert"]')).not.toBeNull();
   });
@@ -251,60 +204,18 @@ describe('DashboardPage', () => {
     expect(actionButton(fixture, 'Reintentar')).toBeDefined();
   });
 
-  it('opens the layer of the metric from its card and closes it with Cancelar', async () => {
+  it('switches between analytics tabs and hides Seguridad when null', async () => {
     const fixture = await render();
     httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
+    httpMock.expectOne(URL_ANALITICA).flush({ datos: ANALITICA });
     await fixture.whenStable();
 
-    const dialog = dialogo(fixture, 'Expedientes completos');
-    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(actionButton(fixture, 'Seguridad y auditoría')).toBeUndefined();
 
-    expedientesButton(fixture).click();
+    actionButton(fixture, 'Semáforo y formación')?.click();
     await fixture.whenStable();
 
-    expect(dialog.hasAttribute('open')).toBe(true);
-    // The content explains the metric with the contract's own definition.
-    expect(dialog.textContent).toContain('quince campos vigentes');
-    expect(dialog.textContent).toContain('4');
-    expect(dialog.textContent).toContain('40 %');
-
-    const confirm = Array.from(dialog.querySelectorAll<HTMLButtonElement>('.footer button')).find(
-      (button) => (button.textContent ?? '').includes('Cancelar'),
-    );
-    confirm?.click();
-    await fixture.whenStable();
-
-    expect(dialog.hasAttribute('open')).toBe(false);
-  });
-
-  it('turns every card into a shortcut to the screen behind it', async () => {
-    const fixture = await render();
-    httpMock.expectOne(URL_RESUMEN).flush({ datos: RESUMEN });
-    await fixture.whenStable();
-
-    const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-
-    cardButton(fixture, 'Empleados activos').click();
-    await fixture.whenStable();
-
-    const activos = dialogo(fixture, 'Empleados activos');
-    expect(activos.hasAttribute('open')).toBe(true);
-
-    const go = Array.from(activos.querySelectorAll<HTMLButtonElement>('.footer button')).find(
-      (button) => (button.textContent ?? '').includes('Ir a empleados activos'),
-    );
-    go?.click();
-    await fixture.whenStable();
-
-    expect(navigate).toHaveBeenCalledWith(['/empleados']);
-    // The layer closes before moving, so it cannot float over the new screen.
-    expect(activos.hasAttribute('open')).toBe(false);
-
-    cardButton(fixture, 'Empleados baja').click();
-    await fixture.whenStable();
-
-    const baja = dialogo(fixture, 'Empleados baja');
-    expect(baja.hasAttribute('open')).toBe(true);
+    expect(text(fixture)).toContain('Proporción del semáforo');
+    expect(text(fixture)).toContain('Completos');
   });
 });

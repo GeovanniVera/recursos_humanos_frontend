@@ -43,6 +43,15 @@ export class AuthService {
   /** Role of the loaded session, or `null` before it is known. */
   readonly rol = computed(() => this._sesion()?.rol ?? null);
 
+  /** Effective resource permissions returned by the backend for the active role. */
+  readonly permisos = computed<ReadonlySet<string>>(
+    () => new Set(this._sesion()?.permisos ?? []),
+  );
+
+  tienePermiso(clave: string): boolean {
+    return this.permisos().has(clave);
+  }
+
   /** `POST /auth/otp` — asks for the six digit code. */
   solicitarCodigo(correo: string): Observable<SolicitarCodigoResponse> {
     const body: SolicitarCodigoRequest = { correo };
