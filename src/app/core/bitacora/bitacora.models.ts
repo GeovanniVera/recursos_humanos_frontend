@@ -18,6 +18,12 @@ export interface BitacoraMovimiento {
   fecha: string; // ISO-8601 UTC
   usuario_id: number | null;
   usuario_historico: string;
+  /**
+   * Correo del actor. El backend debe incluirlo en el detalle; se acepta tanto
+   * `correo` como `usuario_correo` para no depender de un solo nombre de campo.
+   */
+  correo?: string | null;
+  usuario_correo?: string | null;
   accion: string;
   modulo: string;
   descripcion: string;

@@ -1,6 +1,12 @@
 @if (mobileMode() === 'scroll' && canScrollX()) {
   <p class="scroll-hint" aria-hidden="true">
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+    >
       <path d="M5 5 2 8l3 3M11 5l3 3-3 3M2 8h12" />
     </svg>
     Desliza horizontalmente para ver más columnas
@@ -11,6 +17,7 @@
   #wrap
   class="wrap"
   [class.is-ledger]="variant() === 'ledger'"
+  [class.is-fit]="fitWidth()"
   [class.is-scroll]="mobileMode() === 'scroll'"
   [class.has-overflow]="canScrollX()"
   [class.can-scroll-left]="canScrollLeft()"
@@ -22,6 +29,7 @@
     class="table"
     [class.is-cards]="mobileMode() === 'cards'"
     [class.is-ledger]="variant() === 'ledger'"
+    [class.is-fit]="fitWidth()"
     [class.is-compact]="density() === 'compact'"
     [class.is-comfortable]="density() === 'comfortable'"
     [class.has-leading-decoration]="leadingDecoration()"

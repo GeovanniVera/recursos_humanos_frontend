@@ -2,168 +2,207 @@
   [open]="open()"
   (openChange)="onOpenChange($event)"
   [title]="titulo()"
+  [bare]="true"
   side="right"
-  size="md"
+  size="lg"
 >
-  @if (cargando()) {
-    <div class="detalle-cargando" role="status" aria-live="polite">
-      <p>Cargando detalle…</p>
+  <div class="cuaderno">
+    <div class="bar">
+      <p class="bar-title">{{ titulo() }}</p>
+      <button type="button" class="action" (click)="onOpenChange(false)">Cerrar</button>
     </div>
-  } @else if (falla(); as error) {
-    <app-alert-banner variant="error" [message]="error.mensaje" [code]="error.codigo">
-      @if (error.accion === 'reintentar') {
-        <app-button alert-actions variant="secondary" [disabled]="esperaActiva()" (click)="reintentar.emit()">
-          Reintentar
-        </app-button>
-      }
-      @if (error.accion === 'recargar') {
-        <app-button alert-actions variant="secondary" (click)="recargarListado.emit()">
-          Recargar listado
-        </app-button>
-      }
-    </app-alert-banner>
-  } @else if (detalle(); as movimiento) {
-    <div class="detalle">
-      <header class="detalle-header">
-        <p class="detalle-fecha">{{ formatearFecha(movimiento.fecha) }}</p>
-        <p class="detalle-actor">{{ actorLabel(movimiento) }}</p>
-        <p class="detalle-descripcion">{{ movimiento.descripcion }}</p>
-      </header>
 
-      <dl class="detalle-ficha">
-        <div class="campo">
-          <dt>Acción</dt>
-          <dd class="mono">{{ movimiento.accion }}</dd>
-        </div>
-        <div class="campo">
-          <dt>Módulo</dt>
-          <dd class="mono">{{ movimiento.modulo }}</dd>
-        </div>
-        <div class="campo">
-          <dt>Usuario</dt>
-          <dd>{{ usuarioLabel(movimiento) }}</dd>
-        </div>
-        <div class="campo">
-          <dt>IP</dt>
-          <dd>{{ ipLabel(movimiento) }}</dd>
-        </div>
-      </dl>
+    <div class="cover">
+      <!-- The spiral of the notebook: the desk shows through the punched holes. -->
+      <span class="binding" aria-hidden="true"></span>
 
-      <section class="snapshot">
-        <h3>Datos antes</h3>
-        @if (entradasSnapshot(movimiento.datos_antes); as entradasAntes) {
-          @if (entradasAntes.length > 0) {
-            <div class="snapshot-table-wrap">
-              <table class="snapshot-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Campo</th>
-                    <th scope="col">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of entradasAntes; track item.etiqueta) {
-                    <tr>
-                      <th scope="row">{{ item.etiqueta }}</th>
-                      <td>
-                        <ng-container
-                          [ngTemplateOutlet]="valorTpl"
-                          [ngTemplateOutletContext]="{ $implicit: item.valor }"
-                        />
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+      <div class="sheet">
+        @if (cargando()) {
+          <div class="state" role="status" aria-live="polite">
+            <p class="state-text">Cargando detalle…</p>
+          </div>
+        } @else if (falla(); as error) {
+          <div class="state" role="alert">
+            <p class="state-title">{{ error.mensaje }}</p>
+            @if (error.codigo) {
+              <p class="state-text">Código: {{ error.codigo }}</p>
+            }
+            @if (error.accion === 'reintentar') {
+              <button
+                type="button"
+                class="action is-danger"
+                [disabled]="esperaActiva()"
+                (click)="reintentar.emit()"
+              >
+                Reintentar
+              </button>
+            }
+            @if (error.accion === 'recargar') {
+              <button type="button" class="action" (click)="recargarListado.emit()">
+                Recargar listado
+              </button>
+            }
+          </div>
+        } @else if (detalle(); as movimiento) {
+          @if (sello(movimiento); as stamp) {
+            <span
+              class="stamp"
+              [class.is-ok]="stamp.tono === 'ok'"
+              [class.is-warn]="stamp.tono === 'aviso'"
+              [class.is-bad]="stamp.tono === 'mal'"
+              >{{ stamp.texto }}</span
+            >
+          }
+
+          <header class="head">
+            <p class="head-overline">Registro de bitácora</p>
+            <h2 class="head-title">{{ nombreLabel(movimiento) }}</h2>
+            <p class="head-meta">{{ formatearFecha(movimiento.fecha) }}</p>
+          </header>
+
+          <p class="asunto">{{ movimiento.descripcion }}</p>
+
+          <dl class="ficha">
+            <div class="campo">
+              <dt>Acción</dt>
+              <dd [title]="movimiento.accion">{{ accionLabel(movimiento) }}</dd>
             </div>
-          } @else {
-            <p class="sin-datos">Sin datos</p>
-          }
-        } @else {
-          <p class="sin-datos">Sin datos</p>
-        }
-      </section>
-
-      <section class="snapshot">
-        <h3>Datos después</h3>
-        @if (entradasSnapshot(movimiento.datos_despues); as entradasDespues) {
-          @if (entradasDespues.length > 0) {
-            <div class="snapshot-table-wrap">
-              <table class="snapshot-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Campo</th>
-                    <th scope="col">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of entradasDespues; track item.etiqueta) {
-                    <tr>
-                      <th scope="row">{{ item.etiqueta }}</th>
-                      <td>
-                        <ng-container
-                          [ngTemplateOutlet]="valorTpl"
-                          [ngTemplateOutletContext]="{ $implicit: item.valor }"
-                        />
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+            <div class="campo">
+              <dt>Módulo</dt>
+              <dd [title]="movimiento.modulo">{{ moduloLabel(movimiento) }}</dd>
             </div>
-          } @else {
-            <p class="sin-datos">Sin datos</p>
-          }
-        } @else {
-          <p class="sin-datos">Sin datos</p>
-        }
-      </section>
+            <div class="campo">
+              <dt>Usuario</dt>
+              <dd>{{ usuarioLabel(movimiento) }}</dd>
+            </div>
+            <div class="campo">
+              <dt>Correo</dt>
+              <dd class="correo">{{ correoLabel(movimiento) }}</dd>
+            </div>
+            <div class="campo">
+              <dt>IP</dt>
+              <dd>{{ ipLabel(movimiento) }}</dd>
+            </div>
+          </dl>
 
-      <ng-template #valorTpl let-valor>
-        @switch (valor.tipo) {
-          @case ('texto') {
-            <span>{{ valor.texto }}</span>
-          }
-          @case ('lista') {
-            @if (valor.items.length === 0) {
-              <span>Sin información</span>
+          <section class="entrada">
+            <h3 class="entrada-title">Datos antes</h3>
+            @if (entradasSnapshot(movimiento.datos_antes); as entradasAntes) {
+              @if (entradasAntes.length > 0) {
+                <div class="snapshot-table-wrap">
+                  <table class="snapshot-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Campo</th>
+                        <th scope="col">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of entradasAntes; track item.etiqueta) {
+                        <tr>
+                          <th scope="row">{{ item.etiqueta }}</th>
+                          <td>
+                            <ng-container
+                              [ngTemplateOutlet]="valorTpl"
+                              [ngTemplateOutletContext]="{ $implicit: item.valor }"
+                            />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="sin-datos">Sin datos</p>
+              }
             } @else {
-              <ul class="valor-lista">
-                @for (item of valor.items; track $index) {
-                  <li>
-                    <ng-container [ngTemplateOutlet]="valorTpl" [ngTemplateOutletContext]="{ $implicit: item }" />
-                  </li>
-                }
-              </ul>
+              <p class="sin-datos">Sin datos</p>
+            }
+          </section>
+
+          <section class="entrada">
+            <h3 class="entrada-title">Datos después</h3>
+            @if (entradasSnapshot(movimiento.datos_despues); as entradasDespues) {
+              @if (entradasDespues.length > 0) {
+                <div class="snapshot-table-wrap">
+                  <table class="snapshot-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Campo</th>
+                        <th scope="col">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of entradasDespues; track item.etiqueta) {
+                        <tr>
+                          <th scope="row">{{ item.etiqueta }}</th>
+                          <td>
+                            <ng-container
+                              [ngTemplateOutlet]="valorTpl"
+                              [ngTemplateOutletContext]="{ $implicit: item.valor }"
+                            />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="sin-datos">Sin datos</p>
+              }
+            } @else {
+              <p class="sin-datos">Sin datos</p>
+            }
+          </section>
+
+          <p class="foot">Bitácora · Movimiento #{{ movimiento.id }}</p>
+        }
+
+        <ng-template #valorTpl let-valor>
+          @switch (valor.tipo) {
+            @case ('texto') {
+              <span>{{ valor.texto }}</span>
+            }
+            @case ('lista') {
+              @if (valor.items.length === 0) {
+                <span>Sin información</span>
+              } @else {
+                <ul class="valor-lista">
+                  @for (item of valor.items; track $index) {
+                    <li>
+                      <ng-container
+                        [ngTemplateOutlet]="valorTpl"
+                        [ngTemplateOutletContext]="{ $implicit: item }"
+                      />
+                    </li>
+                  }
+                </ul>
+              }
+            }
+            @case ('tabla') {
+              @if (valor.filas.length === 0) {
+                <span>Sin información</span>
+              } @else {
+                <table class="valor-subtabla">
+                  <tbody>
+                    @for (fila of valor.filas; track fila.etiqueta) {
+                      <tr>
+                        <th scope="row">{{ fila.etiqueta }}</th>
+                        <td>
+                          <ng-container
+                            [ngTemplateOutlet]="valorTpl"
+                            [ngTemplateOutletContext]="{ $implicit: fila.valor }"
+                          />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
             }
           }
-          @case ('tabla') {
-            @if (valor.filas.length === 0) {
-              <span>Sin información</span>
-            } @else {
-              <table class="valor-subtabla">
-                <tbody>
-                  @for (fila of valor.filas; track fila.etiqueta) {
-                    <tr>
-                      <th scope="row">{{ fila.etiqueta }}</th>
-                      <td>
-                        <ng-container
-                          [ngTemplateOutlet]="valorTpl"
-                          [ngTemplateOutletContext]="{ $implicit: fila.valor }"
-                        />
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-          }
-        }
-      </ng-template>
+        </ng-template>
+      </div>
     </div>
-  }
-
-  <ng-template #actions>
-    <app-button variant="secondary" (click)="onOpenChange(false)">Cerrar</app-button>
-  </ng-template>
+  </div>
 </app-drawer>

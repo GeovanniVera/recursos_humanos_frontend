@@ -311,4 +311,16 @@ describe('DataTable', () => {
     // The rows are the same rows: the variant is a surface, not a data change.
     expect(table.querySelectorAll('tbody tr').length).toBe(2);
   });
+
+  it('fits the table to its card when fitWidth is on', async () => {
+    const fixture = TestBed.createComponent(DataTable);
+    fixture.componentRef.setInput('columns', COLUMNS);
+    fixture.componentRef.setInput('rows', ROWS);
+    fixture.componentRef.setInput('fitWidth', true);
+    await fixture.whenStable();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.wrap')?.classList.contains('is-fit')).toBe(true);
+    expect(tableOf(fixture).classList.contains('is-fit')).toBe(true);
+  });
 });

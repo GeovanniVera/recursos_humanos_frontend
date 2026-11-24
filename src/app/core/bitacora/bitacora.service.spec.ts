@@ -27,31 +27,45 @@ describe('BitacoraService', () => {
     const req = http.expectOne((r) => r.url === BASE_URL);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.keys().length).toBe(0);
-    req.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    req.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
   });
 
   it('recorta texto y omite valores vacíos', () => {
-    service
-      .consultar({ modulo: '  expediente  ', accion: '   ', buscar: '  Ana  ' })
-      .subscribe();
+    service.consultar({ modulo: '  expediente  ', accion: '   ', buscar: '  Ana  ' }).subscribe();
 
     const req = http.expectOne((r) => r.url === BASE_URL);
     expect(req.request.params.get('modulo')).toBe('expediente');
     expect(req.request.params.get('buscar')).toBe('Ana');
     expect(req.request.params.has('accion')).toBe(false);
-    req.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    req.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
   });
 
   it('no envía orden por defecto desc, pero sí envía asc', () => {
     service.consultar({ orden: 'desc' }).subscribe();
     const reqDesc = http.expectOne((r) => r.url === BASE_URL);
     expect(reqDesc.request.params.has('orden')).toBe(false);
-    reqDesc.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    reqDesc.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
 
     service.consultar({ orden: 'asc' }).subscribe();
     const reqAsc = http.expectOne((r) => r.url === BASE_URL);
     expect(reqAsc.request.params.get('orden')).toBe('asc');
-    reqAsc.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    reqAsc.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
   });
 
   it('envía fechas válidas y omite inválidas', () => {
@@ -59,23 +73,35 @@ describe('BitacoraService', () => {
     const req = http.expectOne((r) => r.url === BASE_URL);
     expect(req.request.params.get('fecha_desde')).toBe('2026-11-01');
     expect(req.request.params.has('fecha_hasta')).toBe(false);
-    req.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    req.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
   });
 
-  it('envía números válidos y omite inválidos', () => {
-    service.consultar({ usuarioId: 12, pagina: 2, porPagina: 50 }).subscribe();
+  it('envía el correo recortado y omite los valores vacíos', () => {
+    service.consultar({ correo: '  ANA@UTN.EDU.MX  ', pagina: 2, porPagina: 50 }).subscribe();
     let req = http.expectOne((r) => r.url === BASE_URL);
-    expect(req.request.params.get('usuario_id')).toBe('12');
+    expect(req.request.params.get('correo')).toBe('ana@utn.edu.mx');
     expect(req.request.params.get('pagina')).toBe('2');
     expect(req.request.params.get('por_pagina')).toBe('50');
-    req.flush({ datos: [], meta: { pagina: 2, por_pagina: 50, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    req.flush({
+      datos: [],
+      meta: { pagina: 2, por_pagina: 50, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
 
-    service.consultar({ usuarioId: 0, pagina: 0, porPagina: -1 }).subscribe();
+    service.consultar({ correo: '   ', pagina: 0, porPagina: -1 }).subscribe();
     req = http.expectOne((r) => r.url === BASE_URL);
-    expect(req.request.params.has('usuario_id')).toBe(false);
+    expect(req.request.params.has('correo')).toBe(false);
     expect(req.request.params.has('pagina')).toBe(false);
     expect(req.request.params.has('por_pagina')).toBe(false);
-    req.flush({ datos: [], meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 }, enlaces: { anterior: null, siguiente: null } });
+    req.flush({
+      datos: [],
+      meta: { pagina: 1, por_pagina: 20, total: 0, total_paginas: 0 },
+      enlaces: { anterior: null, siguiente: null },
+    });
   });
 
   it('consulta el detalle por id', () => {

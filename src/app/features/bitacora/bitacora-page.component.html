@@ -4,20 +4,22 @@
   <form class="filters" novalidate (submit)="$event.preventDefault()">
     <div class="field">
       <label for="bitacora-modulo">Módulo</label>
-      <input
+      <select
         id="bitacora-modulo"
-        type="text"
         class="input"
         name="modulo"
-        placeholder="expediente"
-        maxlength="100"
-        [value]="filtros().modulo"
         [attr.aria-invalid]="erroresCampos().modulo ? 'true' : null"
         [attr.aria-describedby]="erroresCampos().modulo ? 'bitacora-modulo-error' : null"
         [disabled]="espera() > 0"
-        (input)="onFiltroTexto('modulo', $any($event.target).value)"
-        (change)="confirmarFiltroTexto('modulo')"
-      />
+        (change)="onModulo($any($event.target).value)"
+      >
+        <option value="" [selected]="filtros().modulo === ''">Todos los módulos</option>
+        @for (modulo of modulos(); track modulo.codigo) {
+          <option [value]="modulo.codigo" [selected]="filtros().modulo === modulo.codigo">
+            {{ modulo.etiqueta }}
+          </option>
+        }
+      </select>
       @if (erroresCampos().modulo; as msg) {
         <p class="field-error" id="bitacora-modulo-error">{{ msg }}</p>
       }
@@ -25,44 +27,45 @@
 
     <div class="field">
       <label for="bitacora-accion">Acción</label>
-      <input
+      <select
         id="bitacora-accion"
-        type="text"
         class="input"
         name="accion"
-        placeholder="empleado.baja"
-        maxlength="50"
-        [value]="filtros().accion"
-        [attr.aria-invalid]="erroresCampos().accion ? 'true' : null"
-        [attr.aria-describedby]="erroresCampos().accion ? 'bitacora-accion-error' : null"
         [disabled]="espera() > 0"
-        (input)="onFiltroTexto('accion', $any($event.target).value)"
-        (change)="confirmarFiltroTexto('accion')"
-      />
-      @if (erroresCampos().accion; as msg) {
-        <p class="field-error" id="bitacora-accion-error">{{ msg }}</p>
-      }
+        (change)="onAccion($any($event.target).value)"
+      >
+        <option value="" [selected]="filtros().accion === ''">Todas las acciones</option>
+        @for (grupo of gruposAcciones(); track grupo.modulo) {
+          <optgroup [label]="grupo.modulo">
+            @for (accion of grupo.acciones; track accion.codigo) {
+              <option [value]="accion.codigo" [selected]="filtros().accion === accion.codigo">
+                {{ accion.etiqueta }}
+              </option>
+            }
+          </optgroup>
+        }
+      </select>
     </div>
 
     <div class="field">
-      <label for="bitacora-usuario">Usuario</label>
+      <label for="bitacora-correo">Correo del usuario</label>
       <input
-        id="bitacora-usuario"
-        type="number"
+        id="bitacora-correo"
+        type="email"
         class="input"
-        name="usuario_id"
-        min="1"
-        step="1"
-        inputmode="numeric"
-        [value]="filtros().usuarioId"
-        [attr.aria-invalid]="erroresCampos().usuarioId ? 'true' : null"
-        [attr.aria-describedby]="erroresCampos().usuarioId ? 'bitacora-usuario-error' : null"
+        name="correo"
+        maxlength="150"
+        placeholder="nombre@correo-institucional"
+        autocomplete="off"
+        [value]="filtros().correo"
+        [attr.aria-invalid]="erroresCampos().correo ? 'true' : null"
+        [attr.aria-describedby]="erroresCampos().correo ? 'bitacora-correo-error' : null"
         [disabled]="espera() > 0"
-        (input)="onUsuarioId($any($event.target).value)"
-        (change)="confirmarUsuarioId()"
+        (input)="onCorreo($any($event.target).value)"
+        (change)="confirmarCorreo()"
       />
-      @if (erroresCampos().usuarioId; as msg) {
-        <p class="field-error" id="bitacora-usuario-error">{{ msg }}</p>
+      @if (erroresCampos().correo; as msg) {
+        <p class="field-error" id="bitacora-correo-error">{{ msg }}</p>
       }
     </div>
 
@@ -74,17 +77,19 @@
         class="input"
         name="buscar"
         maxlength="150"
-        placeholder="Nombre o descripción"
+        placeholder="Nombre del usuario"
         [value]="filtros().buscar"
         [attr.aria-invalid]="erroresCampos().buscar ? 'true' : null"
-        [attr.aria-describedby]="erroresCampos().buscar ? 'bitacora-buscar-error' : 'bitacora-buscar-hint'"
+        [attr.aria-describedby]="
+          erroresCampos().buscar ? 'bitacora-buscar-error' : 'bitacora-buscar-hint'
+        "
         [disabled]="espera() > 0"
         (input)="onBuscar($any($event.target).value)"
       />
       @if (erroresCampos().buscar; as msg) {
         <p class="field-error" id="bitacora-buscar-error">{{ msg }}</p>
       } @else {
-        <p class="field-hint" id="bitacora-buscar-hint">Busca por actor o descripción.</p>
+        <p class="field-hint" id="bitacora-buscar-hint">Busca solo por nombre.</p>
       }
     </div>
 
@@ -140,24 +145,45 @@
     </div>
 
     <div class="field field-actions">
-      <app-button variant="secondary" [disabled]="espera() > 0" (click)="limpiarFiltros()">Limpiar</app-button>
+      <app-button variant="secondary" [disabled]="espera() > 0" (click)="limpiarFiltros()"
+        >Limpiar</app-button
+      >
     </div>
   </form>
 
   @if (falla(); as fallo) {
     @if (fallo.status === 429) {
-      <app-alert-banner variant="warning" [message]="'Has superado el límite de consultas. Intenta de nuevo en ' + espera() + ' segundos.'" [code]="fallo.codigo">
-        <app-button alert-actions variant="secondary" [disabled]="espera() > 0" (click)="reintentar()">Reintentar</app-button>
+      <app-alert-banner
+        variant="warning"
+        [message]="
+          'Has superado el límite de consultas. Intenta de nuevo en ' + espera() + ' segundos.'
+        "
+        [code]="fallo.codigo"
+      >
+        <app-button
+          alert-actions
+          variant="secondary"
+          [disabled]="espera() > 0"
+          (click)="reintentar()"
+          >Reintentar</app-button
+        >
       </app-alert-banner>
     } @else {
       <app-alert-banner variant="error" [message]="fallo.mensaje" [code]="fallo.codigo">
         @if (fallo.accion === 'reintentar') {
-          <app-button alert-actions variant="secondary" [disabled]="cargando() || espera() > 0" (click)="reintentar()">
+          <app-button
+            alert-actions
+            variant="secondary"
+            [disabled]="cargando() || espera() > 0"
+            (click)="reintentar()"
+          >
             Reintentar
           </app-button>
         }
         @if (fallo.accion === 'iniciar-sesion') {
-          <app-button alert-actions variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+          <app-button alert-actions variant="secondary" (click)="iniciarSesion()"
+            >Iniciar sesión</app-button
+          >
         }
       </app-alert-banner>
     }
@@ -171,6 +197,7 @@
     <app-data-table
       variant="ledger"
       density="compact"
+      [fitWidth]="true"
       mobileMode="cards"
       [columns]="columnas"
       [rows]="filas()"
@@ -185,15 +212,17 @@
         @if (column.key === 'fecha') {
           <span class="mono fecha" [title]="value">{{ formatearFecha(value) }}</span>
         } @else if (column.key === 'usuario_historico') {
-          <span class="truncado" [title]="actorDe(row)">{{ actorDe(row) }}</span>
-        } @else if (column.key === 'accion' || column.key === 'modulo') {
-          <span class="mono truncado" [title]="value">{{ value }}</span>
+          <span class="truncado" [title]="nombreDe(row)">{{ nombreDe(row) }}</span>
+        } @else if (column.key === 'modulo') {
+          <span class="truncado" [title]="value">{{ moduloDe(value) }}</span>
         } @else if (column.key === 'descripcion') {
           <app-row-link
             [ariaLabel]="'Ver detalle del movimiento ' + row['id']"
             (click)="abrirDetalleDesdeBoton($event, row)"
           >
-            <span class="descripcion" [title]="value">{{ value }}</span>
+            <span class="descripcion" [title]="value">{{
+              descripcionDeAccion(row['accion'])
+            }}</span>
           </app-row-link>
         } @else {
           {{ value }}
@@ -225,6 +254,7 @@
   (openChange)="detalleAbierto.set($event)"
   [cargando]="detalleCargando()"
   [detalle]="detalle()"
+  [etiquetas]="detalleEtiquetas()"
   [falla]="fallaDetalle()"
   [esperaActiva]="espera() > 0"
   (reintentar)="reintentarDetalle()"

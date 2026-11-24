@@ -2,18 +2,14 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import {
-  BitacoraDetalleResponse,
-  BitacoraListadoResponse,
-  BitacoraOrden,
-} from './bitacora.models';
+import { BitacoraDetalleResponse, BitacoraListadoResponse, BitacoraOrden } from './bitacora.models';
 
 const FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface ConsultaBitacora {
   modulo?: string;
   accion?: string;
-  usuarioId?: number;
+  correo?: string;
   buscar?: string;
   fechaDesde?: string; // Y-m-d
   fechaHasta?: string; // Y-m-d
@@ -45,8 +41,11 @@ export class BitacoraService {
       httpParams = httpParams.set('buscar', buscar);
     }
 
-    if (typeof params.usuarioId === 'number' && Number.isFinite(params.usuarioId) && params.usuarioId >= 1) {
-      httpParams = httpParams.set('usuario_id', params.usuarioId);
+    // Búsqueda exacta: se normaliza a minúsculas para que no dependa de cómo
+    // el auditor escriba el correo. El backend debe resolverlo al usuario.
+    const correo = params.correo?.trim().toLowerCase();
+    if (correo) {
+      httpParams = httpParams.set('correo', correo);
     }
 
     if (params.fechaDesde && FECHA_PATTERN.test(params.fechaDesde)) {
@@ -68,7 +67,11 @@ export class BitacoraService {
       httpParams = httpParams.set('pagina', params.pagina);
     }
 
-    if (typeof params.porPagina === 'number' && Number.isFinite(params.porPagina) && params.porPagina >= 1) {
+    if (
+      typeof params.porPagina === 'number' &&
+      Number.isFinite(params.porPagina) &&
+      params.porPagina >= 1
+    ) {
       httpParams = httpParams.set('por_pagina', params.porPagina);
     }
 

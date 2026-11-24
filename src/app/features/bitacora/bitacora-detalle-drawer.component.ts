@@ -1,8 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, model, output } from '@angular/core';
+import { claveEtiqueta, EtiquetasSnapshot } from '../../core/bitacora/bitacora-etiquetas.service';
 import { BitacoraDetalle } from '../../core/bitacora/bitacora.models';
-import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
-import { Button } from '../../shared/ui/button/button.component';
 import { Drawer } from '../../shared/ui/drawer/drawer.component';
 
 export interface FallaDetalleVista {
@@ -22,9 +21,14 @@ export interface EntradaSnapshot {
   valor: ValorLegible;
 }
 
+interface SelloVista {
+  texto: string;
+  tono: 'ok' | 'aviso' | 'mal';
+}
+
 const FORMATO_FECHA = new Intl.DateTimeFormat('es-MX', {
-  dateStyle: 'short',
-  timeStyle: 'medium',
+  dateStyle: 'long',
+  timeStyle: 'short',
   timeZone: 'America/Mexico_City',
 });
 
@@ -62,6 +66,10 @@ const ETIQUETAS_CAMPOS: Record<string, string> = {
   puesto_id: 'Puesto',
   categoria: 'Categoría',
   categoria_id: 'Categoría',
+  categoria_cct_id: 'Categoría',
+  estado_civil_id: 'Estado civil',
+  nivel_estudios_id: 'Nivel de estudios',
+  motivo_baja_id: 'Motivo de baja',
   modulo: 'Módulo',
   accion: 'Acción',
   ip: 'Dirección IP',
@@ -79,9 +87,24 @@ const ETIQUETAS_CAMPOS: Record<string, string> = {
   updated_at: 'Fecha de actualización',
 };
 
+const ETIQUETAS_ACCIONES: Record<string, string> = {
+  alta: 'Alta',
+  baja: 'Baja',
+  creacion: 'Creación',
+  edicion: 'Edición',
+  actualizacion: 'Actualización',
+  modificacion: 'Modificación',
+  eliminacion: 'Eliminación',
+  reactivacion: 'Reactivación',
+  reingreso: 'Reingreso',
+  restauracion: 'Restauración',
+  cambio: 'Cambio',
+  consulta: 'Consulta',
+};
+
 @Component({
   selector: 'app-bitacora-detalle-drawer',
-  imports: [Drawer, AlertBanner, Button, NgTemplateOutlet],
+  imports: [Drawer, NgTemplateOutlet],
   templateUrl: './bitacora-detalle-drawer.component.html',
   styleUrl: './bitacora-detalle-drawer.component.scss',
 })
@@ -91,6 +114,8 @@ export class BitacoraDetalleDrawerComponent {
   readonly detalle = input<BitacoraDetalle | null>(null);
   readonly falla = input<FallaDetalleVista | null>(null);
   readonly esperaActiva = input(false);
+  /** Nombres ya resueltos por la página para los IDs de los snapshots. */
+  readonly etiquetas = input<EtiquetasSnapshot>({});
 
   readonly reintentar = output<void>();
   readonly recargarListado = output<void>();
@@ -110,16 +135,52 @@ export class BitacoraDetalleDrawerComponent {
 
   entradasSnapshot(valor: Record<string, unknown> | null): EntradaSnapshot[] | null {
     if (valor === null) return null;
-    return Object.entries(valor).map(([campo, contenido]) => ({
+    const entradas = Object.entries(valor).map(([campo, contenido]) => ({
       etiqueta: this.etiquetaCampo(campo),
       valor: this.valorLegible(contenido, campo),
     }));
+    return this.sinDuplicados(entradas);
+  }
+
+  /**
+   * Un snapshot puede traer la llave y su descripción (`estado_civil_id` y
+   * `estado_civil`). Las dos se leen igual en la libreta, así que se imprime
+   * una sola, quedándose con el valor con nombre cuando uno no lo tiene.
+   */
+  private sinDuplicados(entradas: EntradaSnapshot[]): EntradaSnapshot[] {
+    const unicas = new Map<string, EntradaSnapshot>();
+    for (const entrada of entradas) {
+      const anterior = unicas.get(entrada.etiqueta);
+      if (!anterior || this.esMejor(entrada.valor, anterior.valor)) {
+        unicas.set(entrada.etiqueta, entrada);
+      }
+    }
+    return [...unicas.values()];
+  }
+
+  private esMejor(candidato: ValorLegible, anterior: ValorLegible): boolean {
+    return this.conNombre(candidato) && !this.conNombre(anterior);
+  }
+
+  private conNombre(valor: ValorLegible): boolean {
+    if (valor.tipo !== 'texto') return true;
+    return (
+      valor.texto !== '' &&
+      valor.texto !== 'Sin información' &&
+      !valor.texto.includes('(sin nombre disponible)')
+    );
   }
 
   private etiquetaCampo(campo: string): string {
     const directa = ETIQUETAS_CAMPOS[campo];
     if (directa) return directa;
-    const normalizado = campo.replace(/_/g, ' ').replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2').trim();
+    // Un campo terminado en `_id` se lee como el nombre del recurso: nadie
+    // necesita que la etiqueta repita la palabra «id».
+    const base = campo.replace(/_id$/, '');
+    const normalizado = base
+      .replace(/_/g, ' ')
+      .replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g, '$1 $2')
+      .trim();
     if (!normalizado) return 'Campo';
     return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
   }
@@ -127,6 +188,10 @@ export class BitacoraDetalleDrawerComponent {
   private valorLegible(valor: unknown, campo?: string): ValorLegible {
     if (valor === null || valor === undefined) {
       return { tipo: 'texto', texto: 'Sin información' };
+    }
+    if (campo) {
+      const resuelto = this.etiquetas()[claveEtiqueta(campo, valor)];
+      if (resuelto) return { tipo: 'texto', texto: resuelto };
     }
     if (typeof valor === 'boolean') {
       return { tipo: 'texto', texto: valor ? 'Sí' : 'No' };
@@ -152,7 +217,10 @@ export class BitacoraDetalleDrawerComponent {
       if (entradas.length === 0) return { tipo: 'texto', texto: 'Sin información' };
       return {
         tipo: 'tabla',
-        filas: entradas.map(([k, v]) => ({ etiqueta: this.etiquetaCampo(k), valor: this.valorLegible(v, k) })),
+        filas: entradas.map(([k, v]) => ({
+          etiqueta: this.etiquetaCampo(k),
+          valor: this.valorLegible(v, k),
+        })),
       };
     }
     return { tipo: 'texto', texto: String(valor) };
@@ -205,16 +273,55 @@ export class BitacoraDetalleDrawerComponent {
     return mapa[valor] ?? this.humanizarTexto(valor);
   }
 
-  actorLabel(detalle: BitacoraDetalle): string {
-    return detalle.usuario_id === null ? `${detalle.usuario_historico} · Sistema` : detalle.usuario_historico;
+  nombreLabel(detalle: BitacoraDetalle): string {
+    return detalle.usuario_id === null
+      ? `${detalle.usuario_historico} · Sistema`
+      : detalle.usuario_historico;
   }
 
   usuarioLabel(detalle: BitacoraDetalle): string {
-    return detalle.usuario_id === null ? 'Sistema' : String(detalle.usuario_id);
+    if (detalle.usuario_id === null) return 'Sistema';
+    return detalle.usuario_historico.trim() || 'Sin información';
+  }
+
+  /** Correo del usuario, tal como lo envía `BitacoraDetalleResource`. */
+  correoLabel(detalle: BitacoraDetalle): string {
+    if (detalle.usuario_id === null) return 'Sistema';
+    const correo = (detalle.correo ?? detalle.usuario_correo ?? '').trim();
+    return correo || 'Sin información';
   }
 
   ipLabel(detalle: BitacoraDetalle): string {
     return detalle.ip ?? 'No registrada';
+  }
+
+  accionLabel(detalle: BitacoraDetalle): string {
+    const clave = this.claveAccion(detalle);
+    return ETIQUETAS_ACCIONES[clave] ?? this.humanizarTexto(clave, 'accion');
+  }
+
+  moduloLabel(detalle: BitacoraDetalle): string {
+    const modulo = detalle.modulo.trim();
+    if (!modulo) return 'Sin módulo';
+    const legible = this.humanizarTexto(modulo, 'modulo');
+    return legible.charAt(0).toUpperCase() + legible.slice(1);
+  }
+
+  // The seal repeats the act in one word: a termination is stamped in red, an
+  // alta or a reingreso in green, and every other movement in the amber of a
+  // leave, so the tone never invents a state the movement does not have.
+  sello(detalle: BitacoraDetalle): SelloVista {
+    const clave = this.claveAccion(detalle);
+    const tono: SelloVista['tono'] = /baja|elimin|borr|anul/.test(clave)
+      ? 'mal'
+      : /alta|crea|registr|reactiv|reingres|restaur/.test(clave)
+        ? 'ok'
+        : 'aviso';
+    return { texto: this.accionLabel(detalle), tono };
+  }
+
+  private claveAccion(detalle: BitacoraDetalle): string {
+    return (detalle.accion.split('.').pop() ?? detalle.accion).trim().toLowerCase();
   }
 
   onOpenChange(valor: boolean): void {
@@ -224,4 +331,3 @@ export class BitacoraDetalleDrawerComponent {
     }
   }
 }
-
