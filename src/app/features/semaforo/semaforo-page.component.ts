@@ -620,10 +620,18 @@ export class SemaforoPage {
           this.recordatoriosConfig.set(res.datos.config);
           const ids = (this.respuesta()?.datos ?? []).map((d) => d.id);
           this.cargarEstadoRecordatorios(ids);
+          const datos = res.datos as {
+            encolado?: boolean;
+            enviados: number;
+            omitidos_cooldown: number;
+            omitidos_sin_correo: number;
+          };
           this.toast.show({
             type: 'success',
-            title: 'Envío por lote completado',
-            message: `${res.datos.enviados} enviados, ${res.datos.omitidos_cooldown} en espera y ${res.datos.omitidos_sin_correo} sin correo.`,
+            title: datos.encolado ? 'Envío por lote encolado' : 'Envío por lote completado',
+            message: datos.encolado
+              ? 'Los recordatorios se están enviando en segundo plano. Consulta el avance en Historial de envíos.'
+              : `${datos.enviados} enviados, ${datos.omitidos_cooldown} en espera y ${datos.omitidos_sin_correo} sin correo.`,
           });
         },
         error: (err: unknown) => {
