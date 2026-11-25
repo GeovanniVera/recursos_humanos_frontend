@@ -93,9 +93,17 @@ export class SemaforoPage {
    */
   readonly puedeEditar = computed(() => puedeEditarEmpleado(this.auth.rol()));
 
-  /** Only roles with `empleados.gestionar_recordatorios` manage reminders. */
-  readonly puedeGestionarRecordatorios = computed(() =>
-    this.auth.tienePermiso('empleados.gestionar_recordatorios'),
+  /** Split RBAC permissions: sending/history vs. message & schedule configuration. */
+  readonly puedeEnviarRecordatorios = computed(() =>
+    this.auth.tienePermiso('empleados.enviar_recordatorios'),
+  );
+
+  readonly puedeConfigurarRecordatorios = computed(() =>
+    this.auth.tienePermiso('empleados.configurar_recordatorios'),
+  );
+
+  readonly puedeGestionarRecordatorios = computed(
+    () => this.puedeEnviarRecordatorios() || this.puedeConfigurarRecordatorios(),
   );
 
   readonly recordatoriosConfig = signal<ConfigRecordatoriosSemaforo | null>(null);
@@ -174,7 +182,7 @@ export class SemaforoPage {
   ];
 
   readonly columnas = computed<readonly TableColumn[]>(() =>
-    this.puedeGestionarRecordatorios()
+    this.puedeEnviarRecordatorios()
       ? [
           ...this.columnasBase,
           { key: 'recordatorio', header: 'Recordatorio', align: 'end' },

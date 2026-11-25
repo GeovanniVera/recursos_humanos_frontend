@@ -65,7 +65,7 @@
       </div>
     </div>
   </div>
-  @if (puedeGestionarRecordatorios() && recordatoriosConfig(); as cfg) {
+  @if (puedeEnviarRecordatorios() && recordatoriosConfig(); as cfg) {
     <section class="recordatorios-bar" aria-label="Control de recordatorios por correo">
       <div class="recordatorios-info">
         <span class="recordatorios-pill" [class.is-paused]="!cfg.activo">
@@ -284,6 +284,8 @@
   <app-recordatorios-drawer
     [(open)]="recordatoriosDrawerOpen"
     [config]="recordatoriosConfig()"
+    [puedeConfigurar]="puedeConfigurarRecordatorios()"
+    [puedeVerHistorial]="puedeEnviarRecordatorios()"
     (configGuardada)="alGuardarConfiguracion($event)"
   />
 

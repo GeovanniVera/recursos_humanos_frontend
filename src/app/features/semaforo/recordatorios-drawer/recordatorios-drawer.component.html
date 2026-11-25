@@ -6,29 +6,33 @@
 >
   <div class="drawer-stack">
     <div class="drawer-tabs" role="tablist" aria-label="Opciones de recordatorios">
-      <button
-        type="button"
-        role="tab"
-        class="drawer-tab"
-        [class.is-active]="tab() === 'configuracion'"
-        [attr.aria-selected]="tab() === 'configuracion'"
-        (click)="cambiarTab('configuracion')"
-      >
-        Configuración y mensajes
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="drawer-tab"
-        [class.is-active]="tab() === 'historial'"
-        [attr.aria-selected]="tab() === 'historial'"
-        (click)="cambiarTab('historial')"
-      >
-        Historial de envíos
-      </button>
+      @if (puedeConfigurar()) {
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="tab() === 'configuracion'"
+          [attr.aria-selected]="tab() === 'configuracion'"
+          (click)="cambiarTab('configuracion')"
+        >
+          Configuración y mensajes
+        </button>
+      }
+      @if (puedeVerHistorial()) {
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="tab() === 'historial'"
+          [attr.aria-selected]="tab() === 'historial'"
+          (click)="cambiarTab('historial')"
+        >
+          Historial de envíos
+        </button>
+      }
     </div>
 
-    @if (tab() === 'configuracion') {
+    @if (tab() === 'configuracion' && puedeConfigurar()) {
       @if (formError(); as mensaje) {
         <app-alert-banner variant="error" title="Revisa los datos" [message]="mensaje" />
       }

@@ -31,6 +31,8 @@ export class RecordatoriosDrawer {
 
   readonly open = model(false);
   readonly config = input<ConfigRecordatoriosSemaforo | null>(null);
+  readonly puedeConfigurar = input(true);
+  readonly puedeVerHistorial = input(true);
   readonly configGuardada = output<ConfigRecordatoriosSemaforo>();
 
   protected readonly tab = signal<TabRecordatorios>('configuracion');
@@ -100,7 +102,9 @@ export class RecordatoriosDrawer {
       if (cfg && abierto) {
         this.sincronizarFormulario(cfg);
         this.formError.set(null);
-        if (this.tab() === 'historial') {
+        if (!this.puedeConfigurar() && this.puedeVerHistorial()) {
+          this.cambiarTab('historial');
+        } else if (this.tab() === 'historial') {
           this.cargarHistorial(1);
         }
       }

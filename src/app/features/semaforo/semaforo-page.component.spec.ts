@@ -248,7 +248,9 @@ describe('SemaforoPage', () => {
   /** Loads a session with one role, the way the shell does on entry. */
   const conRol = async (rol: string): Promise<void> => {
     const permisos =
-      rol === 'SUPER_ADMIN' || rol === 'SISTEMAS' ? ['empleados.gestionar_recordatorios'] : [];
+      rol === 'SUPER_ADMIN' || rol === 'SISTEMAS'
+        ? ['empleados.enviar_recordatorios', 'empleados.configurar_recordatorios']
+        : [];
     TestBed.inject(AuthService).cargarSesion().subscribe();
     http
       .expectOne((candidate) => candidate.url.endsWith('/auth/sesion'))
