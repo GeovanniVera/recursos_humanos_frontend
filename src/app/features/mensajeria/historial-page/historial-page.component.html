@@ -1,0 +1,326 @@
+<section class="page">
+  <header class="head">
+    <div class="identity">
+      <p class="overline">Comunicación Institucional</p>
+      <h1 class="title">Historial de envíos</h1>
+      <p class="sub">
+        @if (esAutorizador()) {
+          Consulta los comunicados enviados, su avance de dispersión, adjuntos y el detalle de entrega por destinatario.
+        } @else {
+          Consulta tus comunicados enviados, su avance de dispersión y el estado de entrega de cada correo.
+        }
+      </p>
+    </div>
+
+    <div class="head-actions">
+      <app-button variant="primary" (click)="irARedactar()">Nuevo correo</app-button>
+      <app-button variant="secondary" [disabled]="cargando()" (click)="solicitar()">
+        Actualizar
+      </app-button>
+    </div>
+  </header>
+
+  <div class="search">
+    <label class="search-label" for="buscar-historial">Buscar en el historial</label>
+    <input
+      id="buscar-historial"
+      class="search-field"
+      type="search"
+      autocomplete="off"
+      placeholder="Escribe asunto, folio o remitente..."
+      [ngModel]="buscar()"
+      (ngModelChange)="alBuscar($event)"
+    />
+  </div>
+
+  @if (errorCarga(); as mensaje) {
+    <app-alert-banner variant="error" [message]="mensaje">
+      <app-button alert-actions variant="secondary" (click)="solicitar()">Reintentar</app-button>
+    </app-alert-banner>
+  }
+
+  <div class="ledger">
+    <div class="tabs" role="group" aria-label="Filtrar historial por estado de envío">
+      @for (filtro of filtrosEstado; track filtro.id) {
+        <button
+          type="button"
+          class="tab is-{{ filtro.id }}"
+          [class.is-active]="estadoFiltro() === filtro.id"
+          [attr.aria-pressed]="estadoFiltro() === filtro.id"
+          (click)="filtrarEstado(filtro.id)"
+        >
+          <span class="tab-title">{{ filtro.label }}</span>
+          <span class="tab-count" aria-hidden="true">{{ contadorDe(filtro.id) }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="sheet">
+      <app-data-table
+        variant="ledger"
+        [fitWidth]="true"
+        [density]="densidad()"
+        mobileMode="cards"
+        [columns]="columnas"
+        [leadingDecoration]="true"
+        [rows]="filas()"
+        [loading]="cargando()"
+        emptyMessage="No hay comunicados enviados en esta categoría."
+        caption="Historial de correos masivos enviados"
+        rowKey="id"
+        [clickableRows]="true"
+        (rowClick)="abrirDrawer($event)"
+      >
+        <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+          @if (column.key === 'folio_texto') {
+            <app-row-flag [tone]="tonoDe(row)" [label]="'Estado: ' + row['estatus_texto']" />
+            <span class="mono" [title]="value">{{ value }}</span>
+          } @else if (column.key === 'asunto') {
+            <app-row-link
+              [attr.title]="value"
+              [ariaLabel]="'Ver detalle de entrega de ' + value"
+              (click)="abrirDesdeEnlace($event, row)"
+            >
+              {{ value }}
+            </app-row-link>
+          } @else if (column.key === 'remitente') {
+            <span [title]="value">{{ value }}</span>
+          } @else if (column.key === 'estatus_texto') {
+            <span class="seal is-{{ tonoDe(row) }}" aria-hidden="true">{{ value }}</span>
+          } @else if (column.key === 'fecha_texto' || column.key === 'entrega_texto') {
+            <span class="mono" [title]="value">{{ value }}</span>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+      </app-data-table>
+
+      <div class="sheet-foot">
+        <div class="density" role="group" aria-label="Densidad de la tabla">
+          @for (opcion of densidades; track opcion.id) {
+            <button
+              type="button"
+              [attr.aria-pressed]="densidad() === opcion.id"
+              (click)="densidad.set(opcion.id)"
+            >
+              {{ opcion.label }}
+            </button>
+          }
+        </div>
+
+        @if (totalRegistros() > 0) {
+          <app-pagination
+            [rangeText]="rango()"
+            [pageLabel]="etiquetaPagina()"
+            [page]="paginaActual()"
+            [totalPages]="totalPaginas()"
+            [pageSize]="porPagina()"
+            [pageSizeOptions]="tamanosPagina"
+            [disabled]="cargando()"
+            (pageChange)="irA($event)"
+            (pageSizeChange)="cambiarTamanoPagina($event)"
+            (jumpSubmit)="irAPaginaValor($event)"
+          />
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Drawer: Detalle de entrega y vista previa -->
+<app-drawer
+  [(open)]="drawerOpen"
+  [title]="(seleccionado()?.folio ?? 'Comunicado') + ' · Detalle de envío'"
+  side="right"
+  size="lg"
+>
+  @if (seleccionado(); as item) {
+    <div class="drawer-content">
+      <div class="detail-meta-grid">
+        <div class="meta-box">
+          <span class="meta-label">Remitente</span>
+          <span>{{ item.autor.nombre }}</span>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">Autorizó</span>
+          <span>{{ item.autorizador?.nombre ?? '—' }}</span>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">Segmentación</span>
+          <span>{{ modoTexto(item) }}</span>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">Fecha de envío</span>
+          <span>{{ fechaHoraTexto(item.fecha_completado ?? item.fecha_resolucion ?? item.fecha_creacion) }}</span>
+        </div>
+      </div>
+
+      <div class="delivery-summary">
+        <div class="delivery-summary-head">
+          <span class="meta-label">Avance de dispersión ({{ porcentajeExito() }}%)</span>
+          <span class="seal is-{{ item.status === 'COMPLET' ? 'completo' : item.status === 'FALLIDO' ? 'baja' : 'casi_completo' }}">
+            {{ item.status_etiqueta }}
+          </span>
+        </div>
+        <div class="progress-track" role="progressbar" [attr.aria-valuenow]="porcentajeExito()" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill" [style.width.%]="porcentajeExito()"></div>
+        </div>
+        <div class="delivery-counters">
+          <span><strong>{{ item.total_destinatarios }}</strong> total</span>
+          <span class="counter-ok"><strong>{{ item.enviados }}</strong> enviados</span>
+          <span class="counter-err"><strong>{{ item.fallidos }}</strong> fallidos</span>
+        </div>
+      </div>
+
+      @if (item.archivos && item.archivos.length > 0) {
+        <div class="attachments-row">
+          <span class="meta-label">Archivos adjuntos:</span>
+          <div class="chips-wrap">
+            @for (arch of item.archivos; track arch.id) {
+              <button type="button" class="attach-btn" (click)="descargarArchivo(item.id, arch)">
+                {{ arch.nombre_original }} ({{ formatBytes(arch.tamano_bytes) }})
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="drawer-tabs" role="tablist" aria-label="Vistas del comunicado">
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="drawerTab() === 'destinatarios'"
+          [attr.aria-selected]="drawerTab() === 'destinatarios'"
+          (click)="drawerTab.set('destinatarios')"
+        >
+          Destinatarios ({{ destConteos().total }})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="drawerTab() === 'preview'"
+          [attr.aria-selected]="drawerTab() === 'preview'"
+          (click)="drawerTab.set('preview')"
+        >
+          Vista previa del correo
+        </button>
+      </div>
+
+      @if (drawerTab() === 'destinatarios') {
+        <div class="recipients-panel">
+          <div class="recipients-controls">
+            <div class="recipient-pills" role="group" aria-label="Filtrar destinatarios por estado">
+              @for (f of filtrosDestinatario; track f.id) {
+                <button
+                  type="button"
+                  class="filter-pill"
+                  [class.is-active]="destFiltro() === f.id"
+                  [attr.aria-pressed]="destFiltro() === f.id"
+                  (click)="filtrarDestinatarios(f.id)"
+                >
+                  {{ f.label }} ({{ contadorDestinatario(f.id) }})
+                </button>
+              }
+            </div>
+
+            <input
+              type="search"
+              class="search-field"
+              placeholder="Buscar destinatario, correo o error..."
+              aria-label="Buscar destinatario"
+              [ngModel]="destBuscar()"
+              (ngModelChange)="alBuscarDestinatario($event)"
+            />
+          </div>
+
+          @if (destError(); as errMsg) {
+            <app-alert-banner variant="error" [message]="errMsg" />
+          }
+
+          @if (destCargando()) {
+            <p class="mono-note">Cargando destinatarios...</p>
+          } @else if (destinatarios().length === 0) {
+            <p class="empty-recipients">No hay destinatarios que coincidan con este filtro.</p>
+          } @else {
+            <ul class="recipient-list">
+              @for (dest of destinatarios(); track dest.id) {
+                <li class="recipient-item">
+                  <div class="recipient-main">
+                    <div class="recipient-identity">
+                      <strong>{{ dest.nombre_destino || dest.correo_destino }}</strong>
+                      <span class="mono">{{ dest.correo_destino }}</span>
+                      @if (dest.area_nombre || dest.numero_empleado) {
+                        <span class="recipient-sub">
+                          {{ dest.numero_empleado ? dest.numero_empleado + ' · ' : '' }}{{ dest.area_nombre ?? 'Sin área' }}
+                        </span>
+                      }
+                    </div>
+                    <div class="recipient-status-col">
+                      <span class="seal is-{{ tonoDestinatario(dest.status) }}">{{ dest.status_etiqueta }}</span>
+                      @if (dest.fecha_envio) {
+                        <span class="mono-note">{{ fechaHoraTexto(dest.fecha_envio) }}</span>
+                      }
+                    </div>
+                  </div>
+                  @if (dest.error_detalle) {
+                    <p class="recipient-error">{{ dest.error_detalle }}</p>
+                  }
+                </li>
+              }
+            </ul>
+
+            @if (destTotalPaginas() > 1) {
+              <div class="recipient-pager">
+                <span class="mono-note">
+                  Página {{ destPagina() }} de {{ destTotalPaginas() }} · {{ destTotal() }} registros
+                </span>
+                <div class="pager-actions">
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="destPagina() <= 1 || destCargando()"
+                    (click)="irAPaginaDest(destPagina() - 1)"
+                  >
+                    Anterior
+                  </app-button>
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="destPagina() >= destTotalPaginas() || destCargando()"
+                    (click)="irAPaginaDest(destPagina() + 1)"
+                  >
+                    Siguiente
+                  </app-button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      } @else {
+        <app-mail-preview
+          [folio]="item.folio"
+          [subject]="previewSubject()"
+          [bodyHtml]="previewBodySafe()"
+          [attachments]="item.archivos ?? []"
+          [showAutoReplyNotice]="false"
+        />
+      }
+    </div>
+  }
+
+  <ng-template #actions>
+    @if (seleccionado(); as item) {
+      <app-button variant="ghost" (click)="drawerOpen.set(false)">Cerrar</app-button>
+      <app-button variant="secondary" [loading]="cargandoDetalle()" (click)="refrescarDetalle()">
+        Actualizar detalle
+      </app-button>
+      @if (puedeReintentar(item)) {
+        <app-button variant="primary" [loading]="reintentando()" (click)="reintentarFallidos(item)">
+          Reintentar fallidos ({{ item.fallidos }})
+        </app-button>
+      }
+    }
+  </ng-template>
+</app-drawer>

@@ -6,9 +6,11 @@ import {
   ComunicadoArchivo,
   ComunicadoConteos,
   ComunicadoDto,
+  EstatusDestinatario,
   FiltroBandejaComunicados,
   GuardarComunicadoPayload,
   ListadoComunicadosResponse,
+  ListadoDestinatariosComunicadoResponse,
   ModoDestinatarios,
   FiltrosComunicado,
   PrevisualizarDestinatariosResponse,
@@ -184,6 +186,37 @@ export class MensajeriaService {
     return this.http.post<{ mensaje: string; comunicado: ComunicadoDto }>(
       `${this.baseUrl}/comunicados/${comunicadoId}/rechazar`,
       { feedback },
+    );
+  }
+
+  listarDestinatariosComunicado(
+    comunicadoId: number,
+    status?: EstatusDestinatario | null,
+    pagina = 1,
+    buscar?: string,
+    porPagina = 25,
+  ): Observable<ListadoDestinatariosComunicadoResponse> {
+    let params = new HttpParams()
+      .set('pagina', String(pagina))
+      .set('por_pagina', String(porPagina));
+    if (status) {
+      params = params.set('status', status);
+    }
+    if (buscar && buscar.trim() !== '') {
+      params = params.set('buscar', buscar.trim());
+    }
+    return this.http.get<ListadoDestinatariosComunicadoResponse>(
+      `${this.baseUrl}/comunicados/${comunicadoId}/destinatarios`,
+      { params },
+    );
+  }
+
+  reintentarFallidos(
+    comunicadoId: number,
+  ): Observable<{ mensaje: string; comunicado: ComunicadoDto }> {
+    return this.http.post<{ mensaje: string; comunicado: ComunicadoDto }>(
+      `${this.baseUrl}/comunicados/${comunicadoId}/reintentar-fallidos`,
+      {},
     );
   }
 }

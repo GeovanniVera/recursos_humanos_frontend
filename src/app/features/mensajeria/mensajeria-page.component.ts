@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,6 @@ import {
   VARIABLES_DINAMICAS,
   VariableDinamica,
   esRolAutorizador,
-  escapeHtml,
   formatFileSize,
   normalizarFichasEditorHtml,
   reemplazarVariablesHtmlPreview,
@@ -45,15 +45,22 @@ import { Modal } from '../../shared/ui/modal/modal.component';
 import { PageHeader } from '../../shared/ui/page-header/page-header.component';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { MailPreview } from './mail-preview/mail-preview.component';
+import { RichMailEditor } from './rich-mail-editor/rich-mail-editor.component';
 
 @Component({
   selector: 'app-mensajeria-page',
-  imports: [FormsModule, PageHeader, AlertBanner, Button, Drawer, Modal, MailPreview],
+  imports: [
+    FormsModule,
+    PageHeader,
+    AlertBanner,
+    Button,
+    Drawer,
+    Modal,
+    MailPreview,
+    RichMailEditor,
+  ],
   templateUrl: './mensajeria-page.component.html',
   styleUrl: './mensajeria-page.component.scss',
-  host: {
-    '(document:selectionchange)': 'onDocumentSelectionChange()',
-  },
 })
 export class MensajeriaPage {
   private readonly mensajeria = inject(MensajeriaService);
@@ -64,7 +71,7 @@ export class MensajeriaPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly richEditorRef = viewChild<ElementRef<HTMLDivElement>>('richEditor');
+  readonly richEditorRef = viewChild(RichMailEditor);
   private readonly fileInputRef = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
   readonly variablesDinamicas = VARIABLES_DINAMICAS;
@@ -85,17 +92,6 @@ export class MensajeriaPage {
   readonly wordCount = signal(0);
   readonly charCount = signal(0);
   readonly lastSavedLabel = signal('Sin guardar');
-
-  // Indicadores activos de formato de texto
-  readonly boldActive = signal(false);
-  readonly italicActive = signal(false);
-  readonly underlineActive = signal(false);
-  readonly ulActive = signal(false);
-  readonly olActive = signal(false);
-  readonly alignLeftActive = signal(false);
-  readonly alignCenterActive = signal(false);
-  readonly alignRightActive = signal(false);
-  readonly alignJustifyActive = signal(false);
 
   // Segmentación
   readonly resumen = signal<SegmentacionResumen | null>(null);
@@ -118,12 +114,6 @@ export class MensajeriaPage {
   readonly isDragging = signal(false);
   readonly uploadingFiles = signal(false);
 
-  // Popover y verificación de enlaces
-  readonly linkPopoverOpen = signal(false);
-  readonly linkText = signal('');
-  readonly linkUrl = signal('');
-  readonly activeLinkHref = signal<string | null>(null);
-
   // Estados de envío
   readonly saving = signal(false);
   readonly submitting = signal(false);
@@ -136,9 +126,6 @@ export class MensajeriaPage {
   readonly submittedFolio = signal<string | null>(null);
   readonly sampleIndex = signal(0);
 
-  private savedSelectionRange: Range | null = null;
-  private activeLinkEl: HTMLAnchorElement | null = null;
-  private activeImageEl: HTMLImageElement | null = null;
   private readonly objectUrls: string[] = [];
   private previewTimer: ReturnType<typeof setTimeout> | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -272,7 +259,7 @@ export class MensajeriaPage {
     const initialNuevoTick = this.mensajeria.nuevoCorreoSolicitud();
     effect(() => {
       if (this.mensajeria.nuevoCorreoSolicitud() > initialNuevoTick) {
-        this.resetComposer();
+        untracked(() => this.resetComposer());
       }
     });
 
@@ -326,19 +313,22 @@ export class MensajeriaPage {
       return;
     }
 
+    const htmlNormalizado = normalizarFichasEditorHtml(item.contenido_html);
     this.comunicadoId.set(item.id);
     this.folioActual.set(item.folio);
     this.rejectedFeedback.set(item.status === 'RECHAZADO' ? item.feedback_rechazo : null);
     this.subject.set(item.asunto);
-    this.bodyHtml.set(normalizarFichasEditorHtml(item.contenido_html));
+    this.bodyHtml.set(htmlNormalizado);
+    this.actualizarConteoDesdeHtml(htmlNormalizado);
     this.modoDestinatarios.set(item.modo_destinatarios);
     this.selectedAreaIds.set(new Set(item.filtros_json?.area_ids ?? []));
     this.selectedCategorias.set(new Set(item.filtros_json?.categorias_tipo ?? []));
+    this.extraEmpleados.set(item.empleados_extra ?? []);
     this.attachments.set(item.archivos ?? []);
     this.lastSavedLabel.set(item.folio ? `Folio ${item.folio}` : 'Borrador cargado');
     this.cargarImagenesDeComunicado(item);
     this.programarPrevisualizacion();
-    this.syncEditorFromSignal();
+    this.richEditorRef()?.setHtml(htmlNormalizado);
   }
 
   cargarResumenSegmentacion(): void {
@@ -440,12 +430,12 @@ export class MensajeriaPage {
     this.extraEmpleados.update((list) => [...list, emp]);
     this.empleadoQuery.set('');
     this.empleadosEncontrados.set([]);
-    this.programarPrevisualizacion();
+    this.programarPrevisualizacion(0);
   }
 
   quitarEmpleadoExtra(id: number): void {
     this.extraEmpleados.update((list) => list.filter((e) => e.id !== id));
-    this.programarPrevisualizacion();
+    this.programarPrevisualizacion(0);
   }
 
   toggleSubjectPrefix(prefix: string): void {
@@ -459,207 +449,21 @@ export class MensajeriaPage {
     this.subject.set(current.slice(0, 120));
   }
 
-  saveEditorSelection(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const sel = window.getSelection();
-    if (!editor || !sel || sel.rangeCount === 0) {
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    if (editor.contains(range.commonAncestorContainer)) {
-      this.savedSelectionRange = range.cloneRange();
-      this.actualizarEstadoFormato();
-      this.actualizarEnlaceActivo(range.commonAncestorContainer);
-    }
+  onEditorHtmlChange(html: string): void {
+    this.bodyHtml.set(html);
   }
 
-  onDocumentSelectionChange(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const sel = window.getSelection();
-    if (!editor || !sel || sel.rangeCount === 0) {
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    const node = range.commonAncestorContainer;
-    if (editor.contains(node)) {
-      if (this.activeImageEl && !range.intersectsNode(this.activeImageEl)) {
-        this.activeImageEl = null;
-      }
-      this.actualizarEstadoFormato();
-      this.actualizarEnlaceActivo(node);
-    }
+  onEditorStatsChange(stats: { words: number; chars: number }): void {
+    this.wordCount.set(stats.words);
+    this.charCount.set(stats.chars);
   }
 
-  onEditorClick(event: MouseEvent): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const target = event.target as HTMLElement | null;
-    if (target instanceof HTMLImageElement && editor?.contains(target)) {
-      this.activeImageEl = target;
-      const sel = window.getSelection();
-      if (sel) {
-        const range = document.createRange();
-        range.selectNode(target);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        this.savedSelectionRange = range.cloneRange();
-      }
-      this.activeLinkEl = null;
-      this.activeLinkHref.set(null);
-      this.actualizarEstadoFormato();
-      return;
-    }
-
-    this.activeImageEl = null;
-    const anchor = target?.closest('a') ?? null;
-
-    if (anchor && editor?.contains(anchor)) {
-      this.activeLinkEl = anchor;
-      this.activeLinkHref.set(anchor.getAttribute('href'));
-      if (event.ctrlKey || event.metaKey) {
-        const href = anchor.getAttribute('href');
-        if (href) {
-          event.preventDefault();
-          window.open(href, '_blank', 'noopener,noreferrer');
-          return;
-        }
-      }
-    }
-
-    this.saveEditorSelection();
-  }
-
-  onEditorKeydown(event: KeyboardEvent): void {
-    if (event.ctrlKey || event.metaKey || event.altKey) {
-      return;
-    }
-    if (event.key === ' ' || event.key === 'Enter') {
-      this.autoLinkificarAntesDelCursor();
-    }
-  }
-
-  onEditorInput(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    if (!editor) {
-      return;
-    }
-    this.bodyHtml.set(editor.innerHTML);
-    const plain = (editor.innerText ?? '').trim();
-    this.wordCount.set(plain ? plain.split(/\s+/).length : 0);
-    this.charCount.set(plain.length);
-    this.actualizarEstadoFormato();
-  }
-
-  execFormat(command: string): void {
-    this.restoreEditorSelection();
-    if (command === 'removeFormat') {
-      this.limpiarFormatoSeleccionado();
-    } else {
-      document.execCommand(command, false);
-    }
-    this.onEditorInput();
-    this.saveEditorSelection();
-    this.actualizarEstadoFormato();
-  }
-
-  execAlign(align: 'left' | 'center' | 'right' | 'justify'): void {
-    this.restoreEditorSelection();
-    const editor = this.richEditorRef()?.nativeElement;
-
-    if (this.activeImageEl && editor?.contains(this.activeImageEl)) {
-      if (align !== 'justify') {
-        this.activeImageEl.setAttribute('data-align', align);
-      }
-      const sel = window.getSelection();
-      if (sel) {
-        const range = document.createRange();
-        range.selectNode(this.activeImageEl);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    } else {
-      const cmdMap: Record<'left' | 'center' | 'right' | 'justify', string> = {
-        left: 'justifyLeft',
-        center: 'justifyCenter',
-        right: 'justifyRight',
-        justify: 'justifyFull',
-      };
-      document.execCommand(cmdMap[align], false);
-
-      if (editor && align !== 'justify') {
-        this.sincronizarAlineacionImagenesEnSeleccion(editor, align);
-      }
-    }
-
-    this.onEditorInput();
-    this.saveEditorSelection();
-    this.actualizarEstadoFormato();
-  }
-
-  abrirEnlaceActivo(): void {
-    const href = this.activeLinkHref();
-    if (!href) {
-      return;
-    }
-    const normalized = /^https?:\/\//i.test(href) ? href : `https://${href}`;
-    window.open(normalized, '_blank', 'noopener,noreferrer');
-  }
-
-  quitarEnlaceActivo(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const anchor = this.activeLinkEl;
-    if (!editor || !anchor || !editor.contains(anchor)) {
-      return;
-    }
-    const sel = window.getSelection();
-    if (sel) {
-      const range = document.createRange();
-      range.selectNodeContents(anchor);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      this.savedSelectionRange = range.cloneRange();
-    }
-    document.execCommand('unlink', false);
-    this.activeLinkEl = null;
-    this.activeLinkHref.set(null);
-    this.onEditorInput();
+  onEditorFilesReceived(files: File[]): void {
+    void this.subirArchivos(files, true);
   }
 
   insertDynamicVariable(variable: VariableDinamica): void {
-    this.restoreEditorSelection();
-    const html = `<span contenteditable="false" data-var="${escapeHtml(variable.token)}" class="var-token">${escapeHtml(variable.etiqueta)}</span>&nbsp;`;
-    document.execCommand('insertHTML', false, html);
-    this.saveEditorSelection();
-    this.onEditorInput();
-  }
-
-  toggleLinkPopover(force?: boolean): void {
-    const next = force ?? !this.linkPopoverOpen();
-    if (next) {
-      this.saveEditorSelection();
-    }
-    this.linkPopoverOpen.set(next);
-  }
-
-  confirmInsertLink(): void {
-    let url = this.linkUrl().trim();
-    if (!url) {
-      this.toast.show({ type: 'error', title: 'Ingresa una dirección web válida.' });
-      return;
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      url = `https://${url}`;
-    }
-    const label = escapeHtml(this.linkText().trim() || url);
-    this.restoreEditorSelection();
-    document.execCommand(
-      'insertHTML',
-      false,
-      `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>&nbsp;`,
-    );
-    this.linkText.set('');
-    this.linkUrl.set('');
-    this.linkPopoverOpen.set(false);
-    this.onEditorInput();
+    this.richEditorRef()?.insertVariable(variable);
   }
 
   openFilePicker(): void {
@@ -693,7 +497,7 @@ export class MensajeriaPage {
     }
   }
 
-  async subirArchivos(files: File[]): Promise<void> {
+  async subirArchivos(files: File[], insertarImagenesEnCuerpo = false): Promise<void> {
     if (this.uploadingFiles()) {
       return;
     }
@@ -716,14 +520,35 @@ export class MensajeriaPage {
         }
 
         const res = await firstValueFrom(this.mensajeria.subirAdjunto(id, file));
-        this.attachments.update((list) => [...list, res.archivo]);
-        if (res.archivo.es_imagen) {
-          this.cargarImagenPreview(id, res.archivo.id);
+        const archivoGuardado = res.archivo;
+
+        if (archivoGuardado.es_imagen) {
+          const localUrl = URL.createObjectURL(file);
+          this.objectUrls.push(localUrl);
+          this.imagePreviewUrls.update((prev) => {
+            const next = new Map(prev);
+            next.set(archivoGuardado.id, localUrl);
+            return next;
+          });
+
+          if (insertarImagenesEnCuerpo) {
+            const naturalWidth = await this.obtenerAnchoNaturalImagen(localUrl);
+            this.richEditorRef()?.insertAttachedImage(archivoGuardado, localUrl, naturalWidth);
+            this.attachments.update((list) => [
+              ...list,
+              { ...archivoGuardado, embebido_en_cuerpo: true },
+            ]);
+          } else {
+            this.attachments.update((list) => [...list, archivoGuardado]);
+          }
+        } else {
+          this.attachments.update((list) => [...list, archivoGuardado]);
         }
+
         this.toast.show({
           type: 'success',
-          title: 'Archivo adjuntado',
-          message: res.archivo.nombre_original,
+          title: insertarImagenesEnCuerpo ? 'Imagen pegada y adjuntada' : 'Archivo adjuntado',
+          message: archivoGuardado.nombre_original,
         });
       }
     } catch (err) {
@@ -733,15 +558,13 @@ export class MensajeriaPage {
     }
   }
 
-  insertarImagenEnCuerpo(archivo: ComunicadoArchivo): void {
+  async insertarImagenEnCuerpo(archivo: ComunicadoArchivo): Promise<void> {
     if (!archivo.es_imagen) {
       return;
     }
     const url = this.imagePreviewUrls().get(archivo.id) ?? archivo.url_descarga;
-    this.restoreEditorSelection();
-    const imgHtml = `<img src="${escapeHtml(url)}" alt="${escapeHtml(archivo.nombre_original)}" data-att-id="${archivo.id}" class="embedded-mail-img" /><p><br></p>`;
-    document.execCommand('insertHTML', false, imgHtml);
-    this.onEditorInput();
+    const naturalWidth = await this.obtenerAnchoNaturalImagen(url);
+    this.richEditorRef()?.insertAttachedImage(archivo, url, naturalWidth);
     this.attachments.update((list) =>
       list.map((a) => (a.id === archivo.id ? { ...a, embebido_en_cuerpo: true } : a)),
     );
@@ -755,13 +578,7 @@ export class MensajeriaPage {
     }
     this.mensajeria.eliminarAdjunto(id, archivo.id).subscribe({
       next: () => {
-        const editor = this.richEditorRef()?.nativeElement;
-        if (editor) {
-          editor
-            .querySelectorAll(`img[data-att-id="${archivo.id}"]`)
-            .forEach((img) => img.remove());
-          this.onEditorInput();
-        }
+        this.richEditorRef()?.removeImagesByAttachmentId(archivo.id);
         this.attachments.update((list) => list.filter((a) => a.id !== archivo.id));
       },
       error: (err) => this.mostrarErrorHttp(err, 'No se pudo eliminar el adjunto.'),
@@ -860,7 +677,7 @@ export class MensajeriaPage {
         title: `Comunicado ${res.comunicado.folio ?? ''} encolado para envío masivo.`,
       });
       this.resetComposer();
-      void this.router.navigate(['/mensajeria/autorizaciones']);
+      void this.router.navigate(['/mensajeria/historial']);
     } catch (err) {
       this.mostrarErrorHttp(err, 'No se pudo enviar el comunicado.');
     } finally {
@@ -877,6 +694,10 @@ export class MensajeriaPage {
     void this.router.navigate(['/mensajeria/borradores']);
   }
 
+  irAHistorial(): void {
+    void this.router.navigate(['/mensajeria/historial']);
+  }
+
   nuevoBorradorLimpio(): void {
     this.resetComposer();
     void this.router.navigate(['/mensajeria']);
@@ -886,86 +707,29 @@ export class MensajeriaPage {
     return formatFileSize(bytes);
   }
 
-  private actualizarEstadoFormato(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    if (this.activeImageEl && editor?.contains(this.activeImageEl)) {
-      const align = this.activeImageEl.getAttribute('data-align') || 'left';
-      this.alignLeftActive.set(align === 'left');
-      this.alignCenterActive.set(align === 'center');
-      this.alignRightActive.set(align === 'right');
-      this.alignJustifyActive.set(false);
+  private async obtenerAnchoNaturalImagen(url: string): Promise<number> {
+    if (typeof Image === 'undefined' || !url) {
+      return 480;
     }
-
-    if (typeof document.queryCommandState !== 'function') {
-      return;
-    }
-    try {
-      this.boldActive.set(document.queryCommandState('bold'));
-      this.italicActive.set(document.queryCommandState('italic'));
-      this.underlineActive.set(document.queryCommandState('underline'));
-      this.ulActive.set(document.queryCommandState('insertUnorderedList'));
-      this.olActive.set(document.queryCommandState('insertOrderedList'));
-
-      if (!this.activeImageEl || !editor?.contains(this.activeImageEl)) {
-        const left = document.queryCommandState('justifyLeft');
-        const center = document.queryCommandState('justifyCenter');
-        const right = document.queryCommandState('justifyRight');
-        const justify = document.queryCommandState('justifyFull');
-
-        if (left || center || right || justify) {
-          this.alignLeftActive.set(left);
-          this.alignCenterActive.set(center);
-          this.alignRightActive.set(right);
-          this.alignJustifyActive.set(justify);
-        } else {
-          const blockAlign = this.leerAlineacionBloqueActual(editor);
-          this.alignLeftActive.set(blockAlign === 'left');
-          this.alignCenterActive.set(blockAlign === 'center');
-          this.alignRightActive.set(blockAlign === 'right');
-          this.alignJustifyActive.set(blockAlign === 'justify');
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (width: number) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(width);
         }
-      }
-    } catch {
-      // Algunos entornos de pruebas o navegadores restringen queryCommandState fuera de foco.
-    }
-  }
+      };
 
-  private leerAlineacionBloqueActual(editor: HTMLElement | undefined): string {
-    const sel = window.getSelection();
-    if (!editor || !sel || sel.rangeCount === 0) {
-      return 'left';
-    }
-    let node: Node | null = sel.getRangeAt(0).startContainer;
-    while (node && node !== editor) {
-      if (node instanceof HTMLElement) {
-        const inlineAlign = node.style.textAlign;
-        if (inlineAlign) {
-          return inlineAlign.toLowerCase();
-        }
+      const timer = setTimeout(() => done(480), 150);
+      const img = new Image();
+      img.onload = () => done(img.naturalWidth > 0 ? img.naturalWidth : 480);
+      img.onerror = () => done(480);
+      img.src = url;
+      if (img.complete && img.naturalWidth > 0) {
+        done(img.naturalWidth);
       }
-      node = node.parentNode;
-    }
-    return 'left';
-  }
-
-  private sincronizarAlineacionImagenesEnSeleccion(
-    editor: HTMLElement,
-    align: 'left' | 'center' | 'right',
-  ): void {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) {
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    for (const img of Array.from(editor.querySelectorAll('img'))) {
-      try {
-        if (range.intersectsNode(img) || img.parentElement?.contains(range.startContainer)) {
-          img.setAttribute('data-align', align);
-        }
-      } catch {
-        // Ignora nodos fuera de rango
-      }
-    }
+    });
   }
 
   private async asegurarBorradorPersistido(): Promise<number | null> {
@@ -976,10 +740,20 @@ export class MensajeriaPage {
     const payload = this.construirPayload(true);
     const res = await firstValueFrom(this.mensajeria.crearBorrador(payload));
     this.comunicadoId.set(res.comunicado.id);
+    this.lastSavedLabel.set('Borrador iniciado');
+    this.mensajeria.refrescarConteos();
     return res.comunicado.id;
   }
 
   private async persistirComunicado(): Promise<ComunicadoDto> {
+    const editor = this.richEditorRef();
+    if (editor) {
+      const actualHtml = editor.getHtml();
+      if (actualHtml) {
+        this.bodyHtml.set(actualHtml);
+      }
+    }
+
     const payload = this.construirPayload(false);
     const id = this.comunicadoId();
     const res =
@@ -1038,18 +812,21 @@ export class MensajeriaPage {
   }
 
   private tieneContenidoCuerpo(): boolean {
-    const editor = this.richEditorRef()?.nativeElement;
-    if (editor) {
-      const texto = (editor.innerText ?? '').trim();
-      if (texto.length > 0 || editor.querySelector('img') !== null) {
-        return true;
-      }
-    }
-    const clean = this.sanitizer.sanitize(SecurityContext.HTML, this.bodyHtml()) ?? '';
+    const htmlActual = this.richEditorRef()?.getHtml() || this.bodyHtml();
+    const clean = this.sanitizer.sanitize(SecurityContext.HTML, htmlActual) ?? '';
     return clean.replace(/<[^>]*>/g, '').trim().length > 0 || clean.includes('<img');
   }
 
-  private programarPrevisualizacion(): void {
+  private actualizarConteoDesdeHtml(rawHtml: string): void {
+    const clean = (this.sanitizer.sanitize(SecurityContext.HTML, rawHtml) ?? '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .trim();
+    this.wordCount.set(clean ? clean.split(/\s+/).length : 0);
+    this.charCount.set(clean.length);
+  }
+
+  private programarPrevisualizacion(delayMs = 150): void {
     if (this.previewTimer !== null) {
       clearTimeout(this.previewTimer);
     }
@@ -1069,7 +846,7 @@ export class MensajeriaPage {
           }
         },
       });
-    }, 150);
+    }, delayMs);
   }
 
   private cargarImagenesDeComunicado(comunicado: ComunicadoDto): void {
@@ -1094,66 +871,6 @@ export class MensajeriaPage {
     });
   }
 
-  private isSelectionInsideEditor(editor: HTMLElement): boolean {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) {
-      return false;
-    }
-    return editor.contains(sel.getRangeAt(0).commonAncestorContainer);
-  }
-
-  private restoreEditorSelection(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    if (!editor) {
-      return;
-    }
-    // Si el foco y la selección ya están dentro del editor, no tocamos el Range
-    // para no perder el estado de formato pendiente en cursores colapsados.
-    if (document.activeElement === editor && this.isSelectionInsideEditor(editor)) {
-      return;
-    }
-
-    const rangeToRestore = this.savedSelectionRange;
-    editor.focus();
-    const sel = window.getSelection();
-    if (!sel) {
-      return;
-    }
-    if (rangeToRestore && editor.contains(rangeToRestore.commonAncestorContainer)) {
-      sel.removeAllRanges();
-      sel.addRange(rangeToRestore);
-    } else {
-      const range = document.createRange();
-      range.selectNodeContents(editor);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }
-
-  private syncEditorFromSignal(): void {
-    setTimeout(() => {
-      const editor = this.richEditorRef()?.nativeElement;
-      if (!editor) {
-        return;
-      }
-      const html = this.bodyHtml();
-      const urls = this.imagePreviewUrls();
-      editor.innerHTML = html.replace(
-        /<img([^>]*?)data-att-id="(\d+)"([^>]*?)>/gi,
-        (match, before: string, idStr: string, after: string) => {
-          const url = urls.get(Number(idStr));
-          if (!url) {
-            return match;
-          }
-          const cleaned = `${before} ${after}`.replace(/\ssrc="[^"]*"/gi, '');
-          return `<img src="${escapeHtml(url)}" data-att-id="${idStr}" ${cleaned.trim()}>`;
-        },
-      );
-      this.onEditorInput();
-    }, 0);
-  }
-
   private resetComposer(): void {
     this.comunicadoId.set(null);
     this.folioActual.set(null);
@@ -1173,137 +890,8 @@ export class MensajeriaPage {
     this.filtroListaDestinatarios.set('');
     this.attachments.set([]);
     this.imagePreviewUrls.set(new Map());
-    this.linkPopoverOpen.set(false);
-    this.activeLinkEl = null;
-    this.activeImageEl = null;
-    this.activeLinkHref.set(null);
-    this.savedSelectionRange = null;
-    this.boldActive.set(false);
-    this.italicActive.set(false);
-    this.underlineActive.set(false);
-    this.ulActive.set(false);
-    this.olActive.set(false);
-    this.alignLeftActive.set(false);
-    this.alignCenterActive.set(false);
-    this.alignRightActive.set(false);
-    this.alignJustifyActive.set(false);
-    const editor = this.richEditorRef()?.nativeElement;
-    if (editor) {
-      editor.innerHTML = '';
-    }
+    this.richEditorRef()?.setHtml('');
     this.programarPrevisualizacion();
-  }
-
-  private limpiarFormatoSeleccionado(): void {
-    document.execCommand('removeFormat', false);
-    const sel = window.getSelection();
-    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
-
-    const formatos: Array<{ cmd: string; selector: string }> = [
-      { cmd: 'bold', selector: 'b, strong' },
-      { cmd: 'italic', selector: 'i, em' },
-      { cmd: 'underline', selector: 'u, ins' },
-    ];
-
-    for (const { cmd, selector } of formatos) {
-      if (document.queryCommandState(cmd)) {
-        document.execCommand(cmd, false);
-      } else if (range && !range.collapsed && this.rangeContainsSelector(range, selector)) {
-        document.execCommand(cmd, false);
-        if (document.queryCommandState(cmd)) {
-          document.execCommand(cmd, false);
-        }
-      }
-    }
-
-    document.execCommand('removeFormat', false);
-  }
-
-  private rangeContainsSelector(range: Range, selector: string): boolean {
-    const editor = this.richEditorRef()?.nativeElement;
-    if (!editor) {
-      return false;
-    }
-    const ancestor =
-      range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-        ? (range.commonAncestorContainer as Element)
-        : range.commonAncestorContainer.parentElement;
-    if (ancestor && editor.contains(ancestor) && ancestor.closest(selector) !== null) {
-      return true;
-    }
-    if (!(ancestor instanceof Element)) {
-      return false;
-    }
-    return Array.from(ancestor.querySelectorAll(selector)).some((el) => {
-      try {
-        return range.intersectsNode(el);
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  private actualizarEnlaceActivo(node: Node): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
-    const anchor = element?.closest('a') ?? null;
-    if (anchor && editor?.contains(anchor)) {
-      this.activeLinkEl = anchor;
-      this.activeLinkHref.set(anchor.getAttribute('href'));
-      return;
-    }
-    this.activeLinkEl = null;
-    this.activeLinkHref.set(null);
-  }
-
-  private autoLinkificarAntesDelCursor(): void {
-    const editor = this.richEditorRef()?.nativeElement;
-    const sel = window.getSelection();
-    if (!editor || !sel || sel.rangeCount === 0 || !sel.isCollapsed) {
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE || !editor.contains(node)) {
-      return;
-    }
-    const parentEl = node.parentElement;
-    if (parentEl?.closest('a, .var-token') !== null) {
-      return;
-    }
-
-    const textoHastaCursor = (node.textContent ?? '').slice(0, range.startOffset);
-    const match = /(?:^|\s)((?:https?:\/\/|www\.)[^\s<>"]+[^\s<>".,;:!?)'])$/i.exec(
-      textoHastaCursor,
-    );
-    if (!match) {
-      return;
-    }
-
-    const urlTexto = match[1];
-    const startIdx = range.startOffset - urlTexto.length;
-    const href = /^https?:\/\//i.test(urlTexto) ? urlTexto : `https://${urlTexto}`;
-
-    const urlRange = document.createRange();
-    urlRange.setStart(node, startIdx);
-    urlRange.setEnd(node, range.startOffset);
-    urlRange.deleteContents();
-
-    const anchor = document.createElement('a');
-    anchor.href = href;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.textContent = urlTexto;
-    urlRange.insertNode(anchor);
-
-    const afterRange = document.createRange();
-    afterRange.setStartAfter(anchor);
-    afterRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(afterRange);
-    this.savedSelectionRange = afterRange.cloneRange();
-    this.activeLinkEl = anchor;
-    this.activeLinkHref.set(href);
   }
 
   private mostrarErrorHttp(err: unknown, fallback: string): void {

@@ -160,6 +160,7 @@ describe('Sidebar', () => {
       '/mensajeria',
       '/mensajeria/autorizaciones',
       '/mensajeria/borradores',
+      '/mensajeria/historial',
       '/admin/catalogos',
       '/ajustes',
     ]);

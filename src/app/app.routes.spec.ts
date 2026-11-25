@@ -121,4 +121,13 @@ describe('app.routes · bitácora', () => {
     expect(route?.data?.['breadcrumb']).toBe('Bitácora');
     expect(route?.loadComponent).toBeTypeOf('function');
   });
+
+  it('redirecciona rutas legacy de login (/admin, /solicitudes, /circulares) al panel general', () => {
+    for (const legacyPath of ['admin', 'solicitudes', 'circulares']) {
+      const route = shellChildren().find((child) => child.path === legacyPath);
+      expect(route).toBeDefined();
+      expect(route?.pathMatch).toBe('full');
+      expect(route?.redirectTo).toBe('');
+    }
+  });
 });

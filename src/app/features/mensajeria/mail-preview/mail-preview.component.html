@@ -35,6 +35,17 @@
       <h4 class="mail-preview-subject">{{ subject() }}</h4>
       <div class="mail-preview-body" [innerHTML]="bodyHtml()"></div>
 
+      @if (docAttachments().length > 0) {
+        <div class="mail-attachments-box">
+          <p class="mail-attachments-title">Archivos adjuntos ({{ docAttachments().length }})</p>
+          <ul class="mail-attachments-list">
+            @for (doc of docAttachments(); track doc.id) {
+              <li>{{ doc.nombre_original }} · {{ formatBytes(doc.tamano_bytes) }}</li>
+            }
+          </ul>
+        </div>
+      }
+
       @if (showNotice()) {
         <div class="mail-notice-box">
           <span class="mail-notice-icon" aria-hidden="true">!</span>
@@ -44,9 +55,11 @@
     </div>
 
     <footer class="mail-preview-footer">
-      <p class="mail-footer-notice">
-        Este mensaje fue enviado de manera automática, por favor no lo responda.
-      </p>
+      @if (showAutoReplyNotice()) {
+        <p class="mail-footer-notice">
+          Este mensaje fue enviado de manera automática, por favor no lo responda.
+        </p>
+      }
       <p class="mail-footer-org">
         Departamento de Recursos Humanos · Universidad Tecnológica de Nezahualcóyotl
       </p>

@@ -289,6 +289,13 @@
                 <span class="nav-badge">{{ borradoresCount() }}</span>
               }
             </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/historial"
+              routerLinkActive="is-active"
+            >
+              <span>Historial de envíos</span>
+            </a>
           </div>
         }
 
@@ -334,6 +341,16 @@
                     {{ borradoresCount() }}
                   </span>
                 }
+              </a>
+            </li>
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria/historial"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Historial de envíos</span>
               </a>
             </li>
           </ul>

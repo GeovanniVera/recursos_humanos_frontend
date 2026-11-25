@@ -160,7 +160,8 @@
         </div>
       }
 
-      <app-mail-preview [folio]="item.folio" [subject]="previewSubject()" [bodyHtml]="previewBodySafe()" />
+      <app-mail-preview [folio]="item.folio" [subject]="previewSubject()" [bodyHtml]="previewBodySafe()"
+        [attachments]="item.archivos ?? []" [showAutoReplyNotice]="false" />
 
       @if (item.status === 'RECHAZADO' && item.feedback_rechazo) {
         <app-alert-banner

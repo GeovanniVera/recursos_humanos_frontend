@@ -41,6 +41,10 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/dashboard/dashboard-page.component').then((m) => m.DashboardPage),
       },
+      // Legacy post-login landing routes returned by older backend module maps.
+      { path: 'admin', pathMatch: 'full', redirectTo: '' },
+      { path: 'solicitudes', pathMatch: 'full', redirectTo: '' },
+      { path: 'circulares', pathMatch: 'full', redirectTo: '' },
       {
         path: 'empleados',
         // The listing is the whole branch: every status lives in one screen with
@@ -89,6 +93,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/mensajeria/borradores-page/borradores-page.component').then(
             (m) => m.BorradoresPage,
+          ),
+      },
+      {
+        path: 'mensajeria/historial',
+        data: { breadcrumb: 'Historial de envíos' },
+        loadComponent: () =>
+          import('./features/mensajeria/historial-page/historial-page.component').then(
+            (m) => m.HistorialEnviosPage,
           ),
       },
       {
