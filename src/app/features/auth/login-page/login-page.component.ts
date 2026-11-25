@@ -156,8 +156,12 @@ export class LoginPage {
           this.cancelarNavegacion();
           this.navTimerId = setTimeout(() => {
             this.navTimerId = null;
-            const destino = this.auth.redirect() ?? '/';
-            void this.router.navigateByUrl(destino === '' ? '/' : destino);
+            const crudo = (this.auth.redirect() ?? '/').trim();
+            const destino =
+              crudo === '' || crudo === '/admin' || crudo === '/solicitudes' || crudo === '/circulares'
+                ? '/'
+                : crudo;
+            void this.router.navigateByUrl(destino);
           }, 700);
         },
         error: (error: unknown) => this.manejarError(error),

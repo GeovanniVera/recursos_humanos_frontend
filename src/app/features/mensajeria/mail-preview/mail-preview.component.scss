@@ -143,14 +143,42 @@
   padding-left: var(--space-6);
 }
 
+.mail-preview-body ::ng-deep h2 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--guinda-800);
+  line-height: 1.3;
+}
+
+.mail-preview-body ::ng-deep h3 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--guinda-ink);
+  line-height: 1.35;
+}
+
+.mail-preview-body ::ng-deep blockquote {
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-4);
+  border-left: 3px solid var(--guinda-600);
+  border-radius: var(--radius-none) var(--radius-sm) var(--radius-sm) var(--radius-none);
+  background: var(--rose-50);
+  color: var(--guinda-ink);
+}
+
+.mail-preview-body ::ng-deep hr {
+  margin: var(--space-4) 0;
+  border: none;
+  border-top: var(--border-width) solid var(--rose-300);
+}
+
 .mail-preview-body ::ng-deep img {
   display: block;
-  width: auto;
   max-width: 100%;
   height: auto;
-  max-height: 320px;
   margin: var(--space-3) auto var(--space-3) 0;
-  object-fit: contain;
   border-radius: var(--radius-md);
 }
 
@@ -162,6 +190,28 @@
 .mail-preview-body ::ng-deep img[data-align='right'],
 .mail-preview-body ::ng-deep [style*='text-align: right'] > img:not([data-align]) {
   margin: var(--space-3) 0 var(--space-3) auto;
+}
+
+.mail-attachments-box {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--rose-300);
+  border-radius: var(--radius-sm);
+  background: var(--marfil-surface);
+}
+
+.mail-attachments-title {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--guinda-800);
+}
+
+.mail-attachments-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 12.5px;
+  color: var(--guinda-ink);
 }
 
 .mail-notice-box {

@@ -66,6 +66,7 @@ export interface ComunicadoDto {
   contenido_html: string;
   modo_destinatarios: ModoDestinatarios;
   filtros_json: FiltrosComunicado;
+  empleados_extra?: EmpleadoSegmento[];
   status: EstatusComunicado;
   status_etiqueta: string;
   es_editable: boolean;

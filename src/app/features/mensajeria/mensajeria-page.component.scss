@@ -153,16 +153,11 @@
 
 .text-input:focus {
   outline: none;
-}
-
-.text-input:focus,
-.editor-shell:focus-within {
   border-color: var(--color-action-primary);
 }
 
 .chip-row,
 .vars-list,
-.toolbar-group,
 .extra-chips,
 .secondary-actions {
   display: flex;
@@ -200,7 +195,7 @@
 }
 
 .vars-bar,
-.editor-toolbar {
+.editor-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -208,55 +203,13 @@
   gap: var(--space-2);
 }
 
-.editor-shell {
-  overflow: hidden;
+.editor-foot {
+  padding: var(--space-2) var(--space-3);
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
-  background: var(--bg-input);
-}
-
-.editor-toolbar,
-.editor-foot,
-.active-link-bar {
-  padding: var(--space-2) var(--space-3);
   background: var(--bg-subtle);
 }
 
-.editor-toolbar,
-.active-link-bar {
-  border-bottom: var(--border-width) solid var(--color-border-default);
-}
-
-.active-link-url {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: var(--text-label);
-  color: var(--accent-primary);
-}
-
-.active-link-actions {
-  display: flex;
-  flex: none;
-  gap: var(--space-2);
-}
-
-.editor-foot {
-  border-top: var(--border-width) solid var(--color-border-default);
-}
-
-.toolbar-segment {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-input);
-}
-
-.tool-btn,
-.tool-clear,
 .link-btn,
 .remove-btn,
 .chip-remove {
@@ -265,128 +218,6 @@
   background: var(--color-surface-ghost);
   color: var(--color-text-secondary);
   cursor: pointer;
-}
-
-.tool-btn,
-.tool-clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  height: var(--control-height-sm);
-  padding: 0 var(--space-2);
-  font: var(--text-label);
-  white-space: nowrap;
-}
-
-.tool-btn.is-icon {
-  width: var(--control-height-sm);
-  padding: 0;
-}
-
-.tool-btn.is-labelled,
-.tool-clear {
-  border-color: var(--color-border-default);
-  background: var(--bg-input);
-}
-
-.tool-btn:hover:not(.is-active),
-.tool-clear:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-subtle);
-  color: var(--color-text-primary);
-}
-
-.tool-btn.is-active {
-  border-color: var(--color-action-primary);
-  background: var(--color-action-primary);
-  color: var(--color-action-on-primary);
-}
-
-.tool-icon {
-  flex: none;
-  width: var(--space-4);
-  height: var(--space-4);
-}
-
-.link-wrap {
-  position: relative;
-}
-
-.link-popover {
-  position: absolute;
-  top: var(--space-8);
-  left: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 280px;
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-overlay);
-  box-shadow: var(--shadow-md);
-}
-
-.link-popover-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.rich-editor {
-  min-height: 240px;
-  padding: var(--space-4);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-  outline: none;
-  cursor: text;
-}
-
-.rich-editor ::ng-deep ul,
-.rich-editor ::ng-deep ol {
-  padding-left: var(--space-6);
-}
-
-.rich-editor:empty::before {
-  content: attr(data-placeholder);
-  color: var(--text-muted);
-}
-
-.rich-editor ::ng-deep img {
-  display: block;
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  max-height: 280px;
-  margin: var(--space-3) auto var(--space-3) 0;
-  object-fit: contain;
-  border-radius: var(--radius-md);
-}
-
-.rich-editor ::ng-deep img[data-align='center'] {
-  margin: var(--space-3) auto;
-}
-
-.rich-editor ::ng-deep img[data-align='right'] {
-  margin: var(--space-3) 0 var(--space-3) auto;
-}
-
-.rich-editor ::ng-deep .var-token {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 2px;
-  padding: 1px var(--space-2);
-  border: var(--border-width) solid var(--color-action-primary);
-  border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent-primary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  user-select: none;
 }
 
 .storage-track {

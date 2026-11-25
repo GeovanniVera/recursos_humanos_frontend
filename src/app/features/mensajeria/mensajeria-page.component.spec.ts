@@ -70,6 +70,12 @@ describe('MensajeriaPage', () => {
 
   beforeEach(async () => {
     patchDialogPrototype();
+    if (typeof URL.createObjectURL !== 'function') {
+      URL.createObjectURL = () => 'blob:http://localhost/mock-image';
+    }
+    if (typeof URL.revokeObjectURL !== 'function') {
+      URL.revokeObjectURL = () => undefined;
+    }
     queryParamsSubject = new BehaviorSubject<ParamMap>(convertToParamMap({}));
     sesionSignal = signal<SesionResponse | null>({
       usuario_id: 2,
@@ -143,18 +149,32 @@ describe('MensajeriaPage', () => {
   it('marca el botón de formato activo en la barra del editor', () => {
     const fixture = flushInitialLoads();
     const host = fixture.nativeElement as HTMLElement;
+    const richEditor = fixture.componentInstance.richEditorRef()!;
 
-    fixture.componentInstance.boldActive.set(true);
+    richEditor.boldActive.set(true);
     fixture.detectChanges();
 
-    const boldBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Negrita"]');
+    const boldBtn = host.querySelector<HTMLButtonElement>('.simple-toolbar button[title="Negrita"]');
     expect(boldBtn?.classList.contains('is-active')).toBe(true);
     expect(boldBtn?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('.simple-toolbar button[title="Insertar tabla 3×3"]')).toBeNull();
   });
 
-  it('carga un comunicado rechazado en el editor mostrando el feedback y fichas legibles', () => {
+  it('carga un comunicado rechazado en el editor mostrando el feedback, fichas y empleados extra', () => {
     const fixture = flushInitialLoads();
-    const rechazado = crearComunicadoMock();
+    const rechazado = crearComunicadoMock({
+      filtros_json: { area_ids: [], categorias_tipo: [], empleado_ids_extra: [99] },
+      empleados_extra: [
+        {
+          id: 99,
+          num_empleado: 'EMP-099',
+          nombre: 'Carlos Extra',
+          correo_institucional: 'carlos.extra@utn.edu.mx',
+          area: 'Sistemas',
+          categoria: 'Administrativos',
+        },
+      ],
+    });
 
     fixture.componentInstance.aplicarComunicadoEnEditor(rechazado);
     fixture.detectChanges();
@@ -163,12 +183,15 @@ describe('MensajeriaPage', () => {
     expect(host.textContent).toContain('Corrección de comunicado rechazado');
     expect(host.textContent).toContain('Falta adjuntar oficio firmado.');
     expect(fixture.componentInstance.bodyHtml()).toContain('Nombre completo');
+    expect(fixture.componentInstance.wordCount()).toBeGreaterThan(0);
+    expect(fixture.componentInstance.charCount()).toBeGreaterThan(0);
+    expect(fixture.componentInstance.extraEmpleados().map((e) => e.id)).toEqual([99]);
   });
 
   it('evita perder el foco del editor al presionar mousedown en botones de formato', () => {
     const fixture = flushInitialLoads();
     const host = fixture.nativeElement as HTMLElement;
-    const italicBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Cursiva"]');
+    const italicBtn = host.querySelector<HTMLButtonElement>('.simple-toolbar button[title="Cursiva"]');
     expect(italicBtn).not.toBeNull();
 
     const mousedown = new MouseEvent('mousedown', { cancelable: true });
@@ -230,26 +253,37 @@ describe('MensajeriaPage', () => {
     expect(host.textContent).toContain('ana.perez@utn.edu.mx');
   });
 
-  it('muestra la barra de verificación de enlace al seleccionar un hipervínculo del editor', () => {
+  it('muestra la barra de verificación de enlace al seleccionar un hipervínculo en TipTap', () => {
     const fixture = flushInitialLoads();
     const host = fixture.nativeElement as HTMLElement;
-    const editor = host.querySelector<HTMLDivElement>('.rich-editor');
-    expect(editor).not.toBeNull();
+    const richEditor = fixture.componentInstance.richEditorRef()!;
 
-    editor!.innerHTML = '<p><a href="https://utn.edu.mx" target="_blank">Portal</a></p>';
-    const anchor = editor!.querySelector('a')!;
-    anchor.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    richEditor.setHtml('<p><a href="https://utn.edu.mx" target="_blank">Portal</a></p>');
+    richEditor.activeLinkHref.set('https://utn.edu.mx');
     fixture.detectChanges();
 
-    expect(host.querySelector('.active-link-bar')?.textContent).toContain('https://utn.edu.mx');
+    expect(host.querySelector('.context-bar')?.textContent).toContain('https://utn.edu.mx');
   });
 
-  it('abre la vista previa del correo dentro de un drawer lateral', () => {
+  it('abre la vista previa del correo con adjuntos y sin la leyenda de mensaje automático', () => {
     const fixture = flushInitialLoads();
     const host = fixture.nativeElement as HTMLElement;
 
     fixture.componentInstance.subject.set('[AVISO] Prueba');
     fixture.componentInstance.bodyHtml.set('<p>Hola {{nombre_empleado}}</p><img src="https://example.com/flyer.png" alt="Flyer" />');
+    fixture.componentInstance.attachments.set([
+      {
+        id: 12,
+        comunicado_id: 1,
+        nombre_original: 'oficio-firmado.pdf',
+        mime_type: 'application/pdf',
+        tamano_bytes: 102400,
+        es_imagen: false,
+        embebido_en_cuerpo: false,
+        url_descarga: '/api/mensajeria/comunicados/1/adjuntos/12',
+        fecha_subida: null,
+      },
+    ]);
     fixture.componentInstance.abrirVistaPrevia();
     fixture.detectChanges();
 
@@ -257,33 +291,84 @@ describe('MensajeriaPage', () => {
     const drawerDialog = host.querySelector<HTMLDialogElement>('app-drawer dialog');
     expect(drawerDialog?.hasAttribute('open')).toBe(true);
     expect(drawerDialog?.querySelector('.mail-preview-body img')).not.toBeNull();
+    expect(drawerDialog?.textContent).toContain('oficio-firmado.pdf');
     expect(drawerDialog?.textContent).toContain('Comunicado Institucional');
-    expect(drawerDialog?.textContent).toContain('Este mensaje fue enviado de manera automática');
+    expect(drawerDialog?.textContent).not.toContain('Este mensaje fue enviado de manera automática');
   });
 
-  it('permite alinear imágenes en el editor desde la barra de formato', () => {
+  it('permite redimensionar y alinear imágenes seleccionadas en el editor', () => {
     const fixture = flushInitialLoads();
     const host = fixture.nativeElement as HTMLElement;
-    const editor = host.querySelector<HTMLDivElement>('.rich-editor')!;
+    const richEditor = fixture.componentInstance.richEditorRef()!;
 
-    editor.innerHTML = '<img src="https://example.com/flyer.png" data-att-id="4" class="embedded-mail-img">';
-    const img = editor.querySelector('img')!;
-    img.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    richEditor.setHtml('<img src="https://example.com/flyer.png" data-att-id="4" data-align="left" width="480" class="embedded-mail-img">');
+    const editorInternal = (richEditor as unknown as { editor: { commands: { setNodeSelection: (pos: number) => void } } }).editor;
+    editorInternal.commands.setNodeSelection(0);
     fixture.detectChanges();
 
-    const centerBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Centrar"]')!;
-    const rightBtn = host.querySelector<HTMLButtonElement>('.editor-toolbar button[title="Alinear a la derecha"]')!;
-    expect(centerBtn).not.toBeNull();
-    expect(rightBtn).not.toBeNull();
+    expect(richEditor.selectedImageActive()).toBe(true);
+    expect(host.querySelector('.image-bar')?.textContent).toContain('480 px');
 
+    const preset50Btn = Array.from(host.querySelectorAll<HTMLButtonElement>('.image-bar button')).find(
+      (b) => b.textContent?.trim() === '50%',
+    )!;
+    const centerBtn = Array.from(host.querySelectorAll<HTMLButtonElement>('.image-bar button')).find(
+      (b) => b.textContent?.trim() === 'Centro',
+    )!;
+
+    preset50Btn.click();
     centerBtn.click();
     fixture.detectChanges();
-    expect(img.getAttribute('data-align')).toBe('center');
-    expect(fixture.componentInstance.alignCenterActive()).toBe(true);
 
-    rightBtn.click();
+    expect(richEditor.selectedImageWidth()).toBe(308);
+    expect(richEditor.selectedImageAlign()).toBe('center');
+    expect(richEditor.getHtml()).toContain('width="308"');
+    expect(richEditor.getHtml()).toContain('data-align="center"');
+  });
+
+  it('sube imágenes pegadas en el cuerpo y suma su peso al límite de 2 MB', async () => {
+    const fixture = flushInitialLoads();
+    const file = new File([new Uint8Array(524_288)], 'captura.png', { type: 'image/png' });
+
+    const uploadPromise = fixture.componentInstance.subirArchivos([file], true);
+    await Promise.resolve();
+
+    const crearReq = httpMock.expectOne(`${URL_BASE}/comunicados`);
+    crearReq.flush({ comunicado: crearComunicadoMock({ id: 55 }) });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const adjReq = httpMock.expectOne(`${URL_BASE}/comunicados/55/adjuntos`);
+    adjReq.flush({
+      mensaje: 'Archivo adjuntado correctamente.',
+      archivo: {
+        id: 77,
+        comunicado_id: 55,
+        nombre_original: 'captura.png',
+        mime_type: 'image/png',
+        tamano_bytes: 524_288,
+        es_imagen: true,
+        embebido_en_cuerpo: false,
+        url_descarga: '/api/mensajeria/comunicados/55/adjuntos/77',
+        fecha_subida: null,
+      },
+    });
+    // Refrescar conteos al iniciar borrador y cualquier previsualización debounced
+    httpMock.match(`${URL_BASE}/comunicados?pagina=1&por_pagina=1&estatus=pendientes`).forEach((r) =>
+      r.flush({
+        comunicados: [],
+        conteos: { pendientes: 0, aprobados: 0, rechazados: 0, borradores: 1 },
+        meta: { current_page: 1, last_page: 1, per_page: 1, total: 0 },
+      }),
+    );
+
+    await uploadPromise;
+    httpMock.match(`${URL_BASE}/destinatarios/previsualizar`).forEach((r) =>
+      r.flush({ total: 42, muestra: [], destinatarios: [] }),
+    );
     fixture.detectChanges();
-    expect(img.getAttribute('data-align')).toBe('right');
-    expect(fixture.componentInstance.alignRightActive()).toBe(true);
+
+    expect(fixture.componentInstance.totalAttachmentsBytes()).toBe(524_288);
+    expect(fixture.componentInstance.storageLabel()).toBe('0.50 MB / 2.00 MB');
+    expect(fixture.componentInstance.richEditorRef()!.getHtml()).toContain('data-att-id="77"');
   });
 });

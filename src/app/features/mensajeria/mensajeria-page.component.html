@@ -72,184 +72,16 @@
           </div>
         </div>
 
-        <div class="editor-shell">
-          <div class="editor-toolbar">
-            <div class="toolbar-group">
-              <div class="toolbar-segment" role="group" aria-label="Estilo de texto">
-                <button type="button" class="tool-btn is-icon" [class.is-active]="boldActive()"
-                  [attr.aria-pressed]="boldActive()" title="Negrita" aria-label="Negrita"
-                  (mousedown)="$event.preventDefault()" (click)="execFormat('bold')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-                    <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-                  </svg>
-                </button>
-                <button type="button" class="tool-btn is-icon" [class.is-active]="italicActive()"
-                  [attr.aria-pressed]="italicActive()" title="Cursiva" aria-label="Cursiva"
-                  (mousedown)="$event.preventDefault()" (click)="execFormat('italic')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="19" y1="4" x2="10" y2="4" />
-                    <line x1="14" y1="20" x2="5" y2="20" />
-                    <line x1="15" y1="4" x2="9" y2="20" />
-                  </svg>
-                </button>
-                <button type="button" class="tool-btn is-icon" [class.is-active]="underlineActive()"
-                  [attr.aria-pressed]="underlineActive()" title="Subrayado" aria-label="Subrayado"
-                  (mousedown)="$event.preventDefault()" (click)="execFormat('underline')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 3v7a6 6 0 0 0 12 0V3" />
-                    <line x1="4" y1="21" x2="20" y2="21" />
-                  </svg>
-                </button>
-              </div>
+        <app-rich-mail-editor
+          [imagePreviewUrls]="imagePreviewUrls()"
+          (htmlChange)="onEditorHtmlChange($event)"
+          (statsChange)="onEditorStatsChange($event)"
+          (filesPastedOrDropped)="onEditorFilesReceived($event)"
+        />
 
-              <div class="toolbar-segment" role="group" aria-label="Listas">
-                <button type="button" class="tool-btn" [class.is-active]="ulActive()" [attr.aria-pressed]="ulActive()"
-                  title="Lista con viñetas" (mousedown)="$event.preventDefault()"
-                  (click)="execFormat('insertUnorderedList')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="9" y1="6" x2="20" y2="6" />
-                    <line x1="9" y1="12" x2="20" y2="12" />
-                    <line x1="9" y1="18" x2="20" y2="18" />
-                    <circle cx="4.5" cy="6" r="1" fill="currentColor" />
-                    <circle cx="4.5" cy="12" r="1" fill="currentColor" />
-                    <circle cx="4.5" cy="18" r="1" fill="currentColor" />
-                  </svg>
-                  <span>Viñetas</span>
-                </button>
-                <button type="button" class="tool-btn" [class.is-active]="olActive()" [attr.aria-pressed]="olActive()"
-                  title="Lista numerada" (mousedown)="$event.preventDefault()"
-                  (click)="execFormat('insertOrderedList')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="10" y1="6" x2="20" y2="6" />
-                    <line x1="10" y1="12" x2="20" y2="12" />
-                    <line x1="10" y1="18" x2="20" y2="18" />
-                    <path d="M4 6h1.5v4" />
-                    <path d="M4 10h2" />
-                    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
-                  </svg>
-                  <span>Numerada</span>
-                </button>
-              </div>
-
-              <div class="toolbar-segment" role="group" aria-label="Alineación de texto e imágenes">
-                <button type="button" class="tool-btn is-icon" [class.is-active]="alignLeftActive()"
-                  [attr.aria-pressed]="alignLeftActive()" title="Alinear a la izquierda"
-                  aria-label="Alinear a la izquierda" (mousedown)="$event.preventDefault()"
-                  (click)="execAlign('left')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" aria-hidden="true">
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="3" y1="12" x2="15" y2="12" />
-                    <line x1="3" y1="18" x2="18" y2="18" />
-                  </svg>
-                </button>
-                <button type="button" class="tool-btn is-icon" [class.is-active]="alignCenterActive()"
-                  [attr.aria-pressed]="alignCenterActive()" title="Centrar" aria-label="Centrar"
-                  (mousedown)="$event.preventDefault()" (click)="execAlign('center')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" aria-hidden="true">
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="6" y1="12" x2="18" y2="12" />
-                    <line x1="4" y1="18" x2="20" y2="18" />
-                  </svg>
-                </button>
-                <button type="button" class="tool-btn is-icon" [class.is-active]="alignRightActive()"
-                  [attr.aria-pressed]="alignRightActive()" title="Alinear a la derecha"
-                  aria-label="Alinear a la derecha" (mousedown)="$event.preventDefault()"
-                  (click)="execAlign('right')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" aria-hidden="true">
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="9" y1="12" x2="21" y2="12" />
-                    <line x1="6" y1="18" x2="21" y2="18" />
-                  </svg>
-                </button>
-                <button type="button" class="tool-btn is-icon" [class.is-active]="alignJustifyActive()"
-                  [attr.aria-pressed]="alignJustifyActive()" title="Justificar" aria-label="Justificar"
-                  (mousedown)="$event.preventDefault()" (click)="execAlign('justify')">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" aria-hidden="true">
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="3" y1="12" x2="21" y2="12" />
-                    <line x1="3" y1="18" x2="21" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
-              <div class="link-wrap">
-                <button type="button" class="tool-btn is-labelled" [class.is-active]="linkPopoverOpen()"
-                  title="Insertar enlace" (mousedown)="$event.preventDefault()" (click)="toggleLinkPopover()">
-                  <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                  <span>Enlace</span>
-                </button>
-
-                @if (linkPopoverOpen()) {
-                <div class="link-popover">
-                  <p class="link-popover-title">Insertar hipervínculo</p>
-                  <input type="text" class="text-input is-sm" placeholder="Texto visible (ej. Portal RH)"
-                    [ngModel]="linkText()" (ngModelChange)="linkText.set($event)" />
-                  <input type="url" class="text-input is-sm mono-meta" placeholder="https://utn.edu.mx"
-                    [ngModel]="linkUrl()" (ngModelChange)="linkUrl.set($event)" />
-                  <div class="link-popover-actions">
-                    <app-button variant="ghost" size="sm" (click)="toggleLinkPopover(false)">
-                      Cancelar
-                    </app-button>
-                    <app-button variant="primary" size="sm" (click)="confirmInsertLink()">
-                      Insertar
-                    </app-button>
-                  </div>
-                </div>
-                }
-              </div>
-            </div>
-
-            <button type="button" class="tool-clear" title="Limpiar formato del texto seleccionado"
-              (mousedown)="$event.preventDefault()" (click)="execFormat('removeFormat')">
-              <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
-                <path d="M22 21H7" />
-                <path d="m5 11 9 9" />
-              </svg>
-              <span>Limpiar formato</span>
-            </button>
-          </div>
-
-          @if (activeLinkHref(); as href) {
-          <div class="active-link-bar">
-            <span class="active-link-url" [title]="href">Enlace: {{ href }}</span>
-            <div class="active-link-actions">
-              <button type="button" class="link-btn" (mousedown)="$event.preventDefault()"
-                (click)="abrirEnlaceActivo()">
-                Abrir enlace ↗
-              </button>
-              <button type="button" class="link-btn" (mousedown)="$event.preventDefault()"
-                (click)="quitarEnlaceActivo()">
-                Quitar enlace
-              </button>
-            </div>
-          </div>
-          }
-
-          <div #richEditor class="rich-editor" contenteditable="true"
-            data-placeholder="Escribe aquí el cuerpo del comunicado oficial. Puedes dar formato, insertar datos del trabajador o embeber imágenes..."
-            (input)="onEditorInput()" (click)="onEditorClick($event)" (keydown)="onEditorKeydown($event)"
-            (focus)="saveEditorSelection()" (keyup)="saveEditorSelection()" (mouseup)="saveEditorSelection()"></div>
-
-          <div class="editor-foot">
-            <span class="mono-meta">{{ wordCount() }} palabras · {{ charCount() }} caracteres</span>
-            <span class="mono-meta">Formato institucional</span>
-          </div>
+        <div class="editor-foot">
+          <span class="mono-meta">{{ wordCount() }} palabras · {{ charCount() }} caracteres</span>
+          <span class="mono-meta">Pega o arrastra imágenes · Máx. 616 px de ancho en correo</span>
         </div>
       </section>
 
@@ -548,6 +380,8 @@
       [folio]="folioActual()"
       [subject]="previewSubject()"
       [bodyHtml]="previewBodySafe()"
+      [attachments]="attachments()"
+      [showAutoReplyNotice]="false"
     />
   </div>
 
