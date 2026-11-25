@@ -1,0 +1,26 @@
+<main class="error-page" [attr.aria-labelledby]="'error-title-' + copy().code">
+  <section class="error-card">
+    <div class="error-media">
+      <img
+        class="error-illustration"
+        [src]="copy().image"
+        [alt]="copy().imageAlt"
+        width="320"
+        height="240"
+      />
+    </div>
+
+    <div class="error-body">
+      <p class="error-overline">{{ copy().overline }}</p>
+      <h1 class="error-title" [id]="'error-title-' + copy().code">{{ copy().title }}</h1>
+      <p class="error-desc">{{ copy().description }}</p>
+
+      <div class="error-actions">
+        <app-button variant="primary" (click)="irAlPanel()">Ir al panel</app-button>
+        <app-button variant="secondary" (click)="accionSecundaria()">
+          {{ copy().secondaryLabel }}
+        </app-button>
+      </div>
+    </div>
+  </section>
+</main>

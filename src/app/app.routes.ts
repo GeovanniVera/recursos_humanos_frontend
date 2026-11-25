@@ -124,5 +124,28 @@ export const routes: Routes = [
       ...devRoutes,
     ],
   },
-  { path: '**', redirectTo: '' },
+  {
+    path: '403',
+    data: { code: '403', breadcrumb: 'Acceso restringido' },
+    loadComponent: () =>
+      import('./features/errors/error-page.component').then((m) => m.ErrorPage),
+  },
+  {
+    path: '404',
+    data: { code: '404', breadcrumb: 'Página no encontrada' },
+    loadComponent: () =>
+      import('./features/errors/error-page.component').then((m) => m.ErrorPage),
+  },
+  {
+    path: '500',
+    data: { code: '500', breadcrumb: 'Error interno' },
+    loadComponent: () =>
+      import('./features/errors/error-page.component').then((m) => m.ErrorPage),
+  },
+  {
+    path: '**',
+    data: { code: '404', breadcrumb: 'Página no encontrada' },
+    loadComponent: () =>
+      import('./features/errors/error-page.component').then((m) => m.ErrorPage),
+  },
 ];
