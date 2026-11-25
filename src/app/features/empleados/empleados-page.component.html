@@ -2,11 +2,10 @@
   <header class="head">
     <div class="identity">
       <p class="overline">Recursos Humanos</p>
-      <h1 class="title">Empleados activos</h1>
+      <h1 class="title">{{ titulo() }}</h1>
       <p class="sub">
-        La plantilla vigente: empleados con la cuenta activa y sin fecha de baja. La consulta filtra
-        por estado en el servidor, así que las cifras de abajo son las de esta lista y no las de todo
-        el padrón.
+        {{ subtitulo() }} La consulta filtra por estado en el servidor, así que las cifras de abajo
+        son las de esta lista y no las de todo el padrón.
       </p>
     </div>
 
@@ -15,14 +14,14 @@
       refresh is secondary. Both sit together at the top right, where the canvas
       places the action of a listing.
 
-      The alta is an `<a>`, not an `app-button`: its destination is a route, so
-      the platform has to provide the link (middle click, context menu, announced
-      as a link). The pill is painted from the same tokens the button uses.
+      The alta is a `<button>`, not a link: it no longer leads to a route, it
+      opens the folder of a new file over this same roster. The pill is painted
+      from the same tokens the primary button uses.
     -->
     <div class="head-actions">
-      <a class="new-employee" routerLink="/empleados/alta">Nuevo empleado</a>
+      <button type="button" class="new-employee" (click)="abrirAlta()">Nuevo empleado</button>
 
-      <app-button variant="secondary" [disabled]="loading()" (click)="solicitar()">
+      <app-button variant="secondary" [disabled]="controlesDeshabilitados()" (click)="solicitar()">
         Actualizar
       </app-button>
     </div>
@@ -30,7 +29,9 @@
 
   <!--
     A real label, not only a placeholder: the field has to say what it does once
-    something is typed in it.
+    something is typed in it. The complaint is a chip under the field and is
+    linked with `aria-describedby`, so a screen reader reads the format together
+    with the field instead of leaving the rule only in colour.
   -->
   <div class="search">
     <label class="search-label" for="buscar">Buscar empleado</label>
@@ -40,153 +41,249 @@
       type="search"
       name="buscar"
       autocomplete="off"
-      placeholder="Escribí para buscar en el padrón"
+      placeholder="Escribe para buscar en el padrón"
       [attr.value]="buscar()"
+      [attr.aria-invalid]="errorBusqueda() !== null ? 'true' : null"
+      [attr.aria-describedby]="errorBusqueda() !== null ? 'buscar-error' : 'buscar-hint'"
       (input)="alBuscar($event)"
     />
-    <p class="search-hint">La búsqueda recorre todo el padrón y vuelve a la primera página.</p>
+
+    @if (errorBusqueda(); as mensajeError) {
+      <p class="field-error" id="buscar-error" role="alert">
+        <span class="field-error-icon" aria-hidden="true">
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path d="M8 4v5M8 12h.01" />
+          </svg>
+        </span>
+        {{ mensajeError }}
+      </p>
+    }
+
+    <p class="search-hint" id="buscar-hint">
+      La búsqueda recorre todo el padrón y vuelve a la primera página.
+    </p>
   </div>
 
-  @if (error(); as fallo) {
+  @if (falla(); as fallo) {
     <!--
       `role="alert"` announces the failure as soon as it renders. The icon ✕
       carries the state together with the colour, so the message survives a
       screen read in grayscale.
     -->
-    <div class="alert" role="alert">
-      <span class="alert-icon" aria-hidden="true">
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        >
-          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
-        </svg>
-      </span>
-
-      <div class="alert-copy">
-        <p class="alert-message">{{ fallo.mensaje }}</p>
-        @if (fallo.codigo) {
-          <!-- A contract code, not copy: it is shown as it arrives. -->
-          <p class="alert-code">{{ fallo.codigo }}</p>
-        }
-      </div>
-
+    <app-alert-banner variant="error" [message]="fallo.mensaje" [code]="fallo.codigo">
       @switch (fallo.accion) {
         @case ('reintentar') {
-          <!-- A `429` locks this button until the wait it announced is over. -->
+          <!--
+            The retry targets the block that failed, which may be a page the
+            screen never reached; `solicitar()` would refresh the visible page
+            instead and leave the jump unanswered.
+          -->
           <app-button
+            alert-actions
             variant="secondary"
-            [disabled]="loading() || espera() > 0"
-            (click)="solicitar()"
+            [disabled]="cargando() || espera() > 0"
+            (click)="reintentar()"
           >
             Reintentar
           </app-button>
         }
         @case ('iniciar-sesion') {
-          <app-button variant="secondary" (click)="iniciarSesion()">Iniciar sesión</app-button>
+          <app-button alert-actions variant="secondary" (click)="iniciarSesion()">
+            Iniciar sesión
+          </app-button>
         }
       }
-    </div>
+    </app-alert-banner>
   }
 
   <!--
-    The state and the name are the two columns with a shape of their own; the
-    projected renderer receives the row, the column and the value, so the table
-    stays generic. The name is a real `<button>`: the row click is a pointer
-    shortcut, and the keyboard needs an element that already is a control.
+    While a new block travels, the rows that are already on screen stay put and
+    this line says what is happening. It is a `status` region, so assistive tech
+    announces the wait without stealing focus from the pager. The skeleton is
+    reserved for the first load, when there is nothing to keep.
   -->
-  <app-data-table
-    [columns]="columnas"
-    [rows]="filas()"
-    [loading]="loading()"
-    [emptyMessage]="mensajeVacio()"
-    caption="Padrón de empleados"
-    rowKey="id"
-    [clickableRows]="true"
-    (rowClick)="abrirFicha($event)"
-  >
-    <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
-      @if (column.key === 'estado') {
-        <!--
-          A pill plus the word: `Activo` and `Baja` arrive already written, and
-          the word is what carries the state when the colour is gone.
-        -->
-        <span
-          class="badge"
-          [class.is-activo]="value === 'Activo'"
-          [class.is-baja]="value !== 'Activo'"
-        >
-          {{ value }}
-        </span>
-      } @else if (column.key === 'nombre') {
+  @if (cargandoBloque()) {
+    <p class="block-loading" role="status" aria-live="polite">
+      <span class="block-loading-dot" aria-hidden="true"></span>
+      Cargando la página {{ paginaObjetivo() ?? paginaActual() }}…
+    </p>
+  }
+
+  <div class="ledger">
+    <!--
+      State tabs of the listing, folded on the top edge of the sheet.
+
+      The filter lands on the server: `GET /api/empleados` narrows on `estatus`
+      in SQL and counts the narrowed set, so the range line and the pager always
+      describe the list on screen. Filtering the rows already loaded would count
+      a slice of one buffered block as if it were the whole institution.
+
+      The count slot of each tab stays reserved and empty: the endpoint returns
+      the total of the filter, not one figure per status, and a number taken from
+      another filter would be a lie.
+    -->
+    <div class="tabs" role="group" aria-label="Filtrar el listado por estado">
+      @for (filtro of filtrosEstado; track filtro.id) {
         <button
           type="button"
-          class="name-button"
-          [attr.aria-label]="'Ver la ficha de ' + value"
-          (click)="abrirFichaDesdeNombre($event, row)"
+          class="tab is-{{ filtro.id }}"
+          [class.is-active]="estadoFiltro() === filtro.id"
+          [attr.aria-pressed]="estadoFiltro() === filtro.id ? 'true' : null"
+          [attr.aria-label]="etiquetaTab(filtro)"
+          (click)="filtrarEstado(filtro)"
         >
-          {{ value }}
+          <span class="tab-title">{{ filtro.label }}</span>
+          <!--
+            The figure of this status in the filtered universe. It is hidden from
+            assistive tech because the button's `aria-label` already reads it in
+            a sentence, and one datum deserves one reading.
+          -->
+          <span class="tab-count" aria-hidden="true">{{ contadorDe(filtro) }}</span>
         </button>
-      } @else {
-        {{ value }}
       }
-    </ng-template>
-  </app-data-table>
+    </div>
 
-  @if (padron()) {
-    <footer class="pager">
-      <div class="pager-meta">
-        <p class="pager-range" aria-live="polite">{{ rango() }}</p>
+    <!--
+      The sheet: one frame around the table and the band that closes it, the same
+      paper the semáforo leaves on screen, so the two listings read as pages of one
+      archive. The tab strip sits on its top edge, so the corner under the strip is
+      square. Density and pager share the foot, because neither is a strip of the
+      page: both describe the listing they close.
+    -->
+    <div class="sheet">
+      <!--
+        The number, the name and the status are the three cells with a shape of
+        their own; the projected renderer receives the row, the column and the
+        value, so the table stays generic.
 
-        <div class="page-size">
-          <label class="page-size-label" for="porPagina">Filas por página</label>
-          <select
-            id="porPagina"
-            class="page-size-select"
-            [value]="porPagina()"
-            (change)="cambiarPorPagina($event)"
-          >
-            @for (tamano of tamanosPagina; track tamano) {
-              <option [value]="tamano">{{ tamano }}</option>
-            }
-          </select>
+        The number prints alone: the stamp used to live inside it, pushing the
+        figure and leaving the end of the row empty. The status owns a column of
+        its own, where the word is read next to its colour instead of competing
+        with the identifier. The date joins only when the list can hold a
+        terminated worker.
+
+        `leadingDecoration` stays on without a lane: it is what opts a clickable
+        table into the row-wide focus indicator, and the row itself is not
+        focusable. The name is a shared `app-row-link`, because the row click is
+        a pointer shortcut and the keyboard needs an element that already is a
+        control.
+      -->
+      <app-data-table
+        variant="ledger"
+        [density]="densidad()"
+        mobileMode="cards"
+        [columns]="columnas()"
+        [leadingDecoration]="true"
+        [rows]="filas()"
+        [loading]="cargandoInicial()"
+        [emptyMessage]="mensajeVacio()"
+        caption="Listado de empleados"
+        rowKey="id"
+        [clickableRows]="true"
+        (rowClick)="abrirFicha($event)"
+      >
+        <ng-template #cell let-row="$implicit" let-column="column" let-value="value">
+          @if (column.key === 'num_empleado') {
+            <!--
+              The lane is the same mechanic as the traffic light: colour on the
+              leading edge at a glance, with the sentence kept for the screen
+              reader. The stamp in `Estado` repeats the word visually and stays
+              out of the accessibility tree, so the datum is read once.
+            -->
+            <app-row-flag [tone]="tonoDe(row)" [label]="descripcionDe(row)" />
+            <span class="mono">{{ value }}</span>
+          } @else if (column.key === 'nombre') {
+            <app-row-link
+              [ariaLabel]="'Ver la ficha de ' + value"
+              (click)="abrirFichaDesdeNombre($event, row)"
+            >
+              <span class="mono">{{ value }}</span>
+            </app-row-link>
+          } @else if (column.key === 'estatus') {
+            <span class="seal is-{{ tonoDe(row) }}" aria-hidden="true">{{ etiquetaDe(row) }}</span>
+          } @else if (column.key === 'fecha_baja') {
+            <span class="mono">{{ fechaDe(row) }}</span>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+      </app-data-table>
+
+      <!--
+        The band that closes the sheet. How much room a row gets lives here because
+        it is a state of these rows; the pager lives here because it is the foot of
+        this table, not a strip of the page. Three real buttons in a group, each
+        carrying `aria-pressed`: density is a state, not a link.
+      -->
+      <div class="sheet-foot">
+        <div class="density" role="group" aria-label="Densidad de la tabla">
+          @for (opcion of densidades; track opcion.id) {
+            <button
+              type="button"
+              [attr.aria-pressed]="densidad() === opcion.id"
+              (click)="cambiarDensidad(opcion.id)"
+            >
+              {{ opcion.label }}
+            </button>
+          }
         </div>
+
+        @if (hayDatos()) {
+          <app-pagination
+            [rangeText]="rango()"
+            [pageLabel]="etiquetaPagina()"
+            [page]="paginaActual()"
+            [totalPages]="totalPaginasMax()"
+            [pageSize]="porPagina()"
+            [pageSizeOptions]="tamanosPagina"
+            [disabled]="controlesDeshabilitados()"
+            [disableFirst]="primeraDeshabilitado()"
+            [disablePrev]="anteriorDeshabilitado()"
+            [disableNext]="siguienteDeshabilitado()"
+            [disableLast]="ultimaDeshabilitado()"
+            [jumpError]="errorPagina()"
+            (pageChange)="irA($event)"
+            (pageSizeChange)="cambiarTamanoPagina($event)"
+            (jumpSubmit)="irAPaginaValor($event)"
+          />
+        }
       </div>
-
-      <div class="pager-controls">
-        <app-button
-          variant="secondary"
-          [disabled]="anteriorDeshabilitado()"
-          (click)="irA(paginaActual() - 1)"
-        >
-          Anterior
-        </app-button>
-
-        <p class="pager-page">{{ etiquetaPagina() }}</p>
-
-        <app-button
-          variant="secondary"
-          [disabled]="siguienteDeshabilitado()"
-          (click)="irA(paginaActual() + 1)"
-        >
-          Siguiente
-        </app-button>
-      </div>
-    </footer>
-  }
+    </div>
+  </div>
 </section>
 
 <!--
-  One panel for the whole screen, mounted once and driven by the two signals
-  above: the row click and the name button both end here. A termination reported
-  by the panel sends the roster back to the server, because the endpoint filters
-  the inactive workers out and the row has to disappear.
+  Three panels for the whole screen, each mounted once and driven by its own pair
+  of signals: the row click and the name button both end in the record, the
+  header action ends in the registration folder, and the pencil of the record
+  ends in the edit folder. A termination reported by the record sends the roster
+  back to the server, because the endpoint filters the inactive workers out and
+  the row has to disappear; a registration and an edit do the same, because the
+  row on this list is what they change.
 -->
 <app-ficha-drawer
+  [puedeEditar]="puedeEditar()"
+  (editarSolicitado)="editarEmpleado($event)"
   [empleadoId]="fichaId()"
   [(open)]="fichaAbierta"
-  (bajaRegistrada)="alRegistrarBaja()"
+  (bajaRegistrada)="alActualizarCicloVida()"
+/>
+
+<app-alta-drawer [(open)]="altaAbierta" (registrado)="alRegistrarEmpleado($event)" />
+
+<!--
+  The third panel of the screen: the edit folder, mounted once like the other
+  two. It is addressed by the key of the worker and it never navigates — the
+  screen only decides who is being corrected and what to say once it lands.
+-->
+<app-editar-drawer
+  [empleadoId]="editarId()"
+  [(open)]="edicionAbierta"
+  (actualizado)="alActualizarEmpleado($event)"
 />

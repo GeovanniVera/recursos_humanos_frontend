@@ -1,0 +1,54 @@
+// Every rule is scoped under the element selector: this stylesheet is global,
+// because the pill has to shape an icon the caller projects (see the component
+// header). Nothing outside `app-status-pill` is touched.
+app-status-pill {
+  // The host is the slot of the pill in the caller's layout, not a box of its own.
+  display: inline-flex;
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    // Always a border, transparent when the tone has no line: the outlined
+    // `casi-completo` then measures the same as the filled ones, so a row of
+    // pills stays on one line.
+    border: var(--border-width) solid var(--transparent);
+    border-radius: var(--radius-pill);
+    font: var(--text-label);
+    white-space: nowrap;
+  }
+
+  // The icon arrives as content and carries no class of ours to hang a size on.
+  // Sizing it here is what keeps two callers from picking two sizes.
+  .pill svg {
+    width: var(--space-4);
+    height: var(--space-4);
+    flex: none;
+  }
+
+  .pill.is-completo,
+  .pill.is-activo {
+    background: var(--color-state-success);
+    color: var(--color-state-success-ink);
+  }
+
+  .pill.is-incompleto,
+  .pill.is-baja {
+    background: var(--color-state-error);
+    color: var(--color-state-error-ink);
+  }
+
+  // Outlined, not filled: the solid warning fill left the word at 4.24:1. The
+  // yellow marker stays on the border and on the icon; the word keeps the ink
+  // every other label of the system uses.
+  .pill.is-casi-completo {
+    background: var(--color-surface-glass);
+    color: var(--color-text-primary);
+    border-color: var(--color-state-warning);
+  }
+
+  .pill.is-casi-completo svg {
+    color: var(--color-state-warning);
+  }
+}

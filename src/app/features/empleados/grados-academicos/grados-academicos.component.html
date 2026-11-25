@@ -1,0 +1,242 @@
+<fieldset class="group" [disabled]="guardandoGrado()">
+  <legend class="group-title">Grados académicos</legend>
+  <p class="group-hint">
+    La carpeta guarda todos los grados declarados. Solo uno puede estar marcado como máximo, y es el
+    que la ficha publica como nivel de estudios.
+  </p>
+
+  @if (grados().length === 0) {
+    <p class="carpeta-vacia">Sin grados registrados.</p>
+  } @else {
+    <ul class="tarjetas">
+      @for (grado of grados(); track grado.clave) {
+        <li class="tarjeta">
+          <div class="tarjeta-head">
+            <p class="tarjeta-titulo">
+              {{ grado.titulo_o_carrera || grado.nivel_estudios || 'Grado académico' }}
+            </p>
+            @if (grado.es_maximo) {
+              <span class="badge is-ok">Grado máximo</span>
+            }
+          </div>
+
+          <dl class="tarjeta-meta">
+            <div>
+              <dt>Nivel</dt>
+              <dd>{{ grado.nivel_estudios || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Escuela</dt>
+              <dd>{{ grado.escuela_procedencia || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Generación</dt>
+              <dd>{{ grado.generacion || '—' }}</dd>
+            </div>
+            @if (grado.cedula_profesional) {
+              <div>
+                <dt>Cédula</dt>
+                <dd>{{ grado.cedula_profesional }}</dd>
+              </div>
+            }
+          </dl>
+
+          @if (erroresRegistros()[grado.clave]; as errores) {
+            @for (error of errores; track $index) {
+              <p class="field-error" role="alert">{{ error }}</p>
+            }
+          }
+          <div class="tarjeta-acciones">
+            <button
+              type="button"
+              class="action"
+              [disabled]="guardandoGrado()"
+              (click)="editarGrado.emit(grado)"
+            >
+              Editar
+            </button>
+            @if (!grado.es_maximo) {
+              <button
+                type="button"
+                class="action"
+                [disabled]="guardandoGrado()"
+                (click)="marcarGradoMaximo.emit(grado)"
+              >
+                Marcar como máximo
+              </button>
+            }
+            <button
+              type="button"
+              class="action is-danger"
+              [disabled]="guardandoGrado()"
+              (click)="eliminarGrado.emit(grado)"
+            >
+              Eliminar
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!gradoAbierto()) {
+    <button type="button" class="action" (click)="nuevoGrado.emit()">
+      + Agregar grado académico
+    </button>
+  } @else {
+    <div class="form-carpeta">
+      <p class="form-carpeta-titulo">
+        {{ !editando() ? 'Nuevo grado' : 'Editar grado' }}
+      </p>
+
+      <div class="grid">
+        <div class="field">
+          <label class="label" [attr.for]="prefijo() + 'grado-nivel'">Nivel de estudios</label>
+          <select
+            [id]="prefijo() + 'grado-nivel'"
+            class="control"
+            [class.is-invalid]="errorGrado('nivel_estudios_id') !== null"
+            [attr.aria-invalid]="errorGrado('nivel_estudios_id') !== null"
+            [attr.aria-describedby]="
+              errorGrado('nivel_estudios_id') ? prefijo() + 'error-nivel_estudios_id' : null
+            "
+            (change)="
+              gradoNivel.set($any($event.target).value === '' ? null : +$any($event.target).value)
+            "
+          >
+            <option value="" [selected]="gradoNivel() === null">Elige una opción</option>
+            @for (nivel of niveles(); track nivel.id) {
+              <option [value]="nivel.id" [selected]="gradoNivel() === nivel.id">
+                {{ nivel.descripcion }}
+              </option>
+            }
+          </select>
+          @if (errorGrado('nivel_estudios_id'); as error) {
+            <p class="field-error" [id]="prefijo() + 'error-nivel_estudios_id'" role="alert">
+              {{ error }}
+            </p>
+          }
+        </div>
+
+        <div class="field is-wide">
+          <label class="label" [attr.for]="prefijo() + 'grado-titulo'">Título o carrera</label>
+          <input
+            [id]="prefijo() + 'grado-titulo'"
+            class="control"
+            type="text"
+            maxlength="200"
+            [value]="gradoTitulo()"
+            [class.is-invalid]="errorGrado('titulo_o_carrera') !== null"
+            [attr.aria-invalid]="errorGrado('titulo_o_carrera') !== null"
+            [attr.aria-describedby]="
+              errorGrado('titulo_o_carrera') ? prefijo() + 'error-titulo_o_carrera' : null
+            "
+            (input)="gradoTitulo.set($any($event.target).value)"
+          />
+          @if (errorGrado('titulo_o_carrera'); as error) {
+            <p class="field-error" [id]="prefijo() + 'error-titulo_o_carrera'" role="alert">
+              {{ error }}
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" [attr.for]="prefijo() + 'grado-escuela'"
+            >Escuela de procedencia</label
+          >
+          <input
+            [id]="prefijo() + 'grado-escuela'"
+            class="control"
+            type="text"
+            maxlength="200"
+            [value]="gradoEscuela()"
+            [class.is-invalid]="errorGrado('escuela_procedencia') !== null"
+            [attr.aria-invalid]="errorGrado('escuela_procedencia') !== null"
+            [attr.aria-describedby]="
+              errorGrado('escuela_procedencia') ? prefijo() + 'error-escuela_procedencia' : null
+            "
+            (input)="gradoEscuela.set($any($event.target).value)"
+          />
+          @if (errorGrado('escuela_procedencia'); as error) {
+            <p class="field-error" [id]="prefijo() + 'error-escuela_procedencia'" role="alert">
+              {{ error }}
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" [attr.for]="prefijo() + 'grado-generacion'">Generación</label>
+          <input
+            [id]="prefijo() + 'grado-generacion'"
+            class="control"
+            type="text"
+            maxlength="9"
+            placeholder="AAAA-AAAA"
+            [value]="gradoGeneracion()"
+            [class.is-invalid]="errorGrado('generacion') !== null"
+            [attr.aria-invalid]="errorGrado('generacion') !== null"
+            [attr.aria-describedby]="
+              errorGrado('generacion') ? prefijo() + 'error-generacion' : null
+            "
+            (input)="gradoGeneracion.set($any($event.target).value)"
+          />
+          @if (errorGrado('generacion'); as error) {
+            <p class="field-error" [id]="prefijo() + 'error-generacion'" role="alert">
+              {{ error }}
+            </p>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" [attr.for]="prefijo() + 'grado-cedula'">Cédula profesional</label>
+          <input
+            [id]="prefijo() + 'grado-cedula'"
+            class="control"
+            type="text"
+            maxlength="30"
+            [value]="gradoCedula()"
+            [class.is-invalid]="errorGrado('cedula_profesional') !== null"
+            [attr.aria-invalid]="errorGrado('cedula_profesional') !== null"
+            [attr.aria-describedby]="
+              errorGrado('cedula_profesional') ? prefijo() + 'error-cedula_profesional' : null
+            "
+            (input)="gradoCedula.set($any($event.target).value)"
+          />
+          @if (errorGrado('cedula_profesional'); as error) {
+            <p class="field-error" [id]="prefijo() + 'error-cedula_profesional'" role="alert">
+              {{ error }}
+            </p>
+          }
+        </div>
+      </div>
+
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="gradoMaximo()"
+          (change)="gradoMaximo.set($any($event.target).checked)"
+        />
+        <span>Marcar como grado máximo</span>
+      </label>
+
+      <div class="acciones form-carpeta-acciones">
+        <button
+          type="button"
+          class="action"
+          [disabled]="guardandoGrado()"
+          (click)="cancelarGrado.emit()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="action is-primary"
+          [disabled]="guardandoGrado()"
+          (click)="guardarGrado.emit()"
+        >
+          {{ guardandoGrado() ? 'Guardando…' : 'Guardar grado' }}
+        </button>
+      </div>
+    </div>
+  }
+</fieldset>

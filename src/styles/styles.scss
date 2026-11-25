@@ -7,9 +7,11 @@
 
 @use './tokens/primitives';
 @use './tokens/typography';
+@use './tokens/paper';
 @use './tokens/theme-guinda';
 @use './tokens/theme-light';
 @use './tokens/theme-dark';
+@use './tokens/theme-verde';
 @use './tokens/motion';
 
 *,

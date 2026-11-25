@@ -1,0 +1,427 @@
+<section class="page">
+  <div class="top-row">
+    <app-page-header eyebrow="Comunicación Institucional" title="Correos masivos"
+      subtitle="Redacta comunicados oficiales personalizados para el personal activo, adjunta archivos y envía a autorización o dispersión directa." />
+
+    <div class="top-actions">
+      @if (comunicadoId() !== null) {
+      <app-button variant="ghost" size="sm" (click)="nuevoBorradorLimpio()">
+        Nuevo correo
+      </app-button>
+      }
+      <app-button variant="secondary" size="sm" (click)="irABorradores()">
+        Ver borradores
+      </app-button>
+      <app-button variant="secondary" size="sm" (click)="irAHistorial()">
+        Historial
+      </app-button>
+    </div>
+  </div>
+
+  @if (loadingDraft()) {
+  <p class="mono-meta">Cargando comunicado...</p>
+  }
+
+  @if (rejectedFeedback(); as motivo) {
+  <app-alert-banner variant="error"
+    [title]="'Corrección de comunicado rechazado' + (folioActual() ? ' · ' + folioActual() : '')" [message]="motivo" />
+  }
+
+  <div class="compose-grid">
+    <div class="compose-main">
+      <!-- 01. Redacción -->
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">01</span>
+          <div>
+            <h2 class="panel-title">Redacción del correo</h2>
+            <p class="panel-desc">Define el asunto institucional y redacta el mensaje.</p>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label-row">
+            <label for="mensajeria-asunto" class="field-label">Asunto del correo *</label>
+            <span class="mono-meta">{{ subject().length }} / 120</span>
+          </div>
+
+          <input id="mensajeria-asunto" type="text" class="text-input" maxlength="120"
+            placeholder="Ej. [AVISO OFICIAL] Actualización de datos en el padrón institucional" [ngModel]="subject()"
+            (ngModelChange)="subject.set($event)" />
+
+          <div class="chip-row">
+            <span class="chip-caption">Prefijos rápidos:</span>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[AVISO OFICIAL]')">
+              [AVISO OFICIAL]
+            </button>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[NOM-035]')">
+              [NOM-035]
+            </button>
+            <button type="button" class="prefix-chip" (click)="toggleSubjectPrefix('[CAPACITACIÓN]')">
+              [CAPACITACIÓN]
+            </button>
+          </div>
+        </div>
+
+        <div class="vars-bar">
+          <span class="vars-title">Insertar dato del trabajador:</span>
+          <div class="vars-list">
+            @for (variable of variablesDinamicas; track variable.token) {
+            <button type="button" class="var-btn" [title]="variable.descripcion" (mousedown)="$event.preventDefault()"
+              (click)="insertDynamicVariable(variable)">
+              + {{ variable.etiqueta }}
+            </button>
+            }
+          </div>
+        </div>
+
+        <app-rich-mail-editor
+          [imagePreviewUrls]="imagePreviewUrls()"
+          (htmlChange)="onEditorHtmlChange($event)"
+          (statsChange)="onEditorStatsChange($event)"
+          (filesPastedOrDropped)="onEditorFilesReceived($event)"
+        />
+
+        <div class="editor-foot">
+          <span class="mono-meta">{{ wordCount() }} palabras · {{ charCount() }} caracteres</span>
+          <span class="mono-meta">Pega o arrastra imágenes · Máx. 616 px de ancho en correo</span>
+        </div>
+      </section>
+
+      <!-- 02. Archivos e imágenes adjuntas -->
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">02</span>
+          <div>
+            <h2 class="panel-title">Archivos e imágenes adjuntas</h2>
+            <p class="panel-desc">Adjunta documentos (PDF, Word, Excel) o imágenes para embeber en el cuerpo (máx. 2
+              MB).</p>
+          </div>
+        </div>
+
+        <div class="storage-block">
+          <div class="field-label-row">
+            <span class="field-label">Capacidad utilizada</span>
+            <span class="mono-meta">{{ storageLabel() }}</span>
+          </div>
+          <div class="storage-track">
+            <div class="storage-fill" [style.width.%]="storagePercent()"></div>
+          </div>
+        </div>
+
+        <div class="drop-zone" [class.is-dragging]="isDragging()" (click)="openFilePicker()"
+          (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+          <input #fileInput type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" class="visually-hidden"
+            (change)="onFileSelected($event)" />
+          <p class="drop-title">
+            @if (uploadingFiles()) {
+            Subiendo archivos...
+            } @else {
+            Arrastra tus archivos aquí o haz clic para seleccionar
+            }
+          </p>
+          <p class="drop-hint">Imágenes (PNG, JPG, WebP) y documentos (PDF, DOC, DOCX, XLS, XLSX) · Máx. 2 MB</p>
+        </div>
+
+        @if (imagesAttachments().length > 0) {
+        <div class="attachments-group">
+          <h3 class="group-heading">Imágenes cargadas ({{ imagesAttachments().length }})</h3>
+          <div class="attachments-grid">
+            @for (img of imagesAttachments(); track img.id) {
+            <div class="attachment-card">
+              <div class="attachment-row">
+                @if (imagePreviewUrls().get(img.id); as thumbUrl) {
+                <img [src]="thumbUrl" [alt]="img.nombre_original" class="thumb-img" />
+                }
+                <div class="attachment-meta">
+                  <span class="attachment-name">{{ img.nombre_original }}</span>
+                  <span class="mono-meta">{{ formatBytes(img.tamano_bytes) }}</span>
+                </div>
+                <button type="button" class="remove-btn" title="Eliminar" (click)="eliminarAdjunto(img)">
+                  ✕
+                </button>
+              </div>
+              <app-button variant="secondary" size="sm" (click)="insertarImagenEnCuerpo(img)">
+                {{ img.embebido_en_cuerpo ? '✓ Insertada (insertar otra vez)' : '+ Insertar en el cuerpo' }}
+              </app-button>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (docsAttachments().length > 0) {
+        <div class="attachments-group">
+          <h3 class="group-heading">Documentos adjuntos ({{ docsAttachments().length }})</h3>
+          <div class="attachments-grid">
+            @for (doc of docsAttachments(); track doc.id) {
+            <div class="attachment-card">
+              <div class="attachment-row">
+                <span class="doc-badge">DOC</span>
+                <div class="attachment-meta">
+                  <span class="attachment-name">{{ doc.nombre_original }}</span>
+                  <span class="mono-meta">{{ formatBytes(doc.tamano_bytes) }}</span>
+                </div>
+                <button type="button" class="remove-btn" title="Quitar adjunto" (click)="eliminarAdjunto(doc)">
+                  ✕
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </section>
+    </div>
+
+    <!-- Columna derecha: Destinatarios y Acciones -->
+    <aside class="compose-side">
+      <section class="panel-card">
+        <div class="panel-head">
+          <span class="step-badge">03</span>
+          <div>
+            <h2 class="panel-title">Destinatarios</h2>
+            <p class="panel-desc">Solo empleados activos con correo institucional.</p>
+          </div>
+        </div>
+
+        <div class="mode-list">
+          <button type="button" class="mode-card" [class.is-active]="modoDestinatarios() === 'todos'"
+            (click)="setModoDestinatarios('todos')">
+            <div>
+              <div class="mode-title">Todos los empleados</div>
+              <div class="mono-meta">Padrón completo · {{ resumen()?.total_activos ?? 0 }} activos</div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'todos' ? '✓' : '' }}</span>
+          </button>
+
+          <button type="button" class="mode-card" [class.is-active]="modoDestinatarios() === 'area'"
+            (click)="setModoDestinatarios('area')">
+            <div>
+              <div class="mode-title">Por Área / Departamento</div>
+              <div class="mono-meta">{{ resumen()?.areas?.length ?? 0 }} áreas · {{ selectedAreasSum() }} seleccionados
+              </div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'area' ? '✓' : '' }}</span>
+          </button>
+
+          <button type="button" class="mode-card" [class.is-active]="modoDestinatarios() === 'categoria_cct'"
+            (click)="setModoDestinatarios('categoria_cct')">
+            <div>
+              <div class="mode-title">Por Tipo de Personal</div>
+              <div class="mono-meta">Admin, Docentes, MMyS · {{ selectedCategoriasSum() }}</div>
+            </div>
+            <span class="mode-check">{{ modoDestinatarios() === 'categoria_cct' ? '✓' : '' }}</span>
+          </button>
+        </div>
+
+        @if (modoDestinatarios() === 'area') {
+        <div class="segment-panel">
+          <div class="segment-head">
+            <span class="field-label">Áreas institucionales</span>
+            <button type="button" class="link-btn" (click)="toggleAllAreas()">
+              {{ selectedAreaIds().size === (resumen()?.areas?.length ?? 0) ? 'Limpiar' : 'Seleccionar todas' }}
+            </button>
+          </div>
+          <div class="segment-scroll">
+            @for (area of resumen()?.areas ?? []; track area.id) {
+            <button type="button" class="segment-item" [class.is-selected]="selectedAreaIds().has(area.id)"
+              (click)="toggleArea(area.id)">
+              <span class="segment-name">{{ area.nombre }}</span>
+              <span class="mono-meta">{{ area.count }}</span>
+            </button>
+            }
+          </div>
+        </div>
+        }
+
+        @if (modoDestinatarios() === 'categoria_cct') {
+        <div class="segment-panel">
+          <div class="segment-head">
+            <span class="field-label">Categorías de personal</span>
+            <button type="button" class="link-btn" (click)="toggleAllCategorias()">
+              {{ selectedCategorias().size === (resumen()?.categorias_cct?.length ?? 0) ? 'Limpiar' : 'Seleccionar
+              todas' }}
+            </button>
+          </div>
+          <div class="segment-list">
+            @for (cat of resumen()?.categorias_cct ?? []; track cat.tipo) {
+            <button type="button" class="segment-item" [class.is-selected]="selectedCategorias().has(cat.tipo)"
+              (click)="toggleCategoria(cat.tipo)">
+              <span class="segment-name">{{ cat.nombre }}</span>
+              <span class="mono-meta">{{ cat.count }}</span>
+            </button>
+            }
+          </div>
+        </div>
+        }
+
+        @if (modoDestinatarios() !== 'todos') {
+        <div class="segment-panel">
+          <label for="empleado-extra-search" class="field-label">
+            Agregar empleados individuales del padrón
+          </label>
+          <input id="empleado-extra-search" type="search" class="text-input is-sm"
+            placeholder="Buscar por nombre, número o correo..." [ngModel]="empleadoQuery()"
+            (ngModelChange)="onEmpleadoQueryInput($event)" />
+
+          @if (empleadoQuery().trim().length > 0) {
+          @if (buscandoEmpleados()) {
+          <p class="mono-meta">Buscando correos parecidos...</p>
+          } @else if (sugerenciasEmpleados().length > 0) {
+          <div class="search-results">
+            @for (emp of sugerenciasEmpleados(); track emp.id) {
+            <button type="button" class="search-item" (click)="agregarEmpleadoExtra(emp)">
+              <span class="search-email">{{ emp.correo_institucional }}</span>
+              <span class="mono-meta search-name">{{ emp.nombre }} · {{ emp.num_empleado }}</span>
+            </button>
+            }
+          </div>
+          } @else {
+          <p class="mono-meta">No se encontraron correos parecidos en el padrón activo.</p>
+          }
+          }
+
+          @if (extraEmpleados().length > 0) {
+          <div class="extra-chips">
+            @for (emp of extraEmpleados(); track emp.id) {
+            <span class="extra-chip">
+              <span>{{ emp.nombre }}</span>
+              <button type="button" class="chip-remove" (click)="quitarEmpleadoExtra(emp.id)">×</button>
+            </span>
+            }
+          </div>
+          }
+        </div>
+        }
+
+        <div class="total-summary">
+          <div>
+            <div class="field-label">Total de destinatarios</div>
+            <div class="summary-scope">{{ scopeSummary() }}</div>
+          </div>
+          <div class="total-count">{{ totalDestinatarios() }}</div>
+        </div>
+
+        @if (totalDestinatarios() > 0) {
+        <div class="recipients-toggle-row">
+          <button type="button" class="link-btn" (click)="toggleListaDestinatarios()">
+            {{ mostrarListaDestinatarios() ? 'Ocultar correos' : 'Ver correos (' + totalDestinatarios() + ')' }}
+          </button>
+        </div>
+
+        @if (mostrarListaDestinatarios()) {
+        <div class="segment-panel">
+          <input type="search" class="text-input is-sm" placeholder="Filtrar por correo o nombre..."
+            [ngModel]="filtroListaDestinatarios()" (ngModelChange)="filtroListaDestinatarios.set($event)" />
+          <div class="segment-scroll">
+            @for (dest of destinatariosVisibles(); track dest.empleado_id) {
+            <div class="search-item">
+              <span class="search-email">{{ dest.correo_destino }}</span>
+              <span class="mono-meta search-name">{{ dest.nombre_destino }} · {{ dest.area_nombre }}</span>
+            </div>
+            } @empty {
+            <p class="mono-meta">Sin correos que coincidan con el filtro.</p>
+            }
+          </div>
+        </div>
+        }
+        }
+      </section>
+
+      <section class="panel-card actions-card">
+        <div class="field-label-row">
+          <span class="field-label">Estado del comunicado</span>
+          <span class="mono-meta">{{ lastSavedLabel() }}</span>
+        </div>
+
+        <div class="role-notice">
+          @if (esAutorizador()) {
+          Tu perfil tiene permiso de envío directo sin autorización previa.
+          } @else {
+          Este comunicado pasará a revisión de <strong>Sistemas</strong> antes de enviarse.
+          }
+        </div>
+
+        <app-button variant="primary" [loading]="submitting()" (click)="handlePrimaryAction()">
+          {{ esAutorizador() ? 'Enviar Comunicado' : 'Pedir Autorización' }}
+        </app-button>
+
+        <div class="secondary-actions">
+          <app-button variant="secondary" size="sm" (click)="abrirVistaPrevia()">
+            Vista previa
+          </app-button>
+          <app-button variant="secondary" size="sm" [loading]="sendingTest()" (click)="enviarPrueba()">
+            Enviar prueba
+          </app-button>
+          <app-button variant="ghost" size="sm" [loading]="saving()" (click)="guardarBorrador()">
+            Guardar borrador
+          </app-button>
+        </div>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<!-- Drawer: Vista Previa -->
+<app-drawer [(open)]="previewDrawerOpen" title="Vista previa del correo institucional" side="right" size="lg">
+  <div class="preview-drawer-body">
+    <div class="field-label-row">
+      <label for="sample-select" class="field-label">Muestra de destinatario</label>
+      <select id="sample-select" class="text-input is-sm" [ngModel]="sampleIndex()"
+        (ngModelChange)="sampleIndex.set(+$event)">
+        @for (sample of sampleOptions(); track $index) {
+        <option [value]="$index">
+          {{ sample.nombre_destino }} ({{ sample.categoria_nombre }})
+        </option>
+        }
+      </select>
+    </div>
+
+    <app-mail-preview
+      [recipient]="currentSample().nombre_destino + ' <' + currentSample().correo_destino + '>'"
+      [folio]="folioActual()"
+      [subject]="previewSubject()"
+      [bodyHtml]="previewBodySafe()"
+      [attachments]="attachments()"
+      [showAutoReplyNotice]="false"
+    />
+  </div>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="previewDrawerOpen.set(false)">Volver a editar</app-button>
+    <app-button variant="primary" (click)="previewDrawerOpen.set(false); handlePrimaryAction()">
+      {{ esAutorizador() ? 'Enviar Comunicado' : 'Pedir Autorización' }}
+    </app-button>
+  </ng-template>
+</app-drawer>
+
+<!-- Modal: Confirmar envío directo -->
+<app-modal [(open)]="confirmSendModalOpen" title="Confirmar envío masivo directo">
+  <div class="confirm-body">
+    <p>Se enviará el comunicado de manera inmediata a <strong>{{ totalDestinatarios() }}</strong> destinatarios activos.
+    </p>
+    <p class="mono-meta">Asunto: {{ subject() }}</p>
+    <p class="mono-meta">Adjuntos: {{ attachments().length }} ({{ formatBytes(totalAttachmentsBytes()) }})</p>
+  </div>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="confirmSendModalOpen.set(false)">Cancelar</app-button>
+    <app-button variant="primary" [loading]="submitting()" (click)="confirmarEnvioDirecto()">
+      Enviar Comunicado ahora
+    </app-button>
+  </ng-template>
+</app-modal>
+
+<!-- Modal: Solicitud registrada -->
+<app-modal [(open)]="authSubmittedModalOpen" title="Solicitud enviada a validación">
+  <div class="confirm-body">
+    <p>Tu comunicado quedó registrado con folio <strong>{{ submittedFolio() }}</strong> en estado <strong>Pendiente de
+        autorización</strong>.</p>
+  </div>
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="authSubmittedModalOpen.set(false)">Seguir redactando</app-button>
+    <app-button variant="primary" (click)="irAAutorizaciones()">
+      Ir a autorizaciones
+    </app-button>
+  </ng-template>
+</app-modal>

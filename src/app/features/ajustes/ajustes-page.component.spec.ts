@@ -6,7 +6,7 @@ function host(fixture: ComponentFixture<AjustesPage>): HTMLElement {
   return fixture.nativeElement as HTMLElement;
 }
 
-/** The three theme cards, in the order the service presents them. */
+/** The four theme cards, in the order the service presents them. */
 function options(fixture: ComponentFixture<AjustesPage>): HTMLButtonElement[] {
   return Array.from(host(fixture).querySelectorAll<HTMLButtonElement>('button.option'));
 }
@@ -44,9 +44,9 @@ describe('AjustesPage', () => {
   it('offers one card per theme of the service', async () => {
     const fixture = await createPage();
 
-    expect(options(fixture).length).toBe(3);
+    expect(options(fixture).length).toBe(4);
     expect(options(fixture).map((option) => option.querySelector('.option-id')?.textContent)).toEqual(
-      ['guinda', 'light', 'dark'],
+      ['guinda', 'light', 'dark', 'verde'],
     );
     expect(host(fixture).textContent).toContain('Tema de la interfaz');
     expect(host(fixture).querySelector('fieldset legend')?.textContent).toContain(

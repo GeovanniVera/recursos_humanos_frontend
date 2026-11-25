@@ -1,9 +1,9 @@
-<div class="logos" [class.is-lg]="variant() === 'lg'">
+<div class="logos" [class.is-lg]="variant() === 'lg'" [class.is-mark]="isMark()">
   <!--
     A slot is either the real logo or a dashed placeholder. The fallback keeps
     a missing asset visible instead of rendering a broken image icon.
     `plated` decides whether the slot paints the white field the official marks
-    assume; the sidebar turns it off and lets the glass rail show through.
+    assume; the sidebar turns it off and lets the sheet show through.
   -->
   <div
     class="slot"
@@ -19,23 +19,29 @@
     }
   </div>
 
-  @if (variant() === 'lg') {
-    <span class="separator" aria-hidden="true"></span>
-  }
-
-  <div
-    class="slot"
-    [class.is-plated]="plated()"
-    [class.is-placeholder]="edomexFailed()"
-    role="img"
-    aria-label="Logotipo del Gobierno del Estado de México"
-  >
-    @if (edomexFailed()) {
-      <span class="label">LOGO GOB. EDOMEX</span>
-    } @else {
-      <img class="logo" [src]="edomexSrc" alt="" (error)="edomexFailed.set(true)" />
+  <!--
+    The emblem variant stops here: the rail has room for one square mark, and
+    the wide wordmark of the state does not fit 76px.
+  -->
+  @if (!isMark()) {
+    @if (variant() === 'lg') {
+      <span class="separator" aria-hidden="true"></span>
     }
-  </div>
+
+    <div
+      class="slot"
+      [class.is-plated]="plated()"
+      [class.is-placeholder]="edomexFailed()"
+      role="img"
+      aria-label="Logotipo del Gobierno del Estado de México"
+    >
+      @if (edomexFailed()) {
+        <span class="label">LOGO GOB. EDOMEX</span>
+      } @else {
+        <img class="logo" [src]="edomexSrc" alt="" (error)="edomexFailed.set(true)" />
+      }
+    </div>
+  }
 </div>
 
 @if (showCaption()) {

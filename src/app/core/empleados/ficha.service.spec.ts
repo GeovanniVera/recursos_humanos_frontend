@@ -2,10 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { FichaEmpleado } from './ficha.models';
+import { AdscripcionHistorialItem } from './editar.models';
+import { FichaEmpleado, HistorialBaja } from './ficha.models';
 import { FichaService } from './ficha.service';
 
 const URL_FICHA = `${environment.apiBaseUrl}/empleados/12`;
+const URL_HISTORIAL_BAJAS = `${URL_FICHA}/historial-bajas`;
+const URL_HISTORIAL_ADSCRIPCIONES = `${URL_FICHA}/historial`;
 
 const FICHA: FichaEmpleado = {
   id: 12,
@@ -17,7 +20,7 @@ const FICHA: FichaEmpleado = {
     sexo: 'M',
     estado_civil_id: 2,
     estado_civil: 'Casado',
-    municipio: 'Nezahualcóyotl',
+    entidad_nacimiento: 'Estado de México',
   },
   plaza: {
     area_id: 3,
@@ -35,20 +38,29 @@ const FICHA: FichaEmpleado = {
     antiguedad: { anios: 7, meses: 4, dias: 12, texto: '7 años, 4 meses' },
   },
   contacto: { correo_institucional: 'persona@utn.edu.mx' },
-  estudios: {
-    nivel_estudios_id: 3,
-    nivel_estudios: 'Licenciatura',
-    escuela_procedencia: 'UNAM',
-    generacion: '2012-2016',
+  actualizado_en: '2026-01-01T00:00:00+00:00',
+  edicion: {
+    campos_editables: ['estado_civil_id', 'exp_publico_anios', 'exp_privado_anios', 'observaciones'],
   },
+  grados_academicos: [
+    {
+      id: 1,
+      nivel_estudios_id: 3,
+      nivel_estudios: 'Licenciatura',
+      titulo_o_carrera: 'Licenciatura en Sistemas',
+      escuela_procedencia: 'UNAM',
+      generacion: '2012-2016',
+      cedula_profesional: null,
+      es_maximo: true,
+    },
+  ],
+  empleos_externos: [],
   experiencia: {
     exp_publico_anios: 5,
     exp_privado_anios: 3,
-    trabaja_otro_lugar: 'No',
-    trabaja_otro_donde: null,
   },
   gestion_interna: {
-    activo: true,
+    estatus: 'activo',
     fecha_baja: null,
     motivo_baja: null,
     nota_baja: null,
@@ -56,7 +68,7 @@ const FICHA: FichaEmpleado = {
     estado_expediente: {
       estado: 'casi_completo',
       total_faltantes: 2,
-      campos_faltantes: ['curp', 'municipio'],
+      campos_faltantes: ['curp', 'entidad_nacimiento'],
     },
   },
 };
@@ -115,5 +127,69 @@ describe('FichaService', () => {
       .flush({ message: 'Trabajador no encontrado.' }, { status: 404, statusText: 'Not Found' });
 
     expect(status).toBe(404);
+  });
+
+  it('asks GET /empleados/{id}/historial-bajas and unwraps data', () => {
+    const historial: HistorialBaja[] = [
+      {
+        id: 1,
+        tipo: 'licencia',
+        motivo_id: 2,
+        motivo: 'Baja temporal',
+        motivo_clave: 'BAJA_TEMPORAL',
+        desde: '2026-04-01',
+        hasta: null,
+        vigente: true,
+        nota: 'Licencia temporal',
+        registrado_por: 'Elena Ejecutora',
+        reactivado_por: null,
+        nota_reactivacion: null,
+        fecha_registro: '2026-04-01T10:00:00Z',
+      },
+    ];
+
+    let received: HistorialBaja[] | undefined;
+    service.consultarBajas(12).subscribe((rows) => {
+      received = rows;
+    });
+
+    const request = httpMock.expectOne(URL_HISTORIAL_BAJAS);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().length).toBe(0);
+    request.flush({ data: historial });
+
+    expect(received).toEqual(historial);
+  });
+
+  it('asks GET /empleados/{id}/historial and unwraps data', () => {
+    const historial: AdscripcionHistorialItem[] = [
+      {
+        id: 12,
+        desde: '2023-08-01',
+        hasta: null,
+        area_id: 3,
+        area: 'División de Telemática',
+        puesto_id: 7,
+        puesto: 'Profesor de Tiempo Completo',
+        categoria_cct_id: 2,
+        categoria_cct_clave: 'DOC-TC',
+        motivo: null,
+        estado: 'vigente',
+      },
+    ];
+
+    let received: AdscripcionHistorialItem[] | undefined;
+    service.consultarAdscripciones(12).subscribe((rows) => {
+      received = rows;
+    });
+
+    const request = httpMock.expectOne(URL_HISTORIAL_ADSCRIPCIONES);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().length).toBe(0);
+    expect(request.request.body).toBeNull();
+    request.flush({ data: historial });
+
+    // The envelope is the wire format; the drawer never sees it or reorders it.
+    expect(received).toEqual(historial);
   });
 });

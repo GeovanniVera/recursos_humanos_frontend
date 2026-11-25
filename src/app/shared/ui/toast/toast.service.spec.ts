@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ToastService } from './toast.service';
+import { TOAST_EXIT_MS, ToastService } from './toast.service';
 
 /**
  * The service is used directly, with no fixture: the collection is a signal and
@@ -40,21 +40,31 @@ describe('ToastService', () => {
     expect(first).not.toBe(second);
   });
 
-  it('removes a toast when it is dismissed', () => {
+  it('marks a toast leaving when dismissed and removes it after the exit transition', () => {
     const service = createService();
+    vi.useFakeTimers();
     const id = service.show({ type: 'warning', title: 'Sesión por expirar' });
 
     service.dismiss(id);
+    expect(service.isLeaving(id)).toBe(true);
+    expect(service.toasts().length).toBe(1);
 
+    vi.advanceTimersByTime(TOAST_EXIT_MS - 1);
+    expect(service.toasts().length).toBe(1);
+
+    vi.advanceTimersByTime(1);
     expect(service.toasts().length).toBe(0);
+    expect(service.isLeaving(id)).toBe(false);
   });
 
-  it('ignores the id of a toast that is already gone', () => {
+  it('ignores the id of a toast that is already gone or leaving', () => {
     const service = createService();
+    vi.useFakeTimers();
     const id = service.show({ type: 'warning', title: 'Sesión por expirar' });
 
     service.dismiss(id);
     service.dismiss(id);
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
 
     expect(service.toasts().length).toBe(0);
   });
@@ -71,17 +81,21 @@ describe('ToastService', () => {
     expect(titles).toEqual(['Aviso 2', 'Aviso 3', 'Aviso 4', 'Aviso 5']);
   });
 
-  it('dismisses itself after the default five seconds', () => {
+  it('dismisses itself after the default five seconds and removes after exit delay', () => {
     const service = createService();
     vi.useFakeTimers();
 
-    service.show({ type: 'success', title: 'Guardado correctamente' });
+    const id = service.show({ type: 'success', title: 'Guardado correctamente' });
     expect(service.toasts().length).toBe(1);
 
     vi.advanceTimersByTime(4999);
     expect(service.toasts().length).toBe(1);
+    expect(service.isLeaving(id)).toBe(false);
 
     vi.advanceTimersByTime(1);
+    expect(service.isLeaving(id)).toBe(true);
+
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
     expect(service.toasts().length).toBe(0);
   });
 
@@ -89,9 +103,11 @@ describe('ToastService', () => {
     const service = createService();
     vi.useFakeTimers();
 
-    service.show({ type: 'info', title: 'Corto' }, { duration: 1000 });
+    const id = service.show({ type: 'info', title: 'Corto' }, { duration: 1000 });
     vi.advanceTimersByTime(1000);
+    expect(service.isLeaving(id)).toBe(true);
 
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
     expect(service.toasts().length).toBe(0);
   });
 
@@ -105,6 +121,7 @@ describe('ToastService', () => {
     expect(service.toasts().length).toBe(1);
 
     service.dismiss(id);
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
     expect(service.toasts().length).toBe(0);
   });
 
@@ -114,6 +131,7 @@ describe('ToastService', () => {
     const id = service.show({ type: 'info', title: 'Efímero' }, { duration: 5000 });
 
     service.dismiss(id);
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
     // A leaked timer would try to dismiss an id that is no longer in the stack.
     service.show({ type: 'info', title: 'Otro' }, { duration: 0 });
 
@@ -125,14 +143,28 @@ describe('ToastService', () => {
   it('dismisses every toast at once and cancels their timers', () => {
     const service = createService();
     vi.useFakeTimers();
-    service.show({ type: 'info', title: 'Uno' });
+    const first = service.show({ type: 'info', title: 'Uno' });
     service.show({ type: 'error', title: 'Dos' });
+    service.dismiss(first);
 
     service.dismissAll();
     expect(service.toasts().length).toBe(0);
+    expect(service.exitingIds().size).toBe(0);
 
     // Nothing is pending: advancing the clock must not resurrect anything.
     vi.advanceTimersByTime(10_000);
     expect(service.toasts().length).toBe(0);
+  });
+
+  it('clears pending exit timers when DestroyRef destroys the service', () => {
+    const service = createService();
+    vi.useFakeTimers();
+    const id = service.show({ type: 'info', title: 'Saliendo' }, { duration: 0 });
+    service.dismiss(id);
+    expect(service.isLeaving(id)).toBe(true);
+
+    TestBed.resetTestingModule();
+    vi.advanceTimersByTime(TOAST_EXIT_MS);
+    expect(service.toasts().length).toBe(1);
   });
 });

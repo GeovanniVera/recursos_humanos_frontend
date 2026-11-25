@@ -1,13 +1,13 @@
 import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
 
-/** The three interchangeable themes. They share token names, not values. */
-export type Theme = 'guinda' | 'light' | 'dark';
+/** The four interchangeable themes. They share token names, not values. */
+export type Theme = 'guinda' | 'light' | 'dark' | 'verde';
 
 const STORAGE_KEY = 'utn-rh.theme';
 // Light is the default: it is the legible theme under the harsh lighting of an
-// office, and the other two stay one click away in `/ajustes`.
+// office, and the others stay one click away in `/ajustes`.
 const DEFAULT_THEME: Theme = 'light';
-const THEMES: readonly Theme[] = ['guinda', 'light', 'dark'];
+const THEMES: readonly Theme[] = ['guinda', 'light', 'dark', 'verde'];
 
 /**
  * Applies `data-theme` on the document root and persists the choice.

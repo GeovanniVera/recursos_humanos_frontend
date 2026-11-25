@@ -1,0 +1,54 @@
+<div [class]="alertClass()" [attr.role]="resolvedRole()">
+  <span class="alert-icon" aria-hidden="true">
+    @switch (variant()) {
+      @case ('error') {
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+        </svg>
+      }
+      @case ('warning') {
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M8 4v5M8 12h.01" />
+        </svg>
+      }
+      @case ('info') {
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M8 7v5M8 4.5h.01" />
+        </svg>
+      }
+      @case ('success') {
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3.5 8.5l3 3 6-6" />
+        </svg>
+      }
+    }
+  </span>
+
+  <div class="alert-copy">
+    @if (title(); as heading) {
+      <strong class="alert-title">{{ heading }}</strong>
+    }
+    @if (message(); as body) {
+      <p class="alert-message">{{ body }}</p>
+    }
+    @for (extra of messages(); track extra) {
+      <p class="alert-message">{{ extra }}</p>
+    }
+    <ng-content />
+    @if (code(); as failureCode) {
+      <p class="alert-code">{{ failureCode }}</p>
+    }
+    @if (detail(); as failureDetail) {
+      <p class="alert-detail">{{ failureDetail }}</p>
+    }
+  </div>
+
+  <ng-content select="[alert-actions]" />
+</div>

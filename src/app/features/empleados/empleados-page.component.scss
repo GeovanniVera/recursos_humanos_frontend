@@ -1,7 +1,10 @@
+@use '../../../styles/breakpoints' as bp;
+
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 // The refresh sits at the top right of the heading, the way the canvas places
@@ -14,7 +17,8 @@
   gap: var(--space-4);
 }
 
-.identity {
+.identity,
+.search {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -22,7 +26,8 @@
 }
 
 // Actions of the header travel as one group: the primary link and the secondary
-// refresh keep their order on a narrow window instead of drifting apart.
+// refresh keep their order on a narrow window instead of drifting apart. The
+// pager controls are the same row of secondary buttons, so they share it.
 .head-actions {
   display: flex;
   flex-wrap: wrap;
@@ -31,8 +36,9 @@
 }
 
 // Painted like the primary button of the design system, because it is one: the
-// alta is the single primary action of this view. It is an anchor so the route
-// keeps the platform's own link behaviour.
+// alta is the single primary action of this view. It is a real `<button>`, so
+// the platform gives it keyboard activation and an announced role; it no longer
+// leads to a route, it opens the folder of a new file over this roster.
 .new-employee {
   display: inline-flex;
   align-items: center;
@@ -44,7 +50,7 @@
   background: var(--color-action-primary);
   color: var(--color-action-on-primary);
   font: var(--text-nav-branch);
-  text-decoration: none;
+  cursor: pointer;
   transition:
     transform var(--motion-fast) var(--motion-ease),
     box-shadow var(--motion-fast) var(--motion-ease);
@@ -64,7 +70,7 @@
 
 .title {
   font: var(--text-title);
-  color: var(--color-text-primary);
+  color: var(--color-text-heading);
 }
 
 .sub {
@@ -78,9 +84,6 @@
 // The field takes the width it can and no more: a search box that spans the
 // whole screen reads as a form, not as one control of a toolbar.
 .search {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
   max-width: var(--modal-width-md);
 }
 
@@ -114,185 +117,361 @@
   border-color: var(--color-accent);
 }
 
+// The invalid state is carried by the border and by the chip under the field.
+// The chip is the state fill with its own ink, so the rule survives a grayscale
+// read; red text on the guinda canvas would not be the design's error treatment.
+.search-field[aria-invalid='true'] {
+  border-color: var(--color-state-error);
+}
+
 .search-hint {
   font: var(--text-overline);
   letter-spacing: var(--tracking-overline);
   color: var(--color-text-secondary);
 }
 
-// --- Failure ----------------------------------------------------------------
+// --- Inline validation ------------------------------------------------------
 
-// A failure is a glass card with a colored disc, not a red panel: a filled
-// alert would repaint the buttons inside it and lose their contrast.
-.alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-sm);
+.field-error {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-state-error);
+  color: var(--color-state-error-ink);
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
 }
 
-.alert-icon {
+.field-error-icon {
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--space-7);
-  height: var(--space-7);
-  border-radius: var(--radius-pill);
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
-}
-
-.alert-icon svg {
   width: var(--space-4);
   height: var(--space-4);
 }
 
-.alert-copy {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
+.field-error-icon svg {
+  width: var(--space-4);
+  height: var(--space-4);
 }
 
-.alert-message {
-  font: var(--text-body);
-  color: var(--color-text-primary);
-}
+// --- Block loading ----------------------------------------------------------
 
-// The contract code is monospace and muted: it is there for support, not to be
-// read as part of the sentence.
-.alert-code {
+// A block miss keeps the current rows on screen, so the only signal of the wait
+// is this line. The dot is static on purpose: motion is reserved for what
+// actually moves, and a pulse would fight `prefers-reduced-motion`.
+.block-loading {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
   font: var(--text-overline);
-  font-family: var(--font-mono);
   letter-spacing: var(--tracking-overline);
   color: var(--color-text-secondary);
 }
 
-// --- State badge ------------------------------------------------------------
-
-// The same pairing the toasts use: a state fill with its own ink. The pill is
-// the shape, the word inside is the meaning — a grayscale screen or a color
-// blindness still reads `Activo` and `Baja`.
-.badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
+.block-loading-dot {
+  width: var(--space-2);
+  height: var(--space-2);
   border-radius: var(--radius-pill);
-  font: var(--text-label);
-  white-space: nowrap;
+  background: var(--color-accent);
 }
 
-.badge.is-activo {
-  background: var(--color-state-success);
-  color: var(--color-state-success-ink);
+// --- State tabs -------------------------------------------------------------
+
+// The strip and the sheet are one paper: the tabs overlap the sheet's top edge
+// by one border width, carry no bottom border, and the pressed one takes the
+// sheet's own fill, so the seam is never painted. The mechanic is the semáforo's
+// exactly — the two listings open the same way.
+.ledger {
+  display: grid;
+  min-width: 0;
 }
 
-.badge.is-baja {
-  background: var(--color-state-error);
-  color: var(--color-state-error-ink);
+.tabs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  // One border width of overlap: the pressed tab covers the sheet's top rule
+  // over its own width.
+  margin-bottom: calc(-1 * var(--border-width));
+  overflow-x: auto;
+  // Four tabs and no more: a scrollbar under the strip would be furniture.
+  scrollbar-width: none;
 }
 
-// --- Name button ------------------------------------------------------------
+.tabs::-webkit-scrollbar {
+  display: none;
+}
 
-// The name is the keyboard path into the record, so it is a real button painted
-// as text: no fill, no visible border and no padding of its own, only an
-// underline that appears on hover and focus so the affordance is discoverable
-// without a pointer.
-.name-button {
-  padding: 0;
-  border: var(--border-width) solid var(--transparent);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-ghost);
-  color: var(--color-text-primary);
-  font: inherit;
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  // Room between the label and the figure of the status.
+  gap: var(--space-4);
+  flex: 0 0 auto;
+  min-height: var(--space-8);
+  // A tab that is not pressed sits a step lower than the pressed one.
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--color-surface-overlay);
+  // Dimmer until it is the one applied: only the pressed tab reads at full ink.
+  color: var(--color-text-secondary);
   text-align: start;
-  text-decoration: none;
-  text-underline-offset: var(--space-1);
+  white-space: nowrap;
   cursor: pointer;
-  transition: color var(--motion-fast) var(--motion-ease);
+  transition: margin-top var(--motion-fast) var(--motion-ease);
 }
 
-.name-button:hover,
-.name-button:focus-visible {
-  color: var(--color-accent);
-  text-decoration: underline;
+.tab-title {
+  font: var(--text-nav-branch);
 }
 
-.name-button:focus-visible {
+.tab:focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
+// The figure of the status this tab filters, typed like every other count of
+// the screen. It is painted in the role of that status through `--tab-state`,
+// the same variable the accent bar uses.
+.tab-count {
+  min-inline-size: var(--space-8);
+  color: var(--tab-state, var(--color-text-primary));
+  font-family: var(--font-typewriter);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
-// --- Pager ------------------------------------------------------------------
+// `--tab-state` is the role of the status this tab filters, exactly as the
+// traffic light does it. `Todos` has no status of its own, so it keeps the
+// primary ink.
+.tab.is-activo {
+  --tab-state: var(--color-state-success);
+}
 
-.pager {
+.tab.is-licencia {
+  --tab-state: var(--color-state-warning);
+}
+
+.tab.is-baja_definitiva {
+  --tab-state: var(--color-state-error);
+}
+
+.tab.is-todos {
+  --tab-state: var(--color-text-primary);
+}
+
+// The pressed tab rises and becomes the sheet itself: same fill, full ink, no
+// rule under it.
+.tab.is-active {
+  z-index: 1;
+  margin-top: 0;
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+// The accent that names the status, on the top edge of the pressed tab. It is
+// the same mark the traffic light paints, so both listings read the same way.
+.tab.is-active::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: calc(var(--border-width) * 3);
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+  background: var(--tab-state, var(--color-accent));
+}
+
+// --- The sheet --------------------------------------------------------------
+
+// One frame around the table and the band that closes it: the same paper the
+// semáforo leaves on screen, so the two listings read as pages of one archive.
+// The tab strip overlaps its top edge, so the corner under the strip is square;
+// the other three keep the card's radius. `overflow: hidden` clips the table's
+// own card into the frame and holds the band's fill inside those corners.
+.sheet {
+  display: grid;
+  min-width: 0;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  border-start-start-radius: 0;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+// The table draws its own card; inside the sheet that card *is* the sheet. One
+// border of overlap on every side pulls its frame under the sheet's, so the edge
+// reads as a single hairline instead of a card inside a card, and the card's
+// bottom rule lands exactly on the rule that opens the band. `max-width` is
+// released because the negative margins would otherwise be clamped.
+.sheet app-data-table {
+  max-width: none;
+  margin: calc(-1 * var(--border-width));
+}
+
+// The band that closes the sheet: the density of the rows on one side, the pager
+// on the other. It starts clear of the ruled margin, like every row above, and
+// takes the same glass as the table.
+.sheet-foot {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-}
-
-// Range and page size travel together: both describe how much of the listing is
-// on screen, and both sit away from the navigation controls.
-.pager-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.pager-range {
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
-}
-
-.page-size {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.page-size-label {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-
-.page-size-select {
-  min-height: var(--control-height-sm);
-  padding: var(--space-1) var(--space-2);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-5) + var(--space-3));
+  border-top: var(--border-width) solid var(--color-border-default);
   background: var(--color-surface-glass);
-  color: var(--color-text-primary);
-  font: var(--text-body);
-  font-variant-numeric: tabular-nums;
+}
+
+// The margin of the table stops at its last row; this segment carries it down to
+// the foot of the sheet, so the line runs the full height of the container. The
+// hairline of overshoot closes the seam with the rule above.
+.sheet-foot::before {
+  content: '';
+  position: absolute;
+  inset-block: calc(-1 * var(--border-width)) 0;
+  inset-inline-start: var(--space-5);
+  width: var(--border-width);
+  background: var(--color-border-default);
+}
+
+// The pager is the right half of the foot: it takes the room the density control
+// leaves and wraps inside it instead of pushing the band open.
+.sheet-foot app-pagination {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// --- Density control --------------------------------------------------------
+
+.density {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-glass);
+}
+
+.density button {
+  min-height: var(--space-8);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-ghost);
+  color: var(--color-text-secondary);
+  font: var(--text-label);
   cursor: pointer;
 }
 
-.pager-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+.density button[aria-pressed='true'] {
+  background: var(--color-surface-overlay);
+  color: var(--color-text-primary);
 }
 
-// The page counter is the anchor between the two buttons: it keeps its width so
-// pressing Siguiente never shifts the pair sideways.
-.pager-page {
-  min-width: var(--space-8);
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
+// --- Cells of the ledger ----------------------------------------------------
+
+// The number of a record and the name of its worker are typed, not typeset: the
+// employee number lines up on the character cell page after page.
+.mono {
+  font-family: var(--font-typewriter);
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
-  text-align: center;
+}
+
+// The state of the row, stamped: a double ring in the role of that state, a
+// small radius and uppercase typewriter.
+//
+// The ring carries the role; the word keeps the primary ink. The system already
+// measured `--color-state-success` and `--color-state-error` as *text* on the
+// pale surface of `light` and solved it the same way in `app-status-pill`
+// (outline the word, never fill it), so a 10px stamp does not reintroduce that
+// failure. The glass fill is a token, not a `color-mix` of the role: the style
+// contract only allows tokenised backgrounds, and the ring already carries the
+// colour the column needs.
+// `--border-width * 3` is the smallest width at which `double` still paints two
+// rules; at 2px it collapses to one.
+.seal {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border: calc(var(--border-width) * 3) double var(--seal-state);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font-family: var(--font-typewriter);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seal.is-activo {
+  --seal-state: var(--color-state-success);
+}
+
+.seal.is-licencia {
+  --seal-state: var(--color-state-warning);
+}
+
+.seal.is-baja {
+  --seal-state: var(--color-state-error);
+}
+
+// High contrast takes fills away, so the stamp may not depend on one: it is
+// restated as an outline.
+@media (forced-colors: active) {
+  .seal {
+    outline: calc(var(--border-width) * 2) solid CanvasText;
+    outline-offset: calc(-1 * var(--border-width) * 2);
+  }
+
+  // High contrast takes fills away, so the pressed tab is restated as an
+  // outline; the pressed flag is the only thing that tells the two states apart.
+  .tab.is-active {
+    outline: var(--border-width) solid CanvasText;
+    outline-offset: calc(-1 * var(--border-width));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  // The pressed tab still starts pressed; it just does not travel there.
+  .tab {
+    transition: none;
+  }
+}
+
+@include bp.down(bp.$bp-sm) {
+  // No room for two halves: the pager drops under the density control and each
+  // one keeps its own wrapping.
+  .sheet-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  // The pager needs the whole width; the control does not.
+  .density {
+    align-self: start;
+  }
+}
+
+@include bp.down(bp.$bp-xs) {
+  // Four tabs on a phone: the strip scrolls, and each one gives up a step of
+  // padding so more than one fits before the first swipe.
+  .tab {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-3);
+  }
 }

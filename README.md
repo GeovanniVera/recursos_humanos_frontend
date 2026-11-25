@@ -66,8 +66,8 @@ src/
 | `/login` | Acceso sin contraseña: correo institucional + código de 6 dígitos |
 | `/` | Panel general con tres indicadores |
 | `/empleados` | Índice de la sección |
-| `/empleados/activos` | Listado de la plantilla vigente, con búsqueda y paginación |
-| `/empleados/alta` | Formulario de alta, en cuatro pasos |
+| `/empleados/activos` | Listado de la plantilla vigente, con búsqueda y paginación. El alta se captura en un cajón sobre este listado |
+| `/empleados/alta` | Redirección a `/empleados/activos`: el alta ya no es una ruta |
 | `/empleados/baja` | Pendiente de contrato |
 | `/semaforo-documentos` | Pendiente de contrato |
 | `/ajustes` | Selector de tema |

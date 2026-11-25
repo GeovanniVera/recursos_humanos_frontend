@@ -4,34 +4,77 @@
 // ---------------------------------------------------------------------------
 
 [data-theme='guinda'] {
+  // Base theme tokens
+  --bg-main: #4A0B19;
+  --bg-main-glow: rgba(229, 193, 88, 0.08);
+  --bg-sidebar: #380712;
+  --bg-card: #5B0F20;
+  --bg-subtle: #6B1427;
+  --bg-input: #470A17;
+  --border-color: #7A1B30;
+  --border-strong: #96263E;
+
+  --text-primary: #FFFDFB;
+  --text-secondary: #F2DCE1;
+  --text-muted: #CFA8B1;
+
+  --sidebar-text: #F7E8EB;
+  --sidebar-muted: #C79AA4;
+  --sidebar-hover: #4E0C1B;
+
+  --accent-primary: #E5C158;
+  --accent-primary-hover: #D4AE42;
+  --accent-primary-contrast: #2B060E;
+  --accent-soft: rgba(229, 193, 88, 0.16);
+  --accent-gold: #E5C158;
+  --accent-gold-bg: #C59B27;
+  --shadow-card: 0 4px 16px rgba(18, 2, 6, 0.25);
+
+  // US-11 filter fills only; existing global state tokens remain unchanged.
+  --color-semaforo-filter-incompleto: var(--guinda-400);
+  --color-semaforo-filter-incompleto-ink: var(--white);
+  --color-semaforo-filter-casi-completo: var(--amber-400);
+  --color-semaforo-filter-casi-completo-ink: var(--guinda-900);
+  --color-semaforo-filter-completo: var(--mint-700);
+  --color-semaforo-filter-completo-ink: var(--white);
+
   // Surfaces
-  --color-bg-canvas: var(--guinda-700);
-  --color-surface-glass: var(--white-a08);
-  --color-surface-overlay: var(--guinda-a60);
+  --color-bg-canvas: var(--bg-main);
+  --color-surface-glass: var(--bg-card);
+  --color-surface-overlay: rgba(91, 15, 32, 0.94);
   // "No fill" for buttons that must read as inline links.
   --color-surface-ghost: var(--transparent);
+  --color-skeleton-sheen: linear-gradient(
+    90deg,
+    var(--transparent) 0%,
+    var(--white-a20) 50%,
+    var(--transparent) 100%
+  );
 
   // Lines
-  --color-border-default: var(--white-a20);
+  --color-border-default: var(--border-color);
+  // "No line" for a control that only draws its edge on hover or focus, the way
+  // `--color-surface-ghost` is "no fill".
+  --color-border-ghost: var(--transparent);
 
   // Text
-  --color-text-primary: var(--white);
-  --color-text-secondary: var(--gold-200);
-  // Group labels and overlines. In light this must not be gold (contrast),
-  // so the role is a token of its own instead of reusing --color-accent.
-  --color-text-overline: var(--gold-400);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  // Group labels and overlines.
+  --color-text-overline: var(--accent-gold);
+  // Page-heading ink, separate from body copy so a theme can colour headings
+  // without recolouring prose.
+  --color-text-heading: var(--text-primary);
 
   // Actions
-  --color-action-primary: var(--white);
-  --color-action-on-primary: var(--guinda-800);
-  // Sheen that sweeps across the primary button. Gold over the white fill of
-  // this theme; white over a colored fill in the other two.
-  --color-action-sheen: var(--gold-400);
+  --color-action-primary: var(--accent-primary);
+  --color-action-on-primary: var(--accent-primary-contrast);
+  // Sheen that sweeps across the primary button. Light veil over gold.
+  --color-action-sheen: var(--white-a20);
 
-  // Accent. `--color-accent-ink` is the readable ink on top of an accent fill
-  // (the user avatar); white would fail contrast on gold.
-  --color-accent: var(--gold-400);
-  --color-accent-ink: var(--guinda-ink);
+  // Accent
+  --color-accent: var(--accent-gold);
+  --color-accent-ink: var(--accent-primary-contrast);
 
   // States. On guinda, error is a pale rose surface, never red text.
   --color-state-error: var(--rose-50);
@@ -49,17 +92,37 @@
 
   // Overlays and focus
   --color-scrim: var(--scrim);
-  --color-focus-ring: rgba(232, 199, 102, 0.25);
+  --color-focus-ring: rgba(229, 193, 88, 0.25);
 
-  // Canvas: a diagonal gradient with the warm light in the upper right and the
-  // deepest tone washing up from the bottom centre. Measured from the canvas,
-  // not invented: a flat fill leaves the glass with nothing to refract.
-  --canvas-glow: rgba(190, 120, 55, 0.55);
-  --canvas-wash: rgba(40, 4, 14, 0.18);
+  // Canvas: institutional guinda ground with soft gold glow.
+  --canvas-glow: var(--bg-main-glow);
+  --canvas-wash: rgba(18, 2, 6, 0.22);
   --canvas-gradient:
-    radial-gradient(ellipse 40% 34% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
+    radial-gradient(ellipse 46% 38% at 76% 12%, var(--canvas-glow) 0%, transparent 100%),
     radial-gradient(ellipse 80% 55% at 50% 106%, var(--canvas-wash) 0%, transparent 72%),
-    linear-gradient(125deg, var(--guinda-canvas-hi) 0%, var(--guinda-600) 50%, var(--guinda-canvas-lo) 100%);
+    linear-gradient(125deg, var(--bg-card) 0%, var(--bg-main) 55%, var(--bg-sidebar) 100%);
+
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: 0 10px 28px rgba(18, 2, 6, 0.34);
+  --shadow-lg: 0 18px 40px rgba(18, 2, 6, 0.44);
+
+  // Paper world: the desk the folder rests on, the ink that sits on that desk,
+  // and the action colour. Everything else about paper lives in `_paper.scss`.
+  --color-desk: var(--bg-sidebar);
+  --color-paper-ink: var(--text-secondary);
+  --color-paper-action: var(--accent-primary);
+  --color-paper-action-ink: var(--accent-primary-contrast);
+
+  // The drawer owns its own ink because a theme may paint it a colour the page
+  // is not.
+  --color-sidebar-bg: var(--bg-sidebar);
+  --color-sidebar-glass: var(--sidebar-hover);
+  --color-sidebar-ink: var(--sidebar-text);
+  --color-sidebar-line: var(--border-color);
+  --color-sidebar-overline: var(--sidebar-muted);
+  --color-sidebar-active: var(--accent-primary);
+  --color-sidebar-active-ink: var(--accent-primary-contrast);
+  --color-sidebar-sheen: rgba(43, 6, 14, 0.25);
 
   color-scheme: dark;
 }

@@ -1,0 +1,981 @@
+<!--
+  Editing is a file being corrected, not a card: the same manila folder over the
+  desk the record and the alta already use. That is why the shell is bare — the
+  drawer contributes the top layer, the focus trap and the way out, and the
+  folder paints its own surface.
+-->
+<app-drawer title="Editar empleado" [bare]="true" side="right" size="lg" [(open)]="open">
+  <div class="edicion" [class.is-l2]="vistaL2() !== null">
+    <!--
+      The folder keeps the bar, the strip and the frame of the sheet; the annex
+      of the second level is a sibling that slides over it, so the record is dimmed
+      and made inert instead of unmounted.
+    -->
+    <app-alta-expediente
+      [titulo]="titulo()"
+      [tabs]="tabs"
+      [activo]="indiceActivo()"
+      [errores]="erroresPorTab()"
+      [ocupado]="cargando()"
+      etiquetaTabs="Secciones de la edición"
+      [attr.inert]="vistaL2() !== null ? '' : null"
+      [attr.aria-hidden]="vistaL2() !== null ? 'true' : null"
+      (seleccionar)="seleccionarIndice($event)"
+      (cerrar)="cerrar()"
+    >
+      <button
+        acciones-bar
+        type="button"
+        class="action"
+        [disabled]="registroActual() === null"
+        (click)="abrirNivel2('num-empleado')"
+      >
+        Corregir número
+      </button>
+
+      @if (fallo(); as problema) {
+        <div class="state" role="alert">
+          <p class="state-title">{{ problema.mensaje }}</p>
+
+          @if (problema.detalle) {
+            <p class="state-text">{{ problema.detalle }}</p>
+          }
+
+          @if (problema.accion === 'reintentar') {
+            <button type="button" class="action" [disabled]="cargando()" (click)="reintentar()">
+              Reintentar
+            </button>
+          }
+        </div>
+      } @else if (registroActual(); as registro) {
+        @if (mensaje() !== null || erroresSueltos().length > 0) {
+          <div class="state" role="alert">
+            @if (mensaje(); as texto) {
+              <p class="state-title">{{ texto }}</p>
+            }
+
+            @for (suelto of erroresSueltos(); track suelto) {
+              <p class="state-text">{{ suelto }}</p>
+            }
+
+            @if (conflicto()) {
+              <button type="button" class="action" [disabled]="cargando()" (click)="reintentar()">
+                Recargar ficha
+              </button>
+            }
+          </div>
+        }
+
+        @switch (tabActiva()) {
+          @case ('identificacion') {
+            <fieldset class="group">
+              <legend class="group-title">Identificación</legend>
+              <p class="group-hint">
+                Estos datos vienen de la ficha oficial y se leen tal como están registrados. La
+                corrección de un dato de identidad es un acto auditado y vive en su propia hoja.
+              </p>
+
+              <div class="grid">
+                @let numero = valorDe('num_empleado');
+                <div class="field">
+                  <span class="label">Número de empleado</span>
+                  <span class="value" [class.is-empty]="numero.vacio">{{ numero.valor }}</span>
+                </div>
+
+                @let nombre = valorDe('nombre');
+                <div class="field is-wide">
+                  <span class="label">Nombre completo</span>
+                  <span class="value" [class.is-empty]="nombre.vacio">{{ nombre.valor }}</span>
+                </div>
+
+                @let curp = valorDe('curp');
+                <div class="field">
+                  <span class="label">CURP</span>
+                  <span class="value" [class.is-empty]="curp.vacio">{{ curp.valor }}</span>
+                </div>
+
+                @let nacimiento = valorDe('fecha_nacimiento');
+                <div class="field">
+                  <span class="label">Fecha de nacimiento</span>
+                  <span class="value" [class.is-empty]="nacimiento.vacio">{{
+                    nacimiento.valor
+                  }}</span>
+                </div>
+
+                @let sexo = valorDe('sexo');
+                <div class="field">
+                  <span class="label">Sexo</span>
+                  <span class="value" [class.is-empty]="sexo.vacio">{{ sexo.valor }}</span>
+                </div>
+
+                @let entidad = valorDe('entidad_nacimiento');
+                <div class="field">
+                  <span class="label">Entidad de nacimiento</span>
+                  <span class="value" [class.is-empty]="entidad.vacio">{{ entidad.valor }}</span>
+                </div>
+
+                @let correo = valorDe('correo_institucional');
+                <div class="field is-wide">
+                  <span class="label">Correo institucional</span>
+                  <span class="value" [class.is-empty]="correo.vacio">{{ correo.valor }}</span>
+                </div>
+
+                @let civil = valorDe('estado_civil');
+                <div class="field">
+                  <span class="label">Estado civil</span>
+                  <span class="value" [class.is-empty]="civil.vacio">{{ civil.valor }}</span>
+                </div>
+              </div>
+
+              <div class="group-actions">
+                <button type="button" class="action" (click)="abrirNivel2('identidad')">
+                  Rectificar datos de identidad →
+                </button>
+              </div>
+            </fieldset>
+          }
+
+          @case ('plaza') {
+            <fieldset class="group">
+              <legend class="group-title">Plaza vigente</legend>
+              <p class="group-hint">
+                El área, el puesto y las fechas los administra la institución. Desde acá se
+                consultan, y el cambio de plaza tiene su propio acto auditado.
+              </p>
+
+              <div class="grid">
+                @let area = valorDe('area');
+                <div class="field is-wide">
+                  <span class="label">Área</span>
+                  <span class="value" [class.is-empty]="area.vacio">{{ area.valor }}</span>
+                </div>
+
+                @let puesto = valorDe('puesto');
+                <div class="field">
+                  <span class="label">Puesto</span>
+                  <span class="value" [class.is-empty]="puesto.vacio">{{ puesto.valor }}</span>
+                </div>
+
+                @let categoria = valorDe('categoria_cct');
+                <div class="field">
+                  <span class="label">Categoría CCT</span>
+                  <span class="value" [class.is-empty]="categoria.vacio">{{
+                    categoria.valor
+                  }}</span>
+                </div>
+
+                @let personal = valorDe('tipo_personal');
+                <div class="field">
+                  <span class="label">Tipo de personal</span>
+                  <span class="value" [class.is-empty]="personal.vacio">{{ personal.valor }}</span>
+                </div>
+
+                @let jornada = valorDe('tipo_jornada');
+                <div class="field">
+                  <span class="label">Tipo de jornada</span>
+                  <span class="value" [class.is-empty]="jornada.vacio">{{ jornada.valor }}</span>
+                </div>
+
+                @let inicioPuesto = valorDe('fecha_inicio_puesto');
+                <div class="field">
+                  <span class="label">Fecha de inicio en el puesto</span>
+                  <span class="value" [class.is-empty]="inicioPuesto.vacio">{{
+                    inicioPuesto.valor
+                  }}</span>
+                </div>
+
+                @let ingresoGobierno = valorDe('fecha_ingreso_gobierno');
+                <div class="field">
+                  <span class="label">Fecha de ingreso al gobierno</span>
+                  <span class="value" [class.is-empty]="ingresoGobierno.vacio">{{
+                    ingresoGobierno.valor
+                  }}</span>
+                </div>
+              </div>
+
+              <div class="group-actions">
+                <button
+                  type="button"
+                  class="action"
+                  (click)="abrirNivel2('historial-adscripciones')"
+                >
+                  Ver historial de adscripciones →
+                </button>
+                <button type="button" class="action" (click)="abrirNivel2('cambio-adscripcion')">
+                  Registrar cambio de adscripción →
+                </button>
+              </div>
+            </fieldset>
+          }
+
+          @default {
+            <app-grados-academicos
+              prefijo="editar-"
+              [grados]="gradosPresentacion()"
+              [niveles]="niveles()"
+              [gradoAbierto]="gradoAbierto()"
+              [editando]="gradoEditandoId() !== null"
+              [gradoErrores]="gradoErrores()"
+              [guardandoGrado]="guardandoGrado()"
+              [(gradoNivel)]="gradoNivel"
+              [(gradoTitulo)]="gradoTitulo"
+              [(gradoEscuela)]="gradoEscuela"
+              [(gradoGeneracion)]="gradoGeneracion"
+              [(gradoCedula)]="gradoCedula"
+              [(gradoMaximo)]="gradoMaximo"
+              (nuevoGrado)="nuevoGrado()"
+              (cancelarGrado)="cancelarGrado()"
+              (guardarGrado)="guardarGrado()"
+              (editarGrado)="editarGrado($any($event))"
+              (eliminarGrado)="eliminarGrado($any($event))"
+              (marcarGradoMaximo)="marcarGradoMaximo($any($event))"
+            />
+
+            <fieldset class="group">
+              <legend class="group-title">Empleos externos</legend>
+              <p class="group-hint">
+                Lo que la persona declara fuera de la institución. El empleo concluido se conserva
+                como historial; la vigencia se cambia sin borrar el registro.
+              </p>
+
+              @if (empleos().length === 0) {
+                <p class="carpeta-vacia">Sin empleos externos registrados.</p>
+              } @else {
+                <ul class="tarjetas">
+                  @for (empleo of empleos(); track empleo.id) {
+                    <li class="tarjeta">
+                      <div class="tarjeta-head">
+                        <p class="tarjeta-titulo">{{ empleo.institucion_o_empresa }}</p>
+                        <span class="badge" [class.is-ok]="empleo.vigente">
+                          {{ empleo.vigente ? 'Vigente' : 'Concluido' }}
+                        </span>
+                      </div>
+
+                      <dl class="tarjeta-meta">
+                        <div>
+                          <dt>Puesto</dt>
+                          <dd>{{ empleo.puesto_o_actividad || '—' }}</dd>
+                        </div>
+                        <div>
+                          <dt>Horario</dt>
+                          <dd>{{ empleo.horario_o_jornada || '—' }}</dd>
+                        </div>
+                        @if (empleo.observaciones) {
+                          <div class="is-wide">
+                            <dt>Observaciones</dt>
+                            <dd>{{ empleo.observaciones }}</dd>
+                          </div>
+                        }
+                      </dl>
+
+                      <div class="tarjeta-acciones">
+                        <button
+                          type="button"
+                          class="action"
+                          [disabled]="guardandoEmpleo()"
+                          (click)="editarEmpleo(empleo)"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          class="action"
+                          [disabled]="guardandoEmpleo()"
+                          (click)="alternarVigencia(empleo)"
+                        >
+                          {{ empleo.vigente ? 'Marcar concluido' : 'Marcar vigente' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="action is-danger"
+                          [disabled]="guardandoEmpleo()"
+                          (click)="eliminarEmpleo(empleo)"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (!empleoAbierto()) {
+                <button type="button" class="action" (click)="nuevoEmpleo()">
+                  + Registrar empleo externo
+                </button>
+              } @else {
+                <div class="form-carpeta">
+                  <p class="form-carpeta-titulo">
+                    {{
+                      empleoEditandoId() === null ? 'Nuevo empleo externo' : 'Editar empleo externo'
+                    }}
+                  </p>
+
+                  <div class="grid">
+                    <div class="field is-wide">
+                      <label class="label" for="empleo-institucion">Institución o empresa</label>
+                      <input
+                        id="empleo-institucion"
+                        class="control"
+                        type="text"
+                        maxlength="200"
+                        [value]="empleoInstitucion()"
+                        [class.is-invalid]="errorEmpleo('institucion_o_empresa') !== null"
+                        (input)="empleoInstitucion.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('institucion_o_empresa'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+
+                    <div class="field">
+                      <label class="label" for="empleo-puesto">Puesto o actividad</label>
+                      <input
+                        id="empleo-puesto"
+                        class="control"
+                        type="text"
+                        maxlength="150"
+                        [value]="empleoPuesto()"
+                        [class.is-invalid]="errorEmpleo('puesto_o_actividad') !== null"
+                        (input)="empleoPuesto.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('puesto_o_actividad'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+
+                    <div class="field">
+                      <label class="label" for="empleo-horario">Horario o jornada</label>
+                      <input
+                        id="empleo-horario"
+                        class="control"
+                        type="text"
+                        maxlength="120"
+                        [value]="empleoHorario()"
+                        [class.is-invalid]="errorEmpleo('horario_o_jornada') !== null"
+                        (input)="empleoHorario.set($any($event.target).value)"
+                      />
+                      @if (errorEmpleo('horario_o_jornada'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+
+                    <div class="field is-wide">
+                      <label class="label" for="empleo-observaciones">Observaciones</label>
+                      <textarea
+                        id="empleo-observaciones"
+                        class="control area"
+                        rows="3"
+                        maxlength="500"
+                        [value]="empleoObservaciones()"
+                        [class.is-invalid]="errorEmpleo('observaciones') !== null"
+                        (input)="empleoObservaciones.set($any($event.target).value)"
+                      ></textarea>
+                      @if (errorEmpleo('observaciones'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+                  </div>
+
+                  <label class="check">
+                    <input
+                      type="checkbox"
+                      [checked]="empleoVigente()"
+                      (change)="empleoVigente.set($any($event.target).checked)"
+                    />
+                    <span>Sigue vigente</span>
+                  </label>
+
+                  <div class="acciones form-carpeta-acciones">
+                    <button
+                      type="button"
+                      class="action"
+                      [disabled]="guardandoEmpleo()"
+                      (click)="cancelarEmpleo()"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="action is-primary"
+                      [disabled]="guardandoEmpleo()"
+                      (click)="guardarEmpleo()"
+                    >
+                      {{ guardandoEmpleo() ? 'Guardando…' : 'Guardar empleo' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </fieldset>
+
+            <fieldset class="group">
+              <legend class="group-title">Experiencia y observaciones</legend>
+
+              <div class="grid">
+                <div class="field">
+                  <label class="label" for="exp_publico_anios">Sector público (años)</label>
+                  <input
+                    id="exp_publico_anios"
+                    class="control"
+                    type="number"
+                    min="0"
+                    max="100"
+                    [disabled]="!puedeEditar('exp_publico_anios')"
+                    [value]="expPublico()"
+                    (input)="expPublico.set(+$any($event.target).value)"
+                  />
+                  @for (error of erroresServidor()['exp_publico_anios'] ?? []; track error) {
+                    <p class="field-error" role="alert">{{ error }}</p>
+                  }
+                </div>
+
+                <div class="field">
+                  <label class="label" for="exp_privado_anios">Sector privado (años)</label>
+                  <input
+                    id="exp_privado_anios"
+                    class="control"
+                    type="number"
+                    min="0"
+                    max="100"
+                    [disabled]="!puedeEditar('exp_privado_anios')"
+                    [value]="expPrivado()"
+                    (input)="expPrivado.set(+$any($event.target).value)"
+                  />
+                  @for (error of erroresServidor()['exp_privado_anios'] ?? []; track error) {
+                    <p class="field-error" role="alert">{{ error }}</p>
+                  }
+                </div>
+
+                <div class="field is-wide">
+                  <label class="label" for="observaciones">Observaciones</label>
+                  <textarea
+                    id="observaciones"
+                    class="control area"
+                    rows="4"
+                    maxlength="2000"
+                    [disabled]="!puedeEditar('observaciones')"
+                    [value]="observaciones()"
+                    (input)="observaciones.set($any($event.target).value)"
+                  ></textarea>
+                  @for (error of erroresServidor()['observaciones'] ?? []; track error) {
+                    <p class="field-error" role="alert">{{ error }}</p>
+                  }
+                </div>
+              </div>
+            </fieldset>
+          }
+        }
+
+        @if (guardado() && !hayCambios()) {
+          <p class="exito" role="status">Cambios guardados.</p>
+        }
+
+        @if (tabActiva() !== 'plaza') {
+          <div class="acciones">
+            <button type="button" class="action" [disabled]="enviando()" (click)="cerrar()">
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              class="action is-primary"
+              [disabled]="!puedeGuardar()"
+              [attr.aria-busy]="enviando() ? 'true' : null"
+              (click)="guardarCambios()"
+            >
+              {{ enviando() ? 'Guardando…' : 'Guardar cambios' }}
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="skeleton" aria-hidden="true">
+          @for (linea of esqueletos; track linea) {
+            <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+          }
+        </div>
+        <p class="visually-hidden" role="status">Cargando la ficha del trabajador…</p>
+      }
+    </app-alta-expediente>
+
+    <!--
+      Second level: the annex of an audited act, stacked over the folder with its
+      own bar and the folio at the foot, exactly like the record's annexes. Until
+      the phase that connects it, the sheet says which annex it is instead of
+      faking a form.
+    -->
+    @if (vistaL2(); as vista) {
+      <section class="anexo" [attr.aria-labelledby]="'anexo-' + vista">
+        <div class="anexo-bar">
+          <button type="button" class="action" (click)="cerrarNivel2()">← Volver</button>
+          <p class="anexo-titulo" [id]="'anexo-' + vista">{{ tituloAnexo() }}</p>
+        </div>
+
+        <div class="anexo-cuerpo">
+          @switch (vista) {
+            @case ('historial-adscripciones') {
+              @if (cargandoHistorial()) {
+                <div class="skeleton" aria-hidden="true">
+                  @for (linea of esqueletos; track linea) {
+                    <span class="line skeleton-shimmer" [class.is-short]="linea % 3 === 1"></span>
+                  }
+                </div>
+              } @else if (errorHistorial(); as fallo) {
+                <div class="state" role="alert">
+                  <p class="state-title">{{ fallo }}</p>
+                  <button type="button" class="action" (click)="reintentarHistorial()">
+                    Reintentar
+                  </button>
+                </div>
+              } @else if (historial().length === 0) {
+                <p class="pendiente">Sin adscripciones registradas.</p>
+              } @else {
+                <ol class="linea-tiempo">
+                  @for (periodo of historial(); track periodo.id) {
+                    <li class="periodo" [class.is-vigente]="periodo.estado === 'vigente'">
+                      <span class="nodo" aria-hidden="true"></span>
+
+                      <div class="periodo-cuerpo">
+                        <p class="periodo-titulo">
+                          {{ periodo.area || 'Sin área' }} · {{ periodo.puesto || 'Sin puesto' }}
+                        </p>
+                        <p class="periodo-meta">
+                          Desde {{ fechaCorta(periodo.desde) }}
+                          @if (periodo.hasta) {
+                            · hasta {{ fechaCorta(periodo.hasta) }}
+                          }
+                        </p>
+                        <p class="periodo-meta">
+                          Categoría {{ periodo.categoria_cct_clave || '—' }}
+                          @if (periodo.motivo) {
+                            · {{ periodo.motivo }}
+                          }
+                        </p>
+                      </div>
+
+                      @if (periodo.estado === 'vigente') {
+                        <span class="badge is-ok">Vigente</span>
+                      }
+                    </li>
+                  }
+                </ol>
+              }
+            }
+
+            @case ('cambio-adscripcion') {
+              <div class="form">
+                <p class="aviso">
+                  El cambio cierra la plaza vigente y abre una nueva. La fecha efectiva la fija el
+                  servidor, no esta pantalla.
+                </p>
+
+                <div class="grid">
+                  <div class="field">
+                    <label class="label" for="adsc-area">Área</label>
+                    <select
+                      id="adsc-area"
+                      class="control"
+                      [class.is-invalid]="errorAdscripcion('area_id') !== null"
+                      (change)="elegirArea($event)"
+                    >
+                      <option value="" [selected]="adscArea() === null">Elige un área</option>
+                      @for (area of areasAsignables(); track area.id) {
+                        <option [value]="area.id" [selected]="adscArea() === area.id">
+                          {{ area.nombre }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorAdscripcion('area_id'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="adsc-puesto">Puesto</label>
+                    <select
+                      id="adsc-puesto"
+                      class="control"
+                      [disabled]="adscArea() === null"
+                      [class.is-invalid]="errorAdscripcion('puesto_id') !== null"
+                      (change)="elegirPuesto($event)"
+                    >
+                      <option value="" [selected]="adscPuesto() === null">
+                        {{ adscArea() === null ? 'Elige primero un área' : 'Elige un puesto' }}
+                      </option>
+                      @for (puesto of puestosDelArea(); track puesto.id) {
+                        <option [value]="puesto.id" [selected]="adscPuesto() === puesto.id">
+                          {{ puesto.nombre }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorAdscripcion('puesto_id'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <span class="label">Categoría CCT</span>
+                    <p class="dato">{{ categoriaDelPuesto()?.clave || 'Se deriva del puesto' }}</p>
+                  </div>
+
+                  @if (adscEsMandoMedio()) {
+                    <!--
+                      A management post fixes both values on the server, so there
+                      is nothing to choose: the annex says what will travel instead
+                      of showing two controls the backend would overwrite.
+                    -->
+                    <div class="field is-wide">
+                      <span class="label">Condición laboral</span>
+                      <p class="dato">
+                        Puesto de mando medio: el tipo de personal y el tipo de jornada los fija el
+                        sistema ({{ personalMandoMedio }} · {{ jornadaMandoMedio }}).
+                      </p>
+                    </div>
+                  } @else {
+                    <div class="field">
+                      <label class="label" for="adsc-tipo-personal">Tipo de personal</label>
+                      <select
+                        id="adsc-tipo-personal"
+                        class="control"
+                        [class.is-invalid]="errorAdscripcion('tipo_personal') !== null"
+                        (change)="adscTipoPersonal.set($any($event.target).value)"
+                      >
+                        <option value="" [selected]="adscTipoPersonal() === ''">
+                          Elige una opción
+                        </option>
+                        @for (tipo of tiposPersonalAdsc(); track tipo) {
+                          <option [value]="tipo" [selected]="adscTipoPersonal() === tipo">
+                            {{ tipo }}
+                          </option>
+                        }
+                      </select>
+                      @if (errorAdscripcion('tipo_personal'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+
+                    <div class="field">
+                      <label class="label" for="adsc-tipo-jornada">Tipo de jornada</label>
+                      <select
+                        id="adsc-tipo-jornada"
+                        class="control"
+                        [class.is-invalid]="errorAdscripcion('tipo_jornada') !== null"
+                        (change)="adscTipoJornada.set($any($event.target).value)"
+                      >
+                        <option value="" [selected]="adscTipoJornada() === ''">
+                          Elige una opción
+                        </option>
+                        @for (jornada of tiposJornadaAdsc(); track jornada) {
+                          <option [value]="jornada" [selected]="adscTipoJornada() === jornada">
+                            {{ jornada }}
+                          </option>
+                        }
+                      </select>
+                      @if (errorAdscripcion('tipo_jornada'); as error) {
+                        <p class="field-error" role="alert">{{ error }}</p>
+                      }
+                    </div>
+                  }
+
+                  <div class="field is-wide">
+                    <label class="label" for="adsc-nota">Motivo / nota</label>
+                    <textarea
+                      id="adsc-nota"
+                      class="control area"
+                      rows="4"
+                      [attr.maxlength]="maxNota"
+                      [value]="adscNota()"
+                      (input)="adscNota.set($any($event.target).value)"
+                    ></textarea>
+                    <div class="nota-meta">
+                      <span>La fecha efectiva la fija el servidor.</span>
+                      <span>{{ adscNota().length }} / {{ maxNota }}</span>
+                    </div>
+                    @if (errorAdscripcion('nota'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+                </div>
+
+                @if (mensaje(); as fallo) {
+                  <p class="field-error" role="alert">{{ fallo }}</p>
+                }
+
+                <div class="acciones">
+                  <button type="button" class="action" (click)="cerrarNivel2()">Cancelar</button>
+                  <button
+                    type="button"
+                    class="action is-primary"
+                    [disabled]="!puedeGuardarAdsc()"
+                    (click)="guardarAdscripcion()"
+                  >
+                    {{ guardandoAdsc() ? 'Guardando…' : 'Registrar cambio' }}
+                  </button>
+                </div>
+              </div>
+            }
+
+            @case ('identidad') {
+              <div class="form">
+                <p class="aviso">
+                  La rectificación reescribe datos de identidad y queda auditada con su motivo.
+                  Corregir una CURP no vuelve a derivar la fecha de nacimiento: las dos se declaran
+                  acá.
+                </p>
+
+                <div class="grid">
+                  <div class="field is-wide">
+                    <label class="label" for="identidad-nombre">Nombre completo</label>
+                    <input
+                      id="identidad-nombre"
+                      class="control"
+                      type="text"
+                      maxlength="150"
+                      [value]="identidadNombre()"
+                      [class.is-invalid]="errorIdentidad('nombre') !== null"
+                      (input)="identidadNombre.set($any($event.target).value)"
+                    />
+                    @if (errorIdentidad('nombre'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-curp">CURP</label>
+                    <input
+                      id="identidad-curp"
+                      class="control"
+                      type="text"
+                      maxlength="18"
+                      [value]="identidadCurp()"
+                      [class.is-invalid]="errorIdentidad('curp') !== null"
+                      (input)="identidadCurp.set($any($event.target).value)"
+                    />
+                    @if (errorIdentidad('curp'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-fecha">Fecha de nacimiento</label>
+                    <input
+                      id="identidad-fecha"
+                      class="control"
+                      type="date"
+                      [value]="identidadFecha()"
+                      [class.is-invalid]="errorIdentidad('fecha_nacimiento') !== null"
+                      (input)="identidadFecha.set($any($event.target).value)"
+                    />
+                    @if (errorIdentidad('fecha_nacimiento'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-sexo">Sexo</label>
+                    <select
+                      id="identidad-sexo"
+                      class="control"
+                      [class.is-invalid]="errorIdentidad('sexo') !== null"
+                      (change)="identidadSexo.set($any($event.target).value)"
+                    >
+                      <option value="" [selected]="identidadSexo() === ''">Sin dato</option>
+                      @for (opcion of catalogos()?.sexos ?? []; track opcion) {
+                        <option [value]="opcion" [selected]="identidadSexo() === opcion">
+                          {{ opcion }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorIdentidad('sexo'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-entidad">Entidad de nacimiento</label>
+                    <select
+                      id="identidad-entidad"
+                      class="control"
+                      [class.is-invalid]="errorIdentidad('entidad_nacimiento') !== null"
+                      (change)="identidadEntidad.set($any($event.target).value)"
+                    >
+                      <option value="" [selected]="identidadEntidad() === ''">Sin dato</option>
+                      @for (entidad of entidades(); track entidad.clave) {
+                        <option
+                          [value]="entidad.clave"
+                          [selected]="identidadEntidad() === entidad.clave"
+                        >
+                          {{ entidad.nombre }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorIdentidad('entidad_nacimiento'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="identidad-estado-civil">Estado civil</label>
+                    <select
+                      id="identidad-estado-civil"
+                      class="control"
+                      [class.is-invalid]="errorIdentidad('estado_civil_id') !== null"
+                      (change)="
+                        identidadEstadoCivilId.set(
+                          $any($event.target).value === '' ? null : +$any($event.target).value
+                        )
+                      "
+                    >
+                      <option value="" [selected]="identidadEstadoCivilId() === null">
+                        Sin dato
+                      </option>
+                      @for (estado of estadosCiviles(); track estado.id) {
+                        <option
+                          [value]="estado.id"
+                          [selected]="identidadEstadoCivilId() === estado.id"
+                        >
+                          {{ estado.descripcion }}
+                        </option>
+                      }
+                    </select>
+                    @if (errorIdentidad('estado_civil_id'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field is-wide">
+                    <label class="label" for="identidad-correo">Correo institucional</label>
+                    <input
+                      id="identidad-correo"
+                      class="control"
+                      type="email"
+                      maxlength="150"
+                      [value]="identidadCorreo()"
+                      [class.is-invalid]="errorIdentidad('correo_institucional') !== null"
+                      (input)="identidadCorreo.set($any($event.target).value)"
+                    />
+                    @if (errorIdentidad('correo_institucional'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field is-wide">
+                    <label class="label" for="identidad-motivo">Motivo de la rectificación</label>
+                    <textarea
+                      id="identidad-motivo"
+                      class="control area"
+                      rows="4"
+                      [attr.maxlength]="maxNota"
+                      [value]="identidadMotivo()"
+                      [class.is-invalid]="errorIdentidad('motivo_rectificacion') !== null"
+                      (input)="identidadMotivo.set($any($event.target).value)"
+                    ></textarea>
+                    <div class="nota-meta">
+                      <span>Mínimo 10 caracteres.</span>
+                      <span>{{ identidadMotivo().length }} / {{ maxNota }}</span>
+                    </div>
+                    @if (errorIdentidad('motivo_rectificacion'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+                </div>
+
+                @if (mensaje(); as fallo) {
+                  <p class="field-error" role="alert">{{ fallo }}</p>
+                }
+
+                <div class="acciones">
+                  <button type="button" class="action" (click)="cerrarNivel2()">Cancelar</button>
+                  <button
+                    type="button"
+                    class="action is-primary"
+                    [disabled]="!puedeGuardarIdentidad()"
+                    (click)="guardarIdentidad()"
+                  >
+                    {{ guardandoIdentidad() ? 'Guardando…' : 'Rectificar identidad' }}
+                  </button>
+                </div>
+              </div>
+            }
+
+            @case ('num-empleado') {
+              <div class="form">
+                <p class="aviso">
+                  El número identifica al trabajador en toda la institución y en los documentos que
+                  ya lo citan. La corrección queda auditada con su motivo.
+                </p>
+
+                <span class="label">Folio actual</span>
+                <p class="dato">{{ folio() }}</p>
+
+                <div class="grid">
+                  <div class="field">
+                    <label class="label" for="num-nuevo">Número nuevo</label>
+                    <input
+                      id="num-nuevo"
+                      class="control"
+                      type="text"
+                      maxlength="20"
+                      [value]="numNuevo()"
+                      [class.is-invalid]="errorNumero('num_empleado') !== null"
+                      (input)="numNuevo.set($any($event.target).value)"
+                    />
+                    @if (errorNumero('num_empleado'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+
+                  <div class="field is-wide">
+                    <label class="label" for="num-motivo">Motivo de la corrección</label>
+                    <textarea
+                      id="num-motivo"
+                      class="control area"
+                      rows="4"
+                      [attr.maxlength]="maxNota"
+                      [value]="numMotivo()"
+                      [class.is-invalid]="errorNumero('motivo_correccion') !== null"
+                      (input)="numMotivo.set($any($event.target).value)"
+                    ></textarea>
+                    <div class="nota-meta">
+                      <span>Mínimo 15 caracteres.</span>
+                      <span>{{ numMotivo().length }} / {{ maxNota }}</span>
+                    </div>
+                    @if (errorNumero('motivo_correccion'); as error) {
+                      <p class="field-error" role="alert">{{ error }}</p>
+                    }
+                  </div>
+                </div>
+
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="numConfirmado()"
+                    (change)="numConfirmado.set($any($event.target).checked)"
+                  />
+                  <span>Confirmo que el número nuevo es el correcto.</span>
+                </label>
+
+                @if (mensaje(); as fallo) {
+                  <p class="field-error" role="alert">{{ fallo }}</p>
+                }
+
+                <div class="acciones">
+                  <button type="button" class="action" (click)="cerrarNivel2()">Cancelar</button>
+                  <button
+                    type="button"
+                    class="action is-primary"
+                    [disabled]="!puedeGuardarNum()"
+                    (click)="guardarNumEmpleado()"
+                  >
+                    {{ guardandoNum() ? 'Guardando…' : 'Guardar número' }}
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <p class="anexo-pie">Anexo al folio {{ folio() }}</p>
+      </section>
+    }
+  </div>
+</app-drawer>

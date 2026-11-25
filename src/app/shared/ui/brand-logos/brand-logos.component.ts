@@ -1,4 +1,4 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 
 /**
  * Institutional logos of the UTN and of the Government of the State of Mexico.
@@ -17,8 +17,18 @@ import { Component, input, signal } from '@angular/core';
   styleUrl: './brand-logos.component.scss',
 })
 export class BrandLogos {
-  /** Slot size: `sm` for the sidebar, `lg` for the login header. */
-  readonly variant = input<'sm' | 'lg'>('sm');
+  /**
+   * Slot size: `sm` for the sidebar, `lg` for the login header.
+   *
+   * `mark` is the emblem alone — the UTN shield without the state wordmark and
+   * without the caption. It exists for the 76px rail of the drawer, where the
+   * two marks cannot sit side by side and an empty head would read as a broken
+   * panel. The square artwork is the one that fits a square slot.
+   */
+  readonly variant = input<'sm' | 'lg' | 'mark'>('sm');
+
+  /** `true` when only the institutional emblem is rendered. */
+  protected readonly isMark = computed(() => this.variant() === 'mark');
 
   /** Renders the "Sistema de Recursos Humanos" caption under the slots. */
   readonly showCaption = input(false);

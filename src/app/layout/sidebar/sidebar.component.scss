@@ -1,279 +1,488 @@
-// Floating glass panel.
+@use '../../../styles/breakpoints' as bp;
+
+// ---------------------------------------------------------------------------
+// The drawer is an object on the page: a sheet clipped to the canvas, with the
+// credential card of the session at its foot. It sits over the canvas as one
+// dense surface and does not float like a card: it is the archive, written on,
+// not a window over it.
 //
-// The shell keeps a gutter around it, so the drawer reads as a card lifted above
-// the canvas: full radius, a hairline on every side and a shadow that means
-// "this is above the page". The document edge is no longer part of the panel.
+// The structure is the approved one; the *palette* is the system's. Every
+// surface, line and ink is one of the drawer's own `--color-sidebar-*` roles, so
+// the drawer answers every theme through them: a theme may paint the rail a
+// colour the page is not, and then the page ink would be unreadable on it.
+//
+// Geometry stays in pixels where the metaphor needs it: the fold of the sheet
+// is a 1px rule and the toggle is a 32px clip hanging over the edge.
+// ---------------------------------------------------------------------------
+
 :host {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
   // Exactly one viewport minus the shell gutters, not `min-height: 100vh`: the
   // drawer is a rail, so the navigation scrolls inside it instead of growing the
-  // column and pushing the footer off screen. Sticky keeps it in place while a
+  // column and pushing the card off screen. Sticky keeps it in place while a
   // long page scrolls past.
   position: sticky;
   top: var(--space-4);
-  height: calc(100vh - var(--space-4) * 2);
+  height: calc(100dvh - var(--space-4) * 2);
   padding: var(--space-4);
-  // Clips the scrolling content to the rounded corners.
-  overflow: hidden;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-xl);
-  // Same treatment as the cards: a translucent glass layer over the canvas
-  // halos. The drawer is part of the same material language, not a solid slab.
-  background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
-  box-shadow: var(--shadow-md);
+  // Visible, not hidden: the collapse control is a disc that hangs over the
+  // right edge. The list clips itself, so nothing escapes the sheet.
+  overflow: visible;
+  // The edge is the sheet's own line; the fill is the drawer surface, because
+  // the rail has to hold text over the canvas it covers.
+  border: var(--border-width) solid var(--color-sidebar-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-ink);
+  box-shadow: var(--shadow-lg);
   // The shared `.enter-drawer` keyframe offsets the panel to the right, which
   // is right for a floating card. A left-edge drawer enters from its own edge,
   // so the offset is re-pointed at its mirror token instead of a new keyframe.
   --enter-drawer-x: var(--enter-drawer-x-left);
 }
 
+// Header and the control that folds it: the disc is positioned against this
+// box, so it always lands on the fold, whatever the header is tall.
+.top {
+  position: relative;
+  flex: none;
+}
+
 .header {
   display: flex;
-  flex: none;
   flex-direction: column;
-  // Stretch, not flex-end: the logo block needs the full width to hand down to
-  // its two slots. The toggle aligns itself instead.
-  align-items: stretch;
-  gap: var(--space-3);
-}
-
-:host(.is-collapsed) .header {
-  align-items: center;
-}
-
-// Reads as a link, not as a boxed button. The 44px minimum height keeps the
-// touch target compliant (AGENTS.md §8.6) while the visible size stays that of
-// a text link.
-.toggle {
-  display: inline-flex;
-  flex: none;
-  align-self: center;
-  align-items: center;
-  justify-content: center;
   gap: var(--space-2);
-  min-height: var(--space-8);
-  padding: var(--space-1) var(--space-2);
-  border: none;
-  background: var(--transparent);
-  color: var(--color-text-secondary);
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  padding-bottom: var(--space-3);
+  // The fold of the sheet: the header is written above it, the destinations
+  // below.
+  border-bottom: var(--border-width) dashed var(--color-sidebar-line);
+}
+
+// A round clip hanging over the right edge, on the fold. Small on purpose — it
+// is chrome, not a destination — but the target behind it is 44px.
+//
+// `right: -space-4` moves the disc one gutter out, so `translate(50%, 50%)`
+// lands its centre on the panel's border and half of it hangs over the canvas.
+.toggle {
+  position: absolute;
+  right: calc(var(--space-4) * -1);
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--border-width) solid var(--color-sidebar-line);
+  border-radius: var(--radius-pill);
+  // The disc is glass, not the rail itself: it has to read as a raised object
+  // hanging over the fold, so it takes the theme's glass fill rather than the
+  // fill it is drawn on.
+  background: var(--color-sidebar-glass);
+  color: var(--color-sidebar-ink);
   cursor: pointer;
-  transition: color var(--motion-fast) var(--motion-ease);
+  transform: translate(50%, 50%);
+  transition: background var(--motion-fast) var(--motion-ease);
 }
 
+// The visible disc may be 32px; the pointer target may not be under 44px.
+.toggle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: var(--radius-pill);
+}
+
+// The same lift a destination gets under the pointer: the rail's line role read
+// as a fill, one step above the sheet.
 .toggle:hover {
-  color: var(--color-accent);
-  text-decoration: underline;
+  background: var(--color-sidebar-line);
 }
 
-.toggle-label {
-  white-space: nowrap;
+// The seal red does not exist on the sheet any more, so the local ring is the
+// themed one — the same ring the rest of the shell draws.
+.toggle:focus-visible,
+.item:focus-visible {
+  outline-color: var(--color-focus-ring);
 }
 
 .chevron {
+  flex: none;
   width: var(--space-5);
   height: var(--space-5);
   transition: transform var(--motion-fast) var(--motion-ease);
 }
 
-// Collapsed: the drawer opens to the right, so the chevron points that way.
 :host(.is-collapsed) .chevron {
   transform: rotate(180deg);
 }
 
 .nav {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  padding-block: var(--space-3);
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// Elastic sliding pill indicator behind the active destination. It is the
+// stamp: the fill of a marked row, drawn once and moved.
+.pill-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-sidebar-active);
+  // The inner hairline is the double rule of a seal: it tells a stamped row
+  // from a merely filled one.
+  outline: var(--border-width) dashed var(--color-sidebar-sheen);
+  outline-offset: -5px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--motion-pill-snap) var(--motion-pill-ease),
+    width var(--motion-pill-snap) var(--motion-pill-ease),
+    height var(--motion-pill-snap) var(--motion-pill-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+
+  &.is-visible {
+    opacity: 1;
+  }
+}
+
+// A drawer of the archive: a typed label and its destinations.
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+}
+
+// `Sistema` configures the system instead of operating it, so it sinks to the
+// foot of the sheet when there is room to spare.
+.section.is-system {
+  margin-top: auto;
+}
+
+// The index label of a drawer, not a heading: typed, tracked out, overline.
+.section-label {
+  padding-inline: var(--space-3);
+  color: var(--color-sidebar-overline);
+  font-family: var(--font-typewriter);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+}
+
+// In the rail the label has no room and no meaning; the dashes of its rule keep
+// the two groups told apart.
+.section-rule {
+  border-top: var(--border-width) dashed var(--color-sidebar-line);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  // 8px between entries instead of 4px: the rows are tall enough to read as
-  // separate targets, and the rhythm stops feeling cramped.
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-// A second group (the free-standing entry after a branch) gets extra air so the
-// sections read as sections instead of one long column.
-.nav .list > li + li {
-  margin-top: var(--space-3);
-}
-
 // Shared by every entry of the drawer, links and buttons alike. The transparent
 // fill is not decorative: a `<button>` would otherwise paint the user-agent
-// button face and break the glass of the panel.
+// button face and break the sheet.
 .item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
   min-height: var(--space-8);
   padding: var(--space-2) var(--space-3);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--transparent);
-  color: var(--color-text-primary);
+  color: var(--color-sidebar-ink);
   font: var(--text-nav-item);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition:
-    background var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
+  transition: background var(--motion-fast) var(--motion-ease);
 }
 
-.item:hover {
-  background: var(--color-surface-glass);
-}
-
-// Branch labels are heavier than their children: that weight is the hierarchy.
-.item.is-branch {
-  font: var(--text-nav-branch);
-}
-
-// The active entry is a filled marker in both widths: a full-width pill when the
-// drawer is open, a 44px rounded square when it is only a rail.
-.item.is-active {
-  background: var(--color-action-primary);
-  color: var(--color-action-on-primary);
+// The line role read as a fill: the row lifts one step off the sheet.
+.item:hover:not(.is-active) {
+  background: var(--color-sidebar-line);
 }
 
 .icon {
   flex: none;
   width: var(--space-5);
   height: var(--space-5);
+  transition: transform var(--motion-fast) var(--motion-spring);
+}
+
+// The active destination answers in the archive voice: typed, stamped, twice
+// ruled. The fill is the sliding pill — the primary action of the theme — and
+// until it is measured the row still reads as that same action colour used as
+// ink, so no frame ever paints ink on a fill that is not there.
+.item.is-active {
+  color: var(--color-sidebar-active);
+  font-family: var(--font-typewriter);
+  font-weight: 700;
+}
+
+.nav.has-pill .item.is-active {
+  color: var(--color-sidebar-active-ink);
+}
+
+.item.is-active .icon {
+  transform: scale(var(--icon-active-scale));
 }
 
 .item-label {
   flex: 1 1 auto;
 }
 
-// Branch indicator of the `Empleados` toggle. It points down while the branch
-// is open and turns up when it closes, so the state reads without colour.
-.item-chevron {
+.item.is-branch {
+  width: 100%;
+  font: var(--text-nav-branch);
+}
+
+.item.is-branch-active {
+  color: var(--color-sidebar-active);
+}
+
+.branch-chevron {
   flex: none;
-  width: var(--space-5);
-  height: var(--space-5);
+  width: var(--space-4);
+  height: var(--space-4);
   transition: transform var(--motion-fast) var(--motion-ease);
 }
 
-.item-chevron.is-open {
-  transform: rotate(180deg);
+.branch-chevron.is-open {
+  transform: rotate(90deg);
 }
 
-// Child list of a branch. A hairline guide runs down the group so the nesting is
-// legible at a glance, and the children keep a lighter weight than the parent.
 .sublist {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin: 0 0 0 var(--space-5);
+  margin: var(--space-1) 0 0 var(--space-5);
   padding: 0 0 0 var(--space-3);
-  border-left: var(--border-width) solid var(--color-border-default);
+  border-left: var(--border-width) dashed var(--color-sidebar-line);
   list-style: none;
 }
 
-.item.is-child {
-  color: var(--color-text-secondary);
+.subitem {
+  min-height: var(--control-height-sm);
+  padding: var(--space-1) var(--space-3);
 }
 
-.item.is-child:hover {
-  color: var(--color-text-primary);
-}
-
-.item.is-child.is-active {
-  color: var(--color-action-on-primary);
-}
-
-// Rail width. `display: none` on the labels, never `opacity: 0`: a hidden label
-// must leave the accessibility tree, not just the visible surface.
-:host(.is-collapsed) {
-  padding: var(--space-4) 0;
-}
-
-:host(.is-collapsed) .item {
-  justify-content: center;
-  width: var(--space-8);
-  margin-inline: auto;
-  padding: 0;
-}
-
-:host(.is-collapsed) .item-label {
-  display: none;
-}
-
-// Account section, pinned to the bottom of the rail. It lives outside the
-// scroll container, so the entries and the session card stay in place while a
-// long menu scrolls above them.
-.footer {
+.rail-submenu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 45;
   display: flex;
-  flex: none;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-top: auto;
-  padding-top: var(--space-4);
-  border-top: var(--border-width) solid var(--color-border-default);
+  gap: var(--space-1);
+  min-width: 190px;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-sidebar-line);
+  border-radius: var(--radius-md);
+  background: var(--color-sidebar-bg);
+  box-shadow: var(--shadow-md);
 }
 
-// The session card closes the footer: a second hairline separates the person
-// from the actions above, so the card does not read as another entry.
-.user {
+.rail-submenu-item {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-sidebar-ink);
+  font: var(--text-nav-item);
+  text-decoration: none;
+}
+
+.rail-submenu-item:hover,
+.rail-submenu-item.is-active {
+  background: var(--color-sidebar-active);
+  color: var(--color-sidebar-active-ink);
+}
+
+.rail-submenu-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.nav-badge {
+  display: inline-flex;
   flex: none;
   align-items: center;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-  border-top: var(--border-width) solid var(--color-border-default);
-}
-
-:host(.is-collapsed) .user {
   justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-sidebar-active);
+  color: var(--color-sidebar-active-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.avatar {
+.item.is-active .nav-badge,
+.rail-submenu-item.is-active .nav-badge {
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-ink);
+}
+
+:host(.is-collapsed) {
+  z-index: 20;
+  padding: var(--space-4) 0;
+
+  .header {
+    align-items: center;
+  }
+
+  .item {
+    justify-content: center;
+    width: var(--space-8);
+    margin-inline: auto;
+    padding: 0;
+  }
+
+  .item-label {
+    display: none;
+  }
+}
+
+// The credential card closes the sheet, on its own dashed fold.
+.footer {
+  flex: none;
+  padding-top: var(--space-3);
+  border-top: var(--border-width) dashed var(--color-sidebar-line);
+}
+
+// A slip next to the rail: the name of whatever the pointer rests on. It is an
+// overlay surface, because it floats over the canvas instead of the sheet.
+.rail-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  border: var(--border-width) solid var(--color-sidebar-line);
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-ink);
+}
+
+.rail-tooltip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-typewriter);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.mobile-close {
   display: grid;
   flex: none;
   place-items: center;
   width: var(--space-8);
   height: var(--space-8);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
+  padding: 0;
+  border: var(--border-width) solid var(--color-sidebar-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-sidebar-glass);
+  color: var(--color-sidebar-ink);
+  cursor: pointer;
 }
 
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+.close-icon {
+  width: var(--space-5);
+  height: var(--space-5);
 }
 
-:host(.is-collapsed) .user-meta {
-  display: none;
+// High contrast drops the action fill, so the marked row is restated as a line.
+@media (forced-colors: active) {
+  .pill-indicator {
+    display: none;
+  }
+
+  .item.is-active {
+    outline: 2px solid CanvasText;
+    outline-offset: -2px;
+  }
 }
 
-.user-name {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--color-text-primary);
+@media (prefers-reduced-motion: reduce) {
+  // No travel of any kind: the stamp stops sliding and simply marks the row.
+  .pill-indicator {
+    display: none;
+  }
+
+  .item.is-active {
+    background: var(--color-sidebar-active);
+    color: var(--color-sidebar-active-ink);
+  }
+
+  .item,
+  .icon,
+  .toggle {
+    transition: none;
+  }
 }
 
-.user-role {
-  font: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
-  color: var(--color-text-secondary);
+@include bp.down(bp.$bp-sm) {
+  :host,
+  :host(.enter-drawer) {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(var(--sidebar-width), calc(100vw - var(--space-6)));
+    height: 100dvh;
+    overflow: hidden;
+    border-radius: var(--radius-none) var(--radius-lg) var(--radius-none);
+    animation: none;
+    transform: translateX(-105%);
+    pointer-events: none;
+    transition: transform var(--motion-base) var(--motion-ease);
+  }
+
+  :host(.is-mobile-open),
+  :host(.enter-drawer.is-mobile-open) {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :host,
+    :host(.enter-drawer) {
+      transition: none;
+    }
+  }
 }

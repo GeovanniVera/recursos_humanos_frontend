@@ -1,0 +1,68 @@
+<article class="mail-preview-shell">
+  <div class="mail-preview-frame">
+    <header class="mail-preview-header">
+      <div class="mail-logo-badge">
+        <img
+          src="/brand/logo-utn.svg"
+          width="48"
+          height="48"
+          alt="Universidad Tecnológica de Nezahualcóyotl"
+        />
+      </div>
+      <div class="mail-header-divider" aria-hidden="true"></div>
+      <div class="mail-header-titles">
+        <h3 class="mail-brand-title">Universidad Tecnológica de Nezahualcóyotl</h3>
+        <p class="mail-brand-sub">SISTEMA DE RECURSOS HUMANOS</p>
+      </div>
+    </header>
+
+    @if (recipient(); as to) {
+      <div class="mail-preview-meta">
+        <strong>Para:</strong> {{ to }}
+      </div>
+    }
+
+    <div class="mail-preview-content">
+      <div class="mail-preview-topmeta">
+        <span class="mail-folio-pill">{{ resolvedBadge() }}</span>
+        <span class="mail-date">{{ fechaTexto }}</span>
+      </div>
+
+      @if (greeting(); as saludo) {
+        <p class="mail-preview-greeting">{{ saludo }}</p>
+      }
+
+      <h4 class="mail-preview-subject">{{ subject() }}</h4>
+      <div class="mail-preview-body" [innerHTML]="bodyHtml()"></div>
+
+      @if (docAttachments().length > 0) {
+        <div class="mail-attachments-box">
+          <p class="mail-attachments-title">Archivos adjuntos ({{ docAttachments().length }})</p>
+          <ul class="mail-attachments-list">
+            @for (doc of docAttachments(); track doc.id) {
+              <li>{{ doc.nombre_original }} · {{ formatBytes(doc.tamano_bytes) }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (showNotice()) {
+        <div class="mail-notice-box">
+          <span class="mail-notice-icon" aria-hidden="true">!</span>
+          <p class="mail-notice-text">{{ noticeText() }}</p>
+        </div>
+      }
+    </div>
+
+    <footer class="mail-preview-footer">
+      @if (showAutoReplyNotice()) {
+        <p class="mail-footer-notice">
+          Este mensaje fue enviado de manera automática, por favor no lo responda.
+        </p>
+      }
+      <p class="mail-footer-org">
+        Departamento de Recursos Humanos · Universidad Tecnológica de Nezahualcóyotl
+      </p>
+    </footer>
+  </div>
+</article>

@@ -1,13 +1,16 @@
-import { CategoriaCctCatalogo, PuestoCatalogo } from './alta.models';
+import { ENTIDADES_FEDERATIVAS } from './entidades-federativas';
 import {
   EXPLICACION_CURP,
   MENSAJE_CURP_INVALIDA,
   calcularDigitoVerificador,
-  categoriaCompatible,
+  correoConDominio,
+  curpClaveEntidad,
   curpFechaNacimiento,
   curpSexo,
   normalizarCorreo,
   normalizarCurp,
+  normalizarNombre,
+  parteLocalCorreo,
   trabajaOtroDondeRequerido,
   validarAniosExperiencia,
   validarCorreo,
@@ -26,14 +29,28 @@ import {
  */
 const CURP_VALIDA = 'HEGG560427MVZRRL04';
 
-/** Categories used to compare a post with the category chosen for it. */
-const CATEGORIAS: readonly CategoriaCctCatalogo[] = [
-  { id: 3, clave: 'CCT-01', tipo: 'administrativo', descripcion: 'Analista' },
-  { id: 4, clave: 'CCT-02', tipo: 'mando_medio', descripcion: 'Dirección' },
-];
+describe('ENTIDADES_FEDERATIVAS', () => {
+  it('holds the 33 keys of the RENAPO catalogue', () => {
+    expect(ENTIDADES_FEDERATIVAS.length).toBe(33);
+    // A blank name would print nothing next to the key the CURP already carries.
+    expect(ENTIDADES_FEDERATIVAS.every((entidad) => entidad.nombre.trim() !== '')).toBe(true);
+  });
 
-const PUESTO: PuestoCatalogo = { id: 7, nombre: 'Analista', tipo_puesto: 'administrativo' };
-const PUESTO_MANDO: PuestoCatalogo = { id: 9, nombre: 'Director', tipo_puesto: 'mando_medio' };
+  it('keeps every key two characters long and unique', () => {
+    expect(ENTIDADES_FEDERATIVAS.every((entidad) => entidad.clave.length === 2)).toBe(true);
+    expect(new Set(ENTIDADES_FEDERATIVAS.map((entidad) => entidad.clave)).size).toBe(33);
+  });
+
+  it('carries the historical key of the capital, the State of Mexico and a birth abroad', () => {
+    // `DF` is what the CURP of someone born in the capital carries, and `NE` is
+    // the row of a birth abroad: none of the three can be renamed or dropped.
+    const claves = ENTIDADES_FEDERATIVAS.map((entidad) => entidad.clave);
+
+    expect(claves).toContain('DF');
+    expect(claves).toContain('MC');
+    expect(claves).toContain('NE');
+  });
+});
 
 describe('validarCurp', () => {
   it('accepts the example published by the RENAPO', () => {
@@ -103,7 +120,7 @@ describe('validarCurp', () => {
     ]);
     // One sentence for all five cases: the backend collapses them the same way.
     expect(MENSAJE_CURP_INVALIDA).toBe(
-      'La CURP no es válida. Revisá el formato, la entidad y el dígito verificador.',
+      'La CURP no es válida. Revisa el formato, la entidad y el dígito verificador.',
     );
   });
 });
@@ -152,6 +169,24 @@ describe('curpSexo', () => {
   });
 });
 
+describe('curpClaveEntidad', () => {
+  it('answers null while the CURP is shorter than thirteen characters', () => {
+    expect(curpClaveEntidad('')).toBeNull();
+    expect(curpClaveEntidad('HEGG560427MV')).toBeNull();
+  });
+
+  it('reads the two characters of the entity once they are there', () => {
+    // Indexes 11 and 12 of the RENAPO example: Veracruz.
+    expect(curpClaveEntidad(CURP_VALIDA)).toBe('VZ');
+    // Thirteen characters are enough: the rest of the CURP is still on its way.
+    expect(curpClaveEntidad(CURP_VALIDA.slice(0, 13))).toBe('VZ');
+  });
+
+  it('normalises lower case and blanks before slicing, so the key is a key', () => {
+    expect(curpClaveEntidad(' hegg560427mvzrrl04 ')).toBe('VZ');
+  });
+});
+
 describe('validarGeneracion', () => {
   it('rejects a final year before the initial one', () => {
     expect(validarGeneracion('2023-2019')).toBe(
@@ -193,22 +228,6 @@ describe('validarAniosExperiencia', () => {
     expect(validarAniosExperiencia(0)).toBeNull();
     expect(validarAniosExperiencia(100)).toBeNull();
     expect(validarAniosExperiencia(null)).toBeNull();
-  });
-});
-
-describe('categoriaCompatible', () => {
-  it('rejects a category of another type', () => {
-    expect(categoriaCompatible(4, PUESTO, CATEGORIAS)).toBe(false);
-  });
-
-  it('accepts a category of the type of the post', () => {
-    expect(categoriaCompatible(3, PUESTO, CATEGORIAS)).toBe(true);
-    expect(categoriaCompatible(4, PUESTO_MANDO, CATEGORIAS)).toBe(true);
-  });
-
-  it('rejects a pair that is not complete', () => {
-    expect(categoriaCompatible(null, PUESTO, CATEGORIAS)).toBe(false);
-    expect(categoriaCompatible(3, null, CATEGORIAS)).toBe(false);
   });
 });
 
@@ -264,8 +283,8 @@ describe('the bounded text fields', () => {
 
   it('validates the shape of the email', () => {
     expect(validarCorreo('ana@utn.edu.mx')).toBeNull();
-    expect(validarCorreo('ana@utn')).toBe('Escribí un correo con formato válido.');
-    expect(validarCorreo('ana utn.edu.mx')).toBe('Escribí un correo con formato válido.');
+    expect(validarCorreo('ana@utn')).toBe('Escribe un correo con formato válido.');
+    expect(validarCorreo('ana utn.edu.mx')).toBe('Escribe un correo con formato válido.');
     expect(validarCorreo('')).toBe('El correo institucional es obligatorio.');
   });
 
@@ -295,5 +314,65 @@ describe('the bounded text fields', () => {
       'El texto no puede superar los 100 caracteres.',
     );
     expect(validarLargo('   ', 100)).toBeNull();
+  });
+});
+
+describe('normalizarNombre', () => {
+  it('collapses every run of blanks, tabs and non-breaking spaces into one space', () => {
+    expect(normalizarNombre('Ana   Martínez')).toBe('Ana Martínez');
+    expect(normalizarNombre('Ana\tMartínez')).toBe('Ana Martínez');
+    // A name copied from a spreadsheet arrives with non-breaking spaces in it.
+    expect(normalizarNombre('Ana\u00A0\u00A0Martínez')).toBe('Ana Martínez');
+    expect(normalizarNombre('  Ana \n Martínez  ')).toBe('Ana Martínez');
+  });
+
+  it('keeps the capitalisation the user typed', () => {
+    // Casing is a display decision: the sanitiser only removes sloppiness.
+    expect(normalizarNombre('ana MARTÍNEZ de la Cruz')).toBe('ana MARTÍNEZ de la Cruz');
+  });
+
+  it('answers an empty string when there is nothing left after trimming', () => {
+    expect(normalizarNombre('')).toBe('');
+    expect(normalizarNombre('  \t\u00A0 ')).toBe('');
+  });
+
+  it('leaves an already clean name untouched', () => {
+    expect(normalizarNombre('Ana Martínez')).toBe('Ana Martínez');
+  });
+});
+
+describe('parteLocalCorreo', () => {
+  it('keeps a value without an at sign whole, trimmed and lower-cased', () => {
+    expect(parteLocalCorreo('  Ana.Martinez  ')).toBe('ana.martinez');
+  });
+
+  it('cuts a pasted whole address at its first at sign', () => {
+    expect(parteLocalCorreo('Ana@utn.edu.mx')).toBe('ana');
+    expect(parteLocalCorreo('ana.martinez@UTN.EDU.MX')).toBe('ana.martinez');
+  });
+
+  it('answers an empty string when there is no local part', () => {
+    expect(parteLocalCorreo('')).toBe('');
+    expect(parteLocalCorreo('   ')).toBe('');
+  });
+});
+
+describe('correoConDominio', () => {
+  it('appends the institutional domain to the local part', () => {
+    expect(correoConDominio('ana.martinez')).toBe('ana.martinez@utn.edu.mx');
+    expect(correoConDominio('  Ana.Martinez  ')).toBe('ana.martinez@utn.edu.mx');
+    // What the field asks for, read by the rule that guards the body.
+    expect(validarCorreo(correoConDominio('ana.martinez'))).toBeNull();
+  });
+
+  it('answers an empty string when there is nothing to append the domain to', () => {
+    expect(correoConDominio('')).toBe('');
+    expect(correoConDominio('   ')).toBe('');
+    expect(correoConDominio('@')).toBe('');
+  });
+
+  it('never doubles the domain of an address pasted whole', () => {
+    expect(correoConDominio('a@utn.edu.mx')).toBe('a@utn.edu.mx');
+    expect(correoConDominio('A@UTN.EDU.MX')).toBe('a@utn.edu.mx');
   });
 });

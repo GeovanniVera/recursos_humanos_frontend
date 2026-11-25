@@ -1,0 +1,132 @@
+@use '../../../styles/breakpoints' as bp;
+
+.page {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.field-wide {
+  grid-column: span 2;
+}
+
+.field-actions {
+  align-self: end;
+  justify-self: start;
+}
+
+.field label {
+  color: var(--color-text-secondary);
+  font: var(--text-label);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--space-8);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font: var(--text-body);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--color-state-error);
+}
+
+.field-error,
+.field-hint {
+  margin: 0;
+  font: var(--text-body);
+}
+
+.field-error {
+  color: var(--color-state-error);
+}
+
+.field-hint {
+  color: var(--color-text-secondary);
+}
+
+.block-loading {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--text-body);
+}
+
+.sheet {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sheet.is-reloading app-data-table {
+  opacity: 0.6;
+}
+
+.sheet-foot {
+  min-width: 0;
+}
+
+.mono {
+  font-family: var(
+    --font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace
+  );
+}
+
+.fecha {
+  white-space: nowrap;
+}
+
+.truncado {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.descripcion {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@include bp.down(bp.$bp-sm) {
+  .field-wide {
+    grid-column: span 1;
+  }
+}

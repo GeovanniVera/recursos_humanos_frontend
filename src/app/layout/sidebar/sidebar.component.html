@@ -1,89 +1,161 @@
-<header class="header">
-  @if (!collapsed()) {
-    <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
-  }
+<!--
+  The drawer is an object on the page: a sheet with the credential card of the
+  session at its foot, and a round clip on its right edge that folds the sheet
+  into the rail. The header is written above the fold, the destinations below
+  it.
+-->
+<div class="top">
+  <header class="header">
+    @if (isMobile()) {
+      <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
 
-  <!--
-    One control, two states. `aria-expanded` describes the navigation it
-    controls, so it reads `true` while the drawer shows its labels. The
-    accessible name always contains the visible word, so label-in-name holds.
-  -->
-  <button
-    type="button"
-    class="toggle"
-    aria-controls="sidebar-nav"
-    [attr.aria-expanded]="!collapsed()"
-    [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
-    (click)="toggleCollapsed()"
-  >
-    <svg
-      class="chevron"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M15 6l-6 6 6 6" />
-    </svg>
-
-    @if (!collapsed()) {
-      <span class="toggle-label">Colapsar</span>
-    }
-  </button>
-</header>
-
-<nav class="nav" id="sidebar-nav" aria-label="Menú principal">
-  <ul class="list">
-    <li>
-      <!--
-        Home. `exact` matters: without it the `/` link stays active on every
-        nested route and the rail would light up the wrong entry.
-      -->
-      <a
-        class="item"
-        routerLink="/"
-        routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        [attr.aria-label]="collapsed() ? 'Dashboard' : null"
-        [attr.title]="collapsed() ? 'Dashboard' : null"
+      <button
+        #mobileCloseBtn
+        type="button"
+        class="mobile-close"
+        aria-label="Cerrar menú"
+        (click)="requestMobileClose()"
       >
         <svg
-          class="icon"
+          class="close-icon"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           stroke-width="1.5"
           stroke-linecap="round"
-          stroke-linejoin="round"
           aria-hidden="true"
         >
-          <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
-          <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
-          <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
-          <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+          <path d="M6 6l12 12" />
+          <path d="M18 6l-12 12" />
         </svg>
-        <span class="item-label">Dashboard</span>
-      </a>
-    </li>
-
-    <li>
+      </button>
+    } @else if (collapsed()) {
       <!--
-        The employees branch. In the rail a submenu cannot fit inside 76px, so
-        the branch collapses into a single link to its landing screen. That is
-        the deliberate trade-off: the rail never nests anything.
+        The rail keeps the emblem. A 76px column with an empty head reads as a
+        broken panel, and the square shield is the one mark that fits a square
+        slot; the wordmark and the caption cannot.
       -->
-      @if (collapsed()) {
+      <app-brand-logos variant="mark" [plated]="false" />
+    } @else {
+      <app-brand-logos variant="sm" [showCaption]="true" [plated]="false" />
+    }
+  </header>
+
+  @if (!isMobile() && !isTablet()) {
+    <!--
+      One control, two states, and it hangs over the edge of the sheet. It sits
+      outside the navigation list on purpose: folding the drawer is not a
+      destination, and the list is for places to go.
+      `aria-expanded` describes the navigation it controls, so it reads `true`
+      while the drawer shows its labels.
+    -->
+    <button
+      type="button"
+      class="toggle"
+      aria-controls="sidebar-nav"
+      data-tooltip-key="toggle"
+      [attr.aria-expanded]="!collapsed()"
+      [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
+      [attr.aria-describedby]="tooltipFor('toggle')"
+      (click)="toggleCollapsed()"
+    >
+      <svg
+        class="chevron"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M15 6l-6 6 6 6" />
+      </svg>
+    </button>
+  }
+</div>
+
+<nav
+  class="nav"
+  id="sidebar-nav"
+  aria-label="Menú principal"
+  [class.has-pill]="pillVisible()"
+  (click)="onNavClick($event)"
+  (scroll)="onNavScroll()"
+>
+  <div
+    class="pill-indicator"
+    aria-hidden="true"
+    [class.is-visible]="pillVisible()"
+    [style.transform]="'translate3d(' + pillLeft() + 'px, ' + pillTop() + 'px, 0)'"
+    [style.width.px]="pillWidth()"
+    [style.height.px]="pillHeight()"
+  ></div>
+
+  <!--
+    Two drawers of the same archive: `Operación` is the daily work, `Sistema` is
+    the configuration of the system itself. The labels are typed index cards; in
+    the rail they have no room and are replaced by the dashes of their rule.
+  -->
+  <div class="section">
+    @if (collapsed()) {
+      <span class="section-rule" aria-hidden="true"></span>
+    } @else {
+      <p class="section-label" id="sidebar-section-operacion">Operación</p>
+    }
+
+    <ul class="list" [attr.aria-labelledby]="collapsed() ? null : 'sidebar-section-operacion'">
+      <li>
+        <!--
+          Home. `exact` matters: without it the `/` link stays active on every
+          nested route and the rail would light up the wrong entry.
+        -->
         <a
           class="item"
-          routerLink="/empleados/activos"
+          routerLink="/"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+          data-tooltip-key="dashboard"
+          [attr.aria-label]="collapsed() ? 'Dashboard' : null"
+          [attr.title]="collapsed() ? 'Dashboard' : null"
+          [attr.aria-describedby]="tooltipFor('dashboard')"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+          </svg>
+          <span class="item-label">Dashboard</span>
+        </a>
+      </li>
+
+      <li>
+        <!--
+          One destination, one link. The branch used to hold two children — the
+          roster and the baja listing — but every status now lives in the same
+          screen with its tabs, so nesting a second address would only duplicate
+          a filter that the page already owns.
+        -->
+        <a
+          class="item"
+          routerLink="/empleados"
           routerLinkActive="is-active"
           ariaCurrentWhenActive="page"
-          aria-label="Empleados"
-          title="Empleados"
+          data-tooltip-key="empleados"
+          [attr.aria-label]="collapsed() ? 'Empleados' : null"
+          [attr.title]="collapsed() ? 'Empleados' : null"
+          [attr.aria-describedby]="tooltipFor('empleados')"
         >
           <svg
             class="icon"
@@ -102,13 +174,18 @@
           </svg>
           <span class="item-label">Empleados</span>
         </a>
-      } @else {
-        <button
-          type="button"
-          class="item is-branch"
-          aria-controls="submenu-empleados"
-          [attr.aria-expanded]="submenuOpen()"
-          (click)="toggleSubmenu()"
+      </li>
+
+      <li>
+        <a
+          class="item"
+          routerLink="/semaforo-documentos"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+          data-tooltip-key="semaforo"
+          [attr.aria-label]="collapsed() ? 'Semáforo de documentos' : null"
+          [attr.title]="collapsed() ? 'Semáforo de documentos' : null"
+          [attr.aria-describedby]="tooltipFor('semaforo')"
         >
           <svg
             class="icon"
@@ -120,15 +197,32 @@
             stroke-linejoin="round"
             aria-hidden="true"
           >
-            <path d="M16 19v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.4A3.4 3.4 0 0 0 4 17.4V19" />
-            <circle cx="10" cy="8" r="3.6" />
-            <path d="M20 19v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
-            <path d="M15.2 4.7a3.6 3.6 0 0 1 0 6.6" />
+            <rect x="7.5" y="2.5" width="9" height="19" rx="4.5" />
+            <circle cx="12" cy="7.5" r="1.4" />
+            <circle cx="12" cy="12" r="1.4" />
+            <circle cx="12" cy="16.5" r="1.4" />
           </svg>
-          <span class="item-label">Empleados</span>
+          <span class="item-label">Semáforo de documentos</span>
+        </a>
+      </li>
+
+      <li>
+        <button
+          type="button"
+          class="item is-branch"
+          [class.is-branch-active]="isComunicadosRoute()"
+          [attr.aria-controls]="
+            isRailMode() ? 'rail-submenu-comunicados' : 'submenu-comunicados'
+          "
+          [attr.aria-expanded]="isRailMode() ? railSubmenuPos() !== null : comunicadosOpen()"
+          data-tooltip-key="comunicados"
+          [attr.aria-label]="collapsed() ? 'Comunicados' : null"
+          [attr.title]="collapsed() ? 'Comunicados' : null"
+          [attr.aria-describedby]="tooltipFor('comunicados')"
+          (click)="toggleComunicados($event)"
+        >
           <svg
-            class="item-chevron"
-            [class.is-open]="submenuOpen()"
+            class="icon"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -137,134 +231,292 @@
             stroke-linejoin="round"
             aria-hidden="true"
           >
-            <path d="M6 9l6 6 6-6" />
+            <rect x="3" y="5" width="18" height="14" rx="2.5" />
+            <path d="m4 7 8 5.5L20 7" />
           </svg>
+          <span class="item-label">Comunicados</span>
+          @if (!collapsed() || isMobile()) {
+            <svg
+              class="branch-chevron"
+              [class.is-open]="comunicadosOpen()"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m9 6 6 6-6 6" />
+            </svg>
+          }
         </button>
 
-        @if (submenuOpen()) {
-          <ul class="sublist" id="submenu-empleados">
+        @if (collapsed() && !isMobile() && railSubmenuPos(); as submenu) {
+          <div
+            id="rail-submenu-comunicados"
+            class="rail-submenu"
+            role="menu"
+            aria-label="Submenú Comunicados"
+            [style.transform]="'translate3d(' + submenu.left + 'px, ' + submenu.top + 'px, 0)'"
+          >
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria"
+              routerLinkActive="is-active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="onNuevoCorreoClick()"
+            >
+              Correos masivos
+            </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/autorizaciones"
+              routerLinkActive="is-active"
+            >
+              <span>Autorizaciones</span>
+              @if (pendientesCount() > 0) {
+                <span class="nav-badge">{{ pendientesCount() }}</span>
+              }
+            </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/borradores"
+              routerLinkActive="is-active"
+            >
+              <span>Borradores</span>
+              @if (borradoresCount() > 0) {
+                <span class="nav-badge">{{ borradoresCount() }}</span>
+              }
+            </a>
+            <a
+              class="rail-submenu-item"
+              routerLink="/mensajeria/historial"
+              routerLinkActive="is-active"
+            >
+              <span>Historial de envíos</span>
+            </a>
+          </div>
+        }
+
+        @if ((!collapsed() || isMobile()) && comunicadosOpen()) {
+          <ul id="submenu-comunicados" class="sublist">
             <li>
               <a
-                class="item is-child"
-                routerLink="/empleados/activos"
+                class="item subitem"
+                routerLink="/mensajeria"
                 routerLinkActive="is-active"
+                [routerLinkActiveOptions]="{ exact: true }"
                 ariaCurrentWhenActive="page"
+                (click)="onNuevoCorreoClick()"
               >
-                <span class="item-label">Empleados Activos</span>
+                <span class="item-label">Correos masivos</span>
               </a>
             </li>
             <li>
               <a
-                class="item is-child"
-                routerLink="/empleados/baja"
+                class="item subitem"
+                routerLink="/mensajeria/autorizaciones"
                 routerLinkActive="is-active"
                 ariaCurrentWhenActive="page"
               >
-                <span class="item-label">Empleados Baja</span>
+                <span class="item-label">Autorizaciones</span>
+                @if (pendientesCount() > 0) {
+                  <span class="nav-badge" [attr.aria-label]="pendientesCount() + ' pendientes'">
+                    {{ pendientesCount() }}
+                  </span>
+                }
+              </a>
+            </li>
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria/borradores"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Borradores</span>
+                @if (borradoresCount() > 0) {
+                  <span class="nav-badge" [attr.aria-label]="borradoresCount() + ' borradores'">
+                    {{ borradoresCount() }}
+                  </span>
+                }
+              </a>
+            </li>
+            <li>
+              <a
+                class="item subitem"
+                routerLink="/mensajeria/historial"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+              >
+                <span class="item-label">Historial de envíos</span>
               </a>
             </li>
           </ul>
         }
-      }
-    </li>
+      </li>
+    </ul>
+  </div>
 
-    <li>
-      <a
-        class="item"
-        routerLink="/semaforo-documentos"
-        routerLinkActive="is-active"
-        ariaCurrentWhenActive="page"
-        [attr.aria-label]="collapsed() ? 'Semaforo de documentos' : null"
-        [attr.title]="collapsed() ? 'Semaforo de documentos' : null"
-      >
-        <svg
-          class="icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+  <div class="section is-system">
+    @if (collapsed()) {
+      <span class="section-rule" aria-hidden="true"></span>
+    } @else {
+      <p class="section-label" id="sidebar-section-sistema">Sistema</p>
+    }
+
+    <ul class="list" [attr.aria-labelledby]="collapsed() ? null : 'sidebar-section-sistema'">
+      <!--
+        The catalogs are visible to every session on purpose: the endpoint
+        answers `403` to a role without `E-13`, and the screen explains it.
+        Hiding it made the module impossible to find.
+      -->
+      <li>
+        <a
+          class="item"
+          routerLink="/admin/catalogos"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+          data-tooltip-key="catalogos"
+          [attr.aria-label]="collapsed() ? 'Catálogos' : null"
+          [attr.title]="collapsed() ? 'Catálogos' : null"
+          [attr.aria-describedby]="tooltipFor('catalogos')"
         >
-          <rect x="7.5" y="2.5" width="9" height="19" rx="4.5" />
-          <circle cx="12" cy="7.5" r="1.4" />
-          <circle cx="12" cy="12" r="1.4" />
-          <circle cx="12" cy="16.5" r="1.4" />
-        </svg>
-        <span class="item-label">Semaforo de documentos</span>
-      </a>
-    </li>
-  </ul>
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 7.5l8-3.5 8 3.5-8 3.5-8-3.5Z" />
+            <path d="M4 12.2l8 3.5 8-3.5" />
+            <path d="M4 16.6l8 3.5 8-3.5" />
+          </svg>
+          <span class="item-label">Catálogos</span>
+        </a>
+      </li>
+
+      @if (puedeVerBitacora()) {
+        <li>
+          <a
+            class="item"
+            routerLink="/bitacora"
+            routerLinkActive="is-active"
+            ariaCurrentWhenActive="page"
+            data-tooltip-key="bitacora"
+            [attr.aria-label]="collapsed() ? 'Bitácora' : null"
+            [attr.title]="collapsed() ? 'Bitácora' : null"
+            [attr.aria-describedby]="tooltipFor('bitacora')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M7 4.5h7l3 3V19a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 5.5 19V6A1.5 1.5 0 0 1 7 4.5Z" />
+              <path d="M14 4.5V8h3.5" />
+              <path d="M9 12h6" />
+              <path d="M9 15.5h6" />
+            </svg>
+            <span class="item-label">Bitácora</span>
+          </a>
+        </li>
+      }
+
+      @if (puedeGestionarUsuarios()) {
+        <li>
+          <a
+            class="item"
+            routerLink="/admin/usuarios"
+            routerLinkActive="is-active"
+            ariaCurrentWhenActive="page"
+            data-tooltip-key="usuarios"
+            [attr.aria-label]="collapsed() ? 'Usuarios y roles' : null"
+            [attr.title]="collapsed() ? 'Usuarios y roles' : null"
+            [attr.aria-describedby]="tooltipFor('usuarios')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+              <path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1" />
+            </svg>
+            <span class="item-label">Usuarios y roles</span>
+          </a>
+        </li>
+      }
+
+      <li>
+        <a
+          class="item"
+          routerLink="/ajustes"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+          data-tooltip-key="ajustes"
+          [attr.aria-label]="collapsed() ? 'Ajustes' : null"
+          [attr.title]="collapsed() ? 'Ajustes' : null"
+          [attr.aria-describedby]="tooltipFor('ajustes')"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 7h9" />
+            <path d="M17 7h3" />
+            <path d="M4 17h4" />
+            <path d="M12 17h8" />
+            <circle cx="15" cy="7" r="2" />
+            <circle cx="10" cy="17" r="2" />
+          </svg>
+          <span class="item-label">Ajustes</span>
+        </a>
+      </li>
+    </ul>
+  </div>
 </nav>
 
-<!--
-  Account section. It sits outside the scroll container so the entries and the
-  session card stay reachable while a long menu scrolls underneath.
--->
+<!-- The identity of the session, and the way out. It closes the sheet. -->
 <footer class="footer">
-  <ul class="list">
-    <li>
-      <a
-        class="item"
-        routerLink="/ajustes"
-        routerLinkActive="is-active"
-        ariaCurrentWhenActive="page"
-        [attr.aria-label]="collapsed() ? 'Ajustes' : null"
-        [attr.title]="collapsed() ? 'Ajustes' : null"
-      >
-        <svg
-          class="icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 7h9" />
-          <path d="M17 7h3" />
-          <path d="M4 17h4" />
-          <path d="M12 17h8" />
-          <circle cx="15" cy="7" r="2" />
-          <circle cx="10" cy="17" r="2" />
-        </svg>
-        <span class="item-label">Ajustes</span>
-      </a>
-    </li>
-    <li>
-      <button
-        type="button"
-        class="item"
-        [attr.aria-label]="collapsed() ? 'Cerrar Sesión' : null"
-        [attr.title]="collapsed() ? 'Cerrar Sesión' : null"
-        (click)="cerrarSesion()"
-      >
-        <svg
-          class="icon"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
-          <path d="M9 8l-4 4 4 4" />
-          <path d="M5 12h10" />
-        </svg>
-        <span class="item-label">Cerrar Sesión</span>
-      </button>
-    </li>
-  </ul>
-
-  <div class="user">
-    <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-    <span class="user-meta">
-      <span class="user-name">{{ userName() }}</span>
-      <span class="user-role">{{ userRole() }}</span>
-    </span>
-  </div>
+  <app-sidebar-credential-card
+    [name]="userName()"
+    [initials]="initials()"
+    [role]="roleText()"
+    [collapsed]="collapsed()"
+    [tooltipId]="tooltipFor('logout')"
+    (signOut)="cerrarSesion()"
+  />
 </footer>
+
+@if (collapsed() && !isMobile() && railTooltip(); as tooltip) {
+  <div
+    class="rail-tooltip"
+    role="tooltip"
+    id="sidebar-rail-tooltip"
+    [style.transform]="'translate3d(' + tooltip.left + 'px, ' + tooltip.top + 'px, 0) translateY(-50%)'"
+  >
+    {{ tooltip.text }}
+  </div>
+}

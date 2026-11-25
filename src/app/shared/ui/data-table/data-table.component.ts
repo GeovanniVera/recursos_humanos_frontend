@@ -1,5 +1,41 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, TemplateRef, computed, contentChild, input, output } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  TemplateRef,
+  afterNextRender,
+  computed,
+  contentChild,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+
+/** Mobile layout strategy for `DataTable` below the mobile breakpoint. */
+export type TableMobileMode = 'cards' | 'scroll';
+
+/**
+ * Surface treatment of the table.
+ *
+ * `plain` is the historic glass card and the default, so a caller that never
+ * sets the input keeps the exact markup and the exact pixels it has today.
+ * `ledger` is the official sheet: a ruled left margin, dashed row rules, a
+ * banded head and a square corner where a tab strip sits on the top edge.
+ */
+export type TableVariant = 'plain' | 'ledger';
+
+/**
+ * Vertical breathing room of a row.
+ *
+ * `standard` is the historic padding, so it changes nothing for an existing
+ * caller. The three values travel to the cells through one custom property:
+ * `compact` is one spacing step tighter, `comfortable` one step looser.
+ */
+export type TableDensity = 'compact' | 'standard' | 'comfortable';
 
 /**
  * One column of the table.
@@ -14,6 +50,8 @@ export interface TableColumn {
   align?: 'start' | 'end';
   /** Any CSS length. Omitted, the column takes its share of the width. */
   width?: string;
+  /** Opt-in server sorting; the component never sorts a partial page locally. */
+  sortable?: boolean;
 }
 
 /** Rows are plain records: the table never assumes a domain model. */
@@ -25,11 +63,11 @@ const SKELETON_ROWS = 4;
 /**
  * The table of the design system: a semantic `<table>` inside a glass card.
  *
- * It stays generic on purpose. A typed table per feature would duplicate the
- * same markup, the same skeleton and the same empty state; a caller that needs
- * a trailing action column projects `#rowActions`, and a caller that needs a
- * cell with a shape of its own (a badge, a link) projects `#cell` and decides
- * per column. The table never learns what a state or an area is.
+ * Supports two responsive behaviors on narrow screens (`mobileMode`):
+ * - `'cards'`: stacks rows into labeled cards via CSS `attr(data-label)` while
+ *   keeping `<thead>` accessible (`sr-only`, never `display: none`).
+ * - `'scroll'`: preserves tabular grid with contained horizontal scroll and a
+ *   visual overflow indicator.
  */
 @Component({
   selector: 'app-data-table',
@@ -38,9 +76,20 @@ const SKELETON_ROWS = 4;
   styleUrl: './data-table.component.scss',
 })
 export class DataTable {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly wrapRef = viewChild<ElementRef<HTMLDivElement>>('wrap');
+  private readonly tableRef = viewChild<ElementRef<HTMLTableElement>>('table');
+
   readonly columns = input<readonly TableColumn[]>([]);
   readonly rows = input<readonly TableRow[]>([]);
   readonly loading = input(false);
+  /** Controls responsive table presentation below mobile breakpoint (`<= 767px`). */
+  readonly mobileMode = input<TableMobileMode>('scroll');
+  /** Opt-in anchor for a caller-projected leading cell decoration. */
+  readonly leadingDecoration = input(false);
+  readonly sort = input<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  readonly sortChange = output<string>();
+  readonly actionsLabel = input('');
   readonly emptyMessage = input('No hay registros para mostrar.');
   /** Read by assistive tech only: it labels the table instead of the screen. */
   readonly caption = input('');
@@ -48,6 +97,30 @@ export class DataTable {
   readonly activeKey = input<string | number | null>(null);
   /** Name of the field that identifies a row. */
   readonly rowKey = input('id');
+
+  /**
+   * Surface treatment. `plain` (default) is the glass card every existing screen
+   * renders; `ledger` adds the rules of an official sheet. Opt-in on purpose:
+   * the roster and the catalog are byte-identical while nobody asks for it.
+   */
+  readonly variant = input<TableVariant>('plain');
+
+  /**
+   * Fits the table to the width it is given instead of letting its columns grow
+   * past the card. With `table-layout: fixed` the cells clip with an ellipsis,
+   * so the caller must expose the whole value through `title` (or a detail
+   * drawer). Opt-in: the rest of the tables keep their natural layout.
+   */
+  readonly fitWidth = input(false);
+
+  /**
+   * Vertical padding of a row, through one custom property.
+   *
+   * `standard` (default) resolves to the padding the table has always used, so
+   * an existing caller renders exactly as before; only a caller that sets
+   * `compact` or `comfortable` moves the cells.
+   */
+  readonly density = input<TableDensity>('standard');
 
   /**
    * Turns the rows into an affordance: the pointer cursor that says "this row
@@ -73,8 +146,16 @@ export class DataTable {
    */
   readonly rowClick = output<TableRow>();
 
+  protected readonly canScrollX = signal(false);
+  protected readonly canScrollLeft = signal(false);
+  protected readonly canScrollRight = signal(false);
+
+  private scrollCheckTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Trailing actions column, present only when something is projected. */
-  protected readonly rowActions = contentChild('rowActions', { read: TemplateRef });
+  protected readonly rowActions = contentChild('rowActions', {
+    read: TemplateRef,
+  });
 
   /**
    * Optional renderer for every body cell.
@@ -86,12 +167,51 @@ export class DataTable {
    */
   protected readonly cellTemplate = contentChild('cell', { read: TemplateRef });
 
+  /**
+   * Optional renderer for a header cell.
+   *
+   * It receives `{ column }`. Only the callers whose header is a control need it
+   * — a "select the whole page" checkbox has to live in the `<th>` of its own
+   * column, since a control in the body would sit one row too low. Without it
+   * the column prints its header, which is what every existing caller wants.
+   */
+  protected readonly headCellTemplate = contentChild('headCell', { read: TemplateRef });
+
   protected readonly skeletons = Array.from({ length: SKELETON_ROWS }, (_, index) => index);
 
   /** Width of the loading and empty rows: every column, plus actions. */
   protected readonly columnCount = computed(
     () => this.columns().length + (this.rowActions() ? 1 : 0),
   );
+
+  constructor() {
+    effect(() => {
+      this.rows();
+      this.columns();
+      this.loading();
+      this.mobileMode();
+      this.scheduleScrollCheck();
+    });
+
+    afterNextRender(() => {
+      this.updateScrollHints();
+      this.setupResizeObserver();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.scrollCheckTimer !== null) {
+        clearTimeout(this.scrollCheckTimer);
+        this.scrollCheckTimer = null;
+      }
+    });
+  }
+
+  /** Tracks a row by its `rowKey` identifier, falling back to index for minimal rows. */
+  protected trackRow(index: number, row: TableRow): unknown {
+    const key = this.rowKey();
+    const id = row?.[key];
+    return id !== null && id !== undefined && id !== '' ? id : index;
+  }
 
   /** Reads a cell without assuming the value is printable. */
   protected cell(row: TableRow, key: string): string {
@@ -112,6 +232,21 @@ export class DataTable {
     return this.cell(row, this.rowKey()) === String(key);
   }
 
+  protected updateScrollHints(): void {
+    const el = this.wrapRef()?.nativeElement;
+    if (!el || this.mobileMode() !== 'scroll') {
+      this.canScrollX.set(false);
+      this.canScrollLeft.set(false);
+      this.canScrollRight.set(false);
+      return;
+    }
+
+    const overflow = el.scrollWidth > el.clientWidth + 1;
+    this.canScrollX.set(overflow);
+    this.canScrollLeft.set(overflow && el.scrollLeft > 1);
+    this.canScrollRight.set(overflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }
+
   /**
    * Pointer shortcut of the row action.
    *
@@ -125,5 +260,35 @@ export class DataTable {
       return;
     }
     this.rowClick.emit(row);
+  }
+
+  private scheduleScrollCheck(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.scrollCheckTimer !== null) {
+      clearTimeout(this.scrollCheckTimer);
+    }
+    this.scrollCheckTimer = setTimeout(() => {
+      this.scrollCheckTimer = null;
+      this.updateScrollHints();
+    }, 0);
+  }
+
+  private setupResizeObserver(): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const wrapEl = this.wrapRef()?.nativeElement;
+    const tableEl = this.tableRef()?.nativeElement;
+    if (!wrapEl) {
+      return;
+    }
+    const observer = new ResizeObserver(() => this.updateScrollHints());
+    observer.observe(wrapEl);
+    if (tableEl) {
+      observer.observe(tableEl);
+    }
+    this.destroyRef.onDestroy(() => observer.disconnect());
   }
 }

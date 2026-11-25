@@ -1,5 +1,5 @@
 /**
- * Payloads of `GET /api/empleados/{id}` (route `empleados.show`).
+ * Payloads of `GET /api/empleados/{id}` (route `empleados.ficha`).
  *
  * The record arrives grouped by block, and every field keeps the snake_case of
  * the wire format: nothing is renamed on the way in, so each interface maps 1:1
@@ -21,7 +21,11 @@ export interface FichaIdentificacion {
   estado_civil_id: number | null;
   /** Spanish label sent by the backend, ready to display. */
   estado_civil: string | null;
-  municipio: string | null;
+  /**
+   * Readable name of the birth entity, ready to display. The record stores the
+   * two-character key of the CURP; the endpoint resolves it here.
+   */
+  entidad_nacimiento: string | null;
 }
 
 /**
@@ -65,23 +69,54 @@ export interface FichaContacto {
   correo_institucional: string | null;
 }
 
-/** Schooling registered for the worker. */
-export interface FichaEstudios {
-  nivel_estudios_id: number | null;
-  /** Spanish label sent by the backend. */
-  nivel_estudios: string | null;
-  escuela_procedencia: string | null;
-  /** Free text range (`2012-2016`), not a date. */
-  generacion: string | null;
-}
-
-/** Previous experience declared by the worker. */
+/** Accumulated experience declared by the worker. */
 export interface FichaExperiencia {
   exp_publico_anios: number | null;
   exp_privado_anios: number | null;
-  /** Raw backend string (`Sí` / `No`). */
-  trabaja_otro_lugar: string | null;
-  trabaja_otro_donde: string | null;
+}
+
+/**
+ * One academic degree of the worker's 1:N folder.
+ *
+ * `nivel_estudios` is the readable label the backend resolves, not an object:
+ * the wire format sends `nivel_estudios_id` for the form and the description
+ * for the sheet. `es_maximo` arrives as a boolean even though the column stores
+ * `1`/`NULL`, because the API speaks of a maximum degree, not of an index.
+ */
+export interface GradoAcademico {
+  id: number;
+  nivel_estudios_id: number;
+  nivel_estudios: string | null;
+  titulo_o_carrera: string | null;
+  escuela_procedencia: string | null;
+  generacion: string | null;
+  cedula_profesional: string | null;
+  es_maximo: boolean;
+  creado_en?: string | null;
+  actualizado_en?: string | null;
+}
+
+/** One external job of the worker's 1:N folder. */
+export interface EmpleoExterno {
+  id: number;
+  institucion_o_empresa: string;
+  puesto_o_actividad: string | null;
+  horario_o_jornada: string | null;
+  vigente: boolean;
+  observaciones: string | null;
+  creado_en?: string | null;
+  actualizado_en?: string | null;
+}
+
+/**
+ * What the current actor may write through the edit endpoint.
+ *
+ * The backend computes it per role; the screen reads it instead of keeping its
+ * own copy of the policy. An empty list means "no field is editable", which is
+ * the answer for a role without E-04.
+ */
+export interface FichaEdicion {
+  campos_editables: string[];
 }
 
 /**
@@ -99,9 +134,37 @@ export interface FichaEstadoExpediente {
   campos_faltantes: string[];
 }
 
+/**
+ * Completeness figures a page may hand to the record drawer.
+ *
+ * The record only carries the state of the file and the names of the missing
+ * fields; the percentage and the counts are computed by the semáforo list and
+ * travel with its rows. A page that already knows them passes them in, so the
+ * sheet prints them without asking again: the drawer never fetches these.
+ *
+ * Declared here and not in `core/semaforo`: that module already imports
+ * `EstadoExpediente` from this one, and the reverse import would close a cycle.
+ * A `ResumenSemaforo` row satisfies this shape as it is.
+ */
+export interface ResumenCompletitud {
+  porcentaje: number;
+  total_campos: number;
+  campos_completos: number;
+  campos_faltantes: number;
+}
+
+/**
+ * Current employment status of the worker.
+ *
+ * Single source of truth for `empleados.estatus`: the backend serialises the
+ * raw enum value, so the wire format and this union are the same three strings.
+ * A `licencia` or a `baja_definitiva` always has an absence period in the log.
+ */
+export type EstatusEmpleado = 'activo' | 'licencia' | 'baja_definitiva';
+
 /** Employment status inside the system. */
 export interface FichaGestionInterna {
-  activo: boolean;
+  estatus: EstatusEmpleado;
   /** `YYYY-MM-DD`, or `null`. */
   fecha_baja: string | null;
   motivo_baja: string | null;
@@ -114,12 +177,16 @@ export interface FichaGestionInterna {
 export interface FichaEmpleado {
   /** Internal primary key of the worker. */
   id: number;
+  /** Last write, ISO 8601. It is the optimistic-concurrency token of the PATCH. */
+  actualizado_en: string | null;
   identificacion: FichaIdentificacion;
   plaza: FichaPlaza;
   contacto: FichaContacto;
-  estudios: FichaEstudios;
   experiencia: FichaExperiencia;
   gestion_interna: FichaGestionInterna;
+  edicion: FichaEdicion;
+  grados_academicos: GradoAcademico[];
+  empleos_externos: EmpleoExterno[];
 }
 
 /** `200` answer of `GET /api/empleados/{id}`: Laravel wraps the record in `data`. */
@@ -139,4 +206,29 @@ export interface FichaEmpleadoResponse {
 export interface FichaError {
   message?: string;
   codigo?: string;
+}
+
+/** Explicit absence classification matching `empleados_bajas.tipo`. */
+export type TipoBajaHistorial = 'licencia' | 'baja_definitiva';
+
+/** One chronological period from `GET /api/empleados/{id}/historial-bajas`. */
+export interface HistorialBaja {
+  id: number;
+  tipo: TipoBajaHistorial | null;
+  motivo_id: number;
+  motivo: string | null;
+  motivo_clave: string | null;
+  desde: string | null;
+  hasta: string | null;
+  vigente: boolean;
+  nota: string | null;
+  registrado_por: string | null;
+  reactivado_por: string | null;
+  nota_reactivacion: string | null;
+  fecha_registro: string | null;
+}
+
+/** `200` answer of `GET /api/empleados/{id}/historial-bajas`. */
+export interface HistorialBajasResponse {
+  data: HistorialBaja[];
 }

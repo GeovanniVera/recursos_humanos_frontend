@@ -7,12 +7,18 @@ import {
   BajaEmpleadoResponse,
   MotivoBaja,
   MotivosBajaResponse,
+  ReingresarEmpleadoPayload,
+  ReingresarEmpleadoResponse,
+  ReactivarEmpleadoPayload,
+  ReactivarEmpleadoResponse,
 } from './baja.models';
 
 /**
- * Reads the motive catalog and registers the termination of a worker.
+ * Reads the motive catalog and performs the three acts of the lifecycle:
+ * the termination, the reactivation of a leave and the re-entry after a
+ * definitive termination.
  *
- * It holds no state on purpose: the modal owns the chosen motive, the note, the
+ * It holds no state on purpose: the panel owns the chosen motive, the note, the
  * loading flag and the failures, so a request that comes back never wipes what
  * the user typed.
  *
@@ -53,6 +59,40 @@ export class BajaService {
   ): Observable<BajaEmpleadoResponse> {
     return this.http.post<BajaEmpleadoResponse>(
       `${this.baseUrl}/empleados/${empleadoId}/baja`,
+      datos,
+    );
+  }
+
+  /**
+   * `POST /empleados/{id}/reactivar` — returns a worker on leave to the roster.
+   *
+   * The body carries only the note: the effective date and the actor are the
+   * server's. A definitive termination is refused with `409 reingreso_requerido`
+   * and must travel through `reingresar` instead.
+   */
+  reactivar(
+    empleadoId: number,
+    datos: ReactivarEmpleadoPayload,
+  ): Observable<ReactivarEmpleadoResponse> {
+    return this.http.post<ReactivarEmpleadoResponse>(
+      `${this.baseUrl}/empleados/${empleadoId}/reactivar`,
+      datos,
+    );
+  }
+
+  /**
+   * `POST /empleados/{id}/reingreso` — reopens a definitively terminated file.
+   *
+   * The body asks for the new assignment and the note. The start date and the
+   * CCT category are derived by the server and rejected with `422` when they
+   * arrive, so they are never completed here.
+   */
+  reingresar(
+    empleadoId: number,
+    datos: ReingresarEmpleadoPayload,
+  ): Observable<ReingresarEmpleadoResponse> {
+    return this.http.post<ReingresarEmpleadoResponse>(
+      `${this.baseUrl}/empleados/${empleadoId}/reingreso`,
       datos,
     );
   }

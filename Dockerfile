@@ -27,7 +27,8 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 FROM nginx:1.29-alpine AS runtime
 
-COPY docker/nginx.conf /etc/nginx/nginx.conf
+ARG NGINX_CONF=docker/nginx.conf
+COPY ${NGINX_CONF} /etc/nginx/nginx.conf
 COPY --from=build /app/dist/utn-rh/browser /usr/share/nginx/html
 
 EXPOSE 80

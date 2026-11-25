@@ -30,11 +30,8 @@ const RESPUESTA: BajaEmpleadoResponse = {
     id: 7,
     num_empleado: 'UTN-SEC-01',
     nombre: 'Ana Martínez',
-    activo: false,
+    estatus: 'licencia',
     fecha_baja: '2026-11-11',
-    motivo_baja: 'Baja temporal',
-    nota_baja: 'Licencia por incapacidad',
-    baja_por: 1,
   },
 };
 

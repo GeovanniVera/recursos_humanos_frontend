@@ -1,0 +1,320 @@
+<div class="editor-shell">
+  <div class="simple-toolbar" role="toolbar" aria-label="Formato del comunicado">
+    <div class="toolbar-cluster">
+      <button type="button" class="tool-btn is-icon" [disabled]="!canUndo()" title="Deshacer" aria-label="Deshacer"
+        (mousedown)="$event.preventDefault()" (click)="undo()">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 14 4 9l5-5" />
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" />
+        </svg>
+      </button>
+      <button type="button" class="tool-btn is-icon" [disabled]="!canRedo()" title="Rehacer" aria-label="Rehacer"
+        (mousedown)="$event.preventDefault()" (click)="redo()">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m15 14 5-5-5-5" />
+          <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" />
+        </svg>
+      </button>
+    </div>
+
+    <span class="toolbar-sep" aria-hidden="true"></span>
+
+    <div class="toolbar-cluster">
+      <!-- Dropdown Encabezados (H ▾) -->
+      <div class="popover-wrap">
+        <button type="button" class="tool-btn is-dropdown" [class.is-active]="headingLevel() !== 0 || headingMenuOpen()"
+          title="Tipo de texto" (mousedown)="$event.preventDefault()" (click)="toggleHeadingMenu()">
+          <span class="tool-glyph">{{ headingLevel() === 0 ? 'H' : 'H' + headingLevel() }}</span>
+          <svg class="caret-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        @if (headingMenuOpen()) {
+        <div class="toolbar-popover menu-popover">
+          <button type="button" class="menu-item" [class.is-selected]="headingLevel() === 0"
+            (mousedown)="$event.preventDefault()" (click)="setHeading(0)">
+            Texto normal
+          </button>
+          <button type="button" class="menu-item is-h2" [class.is-selected]="headingLevel() === 2"
+            (mousedown)="$event.preventDefault()" (click)="setHeading(2)">
+            Título (H2)
+          </button>
+          <button type="button" class="menu-item is-h3" [class.is-selected]="headingLevel() === 3"
+            (mousedown)="$event.preventDefault()" (click)="setHeading(3)">
+            Subtítulo (H3)
+          </button>
+        </div>
+        }
+      </div>
+
+      <!-- Dropdown Listas -->
+      <div class="popover-wrap">
+        <button type="button" class="tool-btn is-dropdown" [class.is-active]="ulActive() || olActive() || listMenuOpen()"
+          title="Listas" (mousedown)="$event.preventDefault()" (click)="toggleListMenu()">
+          <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="9" y1="6" x2="20" y2="6" />
+            <line x1="9" y1="12" x2="20" y2="12" />
+            <line x1="9" y1="18" x2="20" y2="18" />
+            <circle cx="4.5" cy="6" r="1" fill="currentColor" />
+            <circle cx="4.5" cy="12" r="1" fill="currentColor" />
+            <circle cx="4.5" cy="18" r="1" fill="currentColor" />
+          </svg>
+          <svg class="caret-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        @if (listMenuOpen()) {
+        <div class="toolbar-popover menu-popover">
+          <button type="button" class="menu-item" [class.is-selected]="ulActive()"
+            (mousedown)="$event.preventDefault()" (click)="toggleList('bullet')">
+            Lista con viñetas
+          </button>
+          <button type="button" class="menu-item" [class.is-selected]="olActive()"
+            (mousedown)="$event.preventDefault()" (click)="toggleList('ordered')">
+            Lista numerada
+          </button>
+        </div>
+        }
+      </div>
+
+      <button type="button" class="tool-btn is-icon" [class.is-active]="blockquoteActive()"
+        [attr.aria-pressed]="blockquoteActive()" title="Cita destacada" aria-label="Cita destacada"
+        (mousedown)="$event.preventDefault()" (click)="toggleMark('blockquote')">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+          <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+        </svg>
+      </button>
+
+      <button type="button" class="tool-btn is-icon" title="Línea separadora" aria-label="Línea separadora"
+        (mousedown)="$event.preventDefault()" (click)="insertHorizontalRule()">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="12" x2="20" y2="12" />
+        </svg>
+      </button>
+    </div>
+
+    <span class="toolbar-sep" aria-hidden="true"></span>
+
+    <div class="toolbar-cluster">
+      <button type="button" class="tool-btn is-icon" [class.is-active]="boldActive()"
+        [attr.aria-pressed]="boldActive()" title="Negrita" aria-label="Negrita"
+        (mousedown)="$event.preventDefault()" (click)="toggleMark('bold')">
+        <span class="tool-glyph is-bold">B</span>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="italicActive()"
+        [attr.aria-pressed]="italicActive()" title="Cursiva" aria-label="Cursiva"
+        (mousedown)="$event.preventDefault()" (click)="toggleMark('italic')">
+        <span class="tool-glyph is-italic">I</span>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="strikeActive()"
+        [attr.aria-pressed]="strikeActive()" title="Tachado" aria-label="Tachado"
+        (mousedown)="$event.preventDefault()" (click)="toggleMark('strike')">
+        <span class="tool-glyph is-strike">S</span>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="underlineActive()"
+        [attr.aria-pressed]="underlineActive()" title="Subrayado" aria-label="Subrayado"
+        (mousedown)="$event.preventDefault()" (click)="toggleMark('underline')">
+        <span class="tool-glyph is-underline">U</span>
+      </button>
+
+      <!-- Color y resaltado -->
+      <div class="popover-wrap">
+        <button type="button" class="tool-btn is-icon" [class.is-active]="stylePopoverOpen() || activeColor() !== null || activeHighlight() !== null"
+          title="Resaltado y color" aria-label="Resaltado y color"
+          (mousedown)="$event.preventDefault()" (click)="toggleStylePopover()">
+          <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m9 11-6 6v3h9l3-3" />
+            <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+          </svg>
+        </button>
+
+        @if (stylePopoverOpen()) {
+        <div class="toolbar-popover style-popover">
+          <p class="popover-title">Color de texto</p>
+          <div class="swatch-row">
+            @for (preset of colorPresets; track preset.label) {
+            <button type="button" class="swatch-btn" [class.is-selected]="activeColor() === preset.value"
+              [title]="preset.label" (mousedown)="$event.preventDefault()" (click)="applyTextColor(preset.value)">
+              <span class="swatch-dot" [style.background-color]="preset.swatch"></span>
+            </button>
+            }
+          </div>
+
+          <p class="popover-title">Resaltado</p>
+          <div class="swatch-row">
+            @for (preset of highlightPresets; track preset.label) {
+            <button type="button" class="swatch-btn" [class.is-selected]="activeHighlight() === preset.value"
+              [title]="preset.label" (mousedown)="$event.preventDefault()" (click)="applyHighlightColor(preset.value)">
+              <span class="swatch-dot" [style.background-color]="preset.swatch"></span>
+            </button>
+            }
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Enlace -->
+      <div class="popover-wrap">
+        <button type="button" class="tool-btn is-icon" [class.is-active]="linkPopoverOpen() || activeLinkHref() !== null"
+          title="Insertar enlace" aria-label="Insertar enlace"
+          (mousedown)="$event.preventDefault()" (click)="toggleLinkPopover()">
+          <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+        </button>
+
+        @if (linkPopoverOpen()) {
+        <div class="toolbar-popover link-popover">
+          <p class="popover-title">Insertar hipervínculo</p>
+          <input type="text" class="text-input is-sm" placeholder="Texto visible (ej. Portal RH)"
+            [ngModel]="linkText()" (ngModelChange)="linkText.set($event)" />
+          <input type="url" class="text-input is-sm mono-meta" placeholder="https://utn.edu.mx"
+            [ngModel]="linkUrl()" (ngModelChange)="linkUrl.set($event)" />
+          <div class="popover-actions">
+            <app-button variant="ghost" size="sm" (click)="toggleLinkPopover(false)">Cancelar</app-button>
+            <app-button variant="primary" size="sm" (click)="confirmInsertLink()">Insertar</app-button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <span class="toolbar-sep" aria-hidden="true"></span>
+
+    <div class="toolbar-cluster">
+      <button type="button" class="tool-btn is-icon" [class.is-active]="alignActive() === 'left'"
+        [attr.aria-pressed]="alignActive() === 'left'" title="Alinear a la izquierda"
+        aria-label="Alinear a la izquierda" (mousedown)="$event.preventDefault()" (click)="setAlign('left')">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="15" y2="12" />
+          <line x1="3" y1="18" x2="18" y2="18" />
+        </svg>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="alignActive() === 'center'"
+        [attr.aria-pressed]="alignActive() === 'center'" title="Centrar" aria-label="Centrar"
+        (mousedown)="$event.preventDefault()" (click)="setAlign('center')">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="6" y1="12" x2="18" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="alignActive() === 'right'"
+        [attr.aria-pressed]="alignActive() === 'right'" title="Alinear a la derecha"
+        aria-label="Alinear a la derecha" (mousedown)="$event.preventDefault()" (click)="setAlign('right')">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="9" y1="12" x2="21" y2="12" />
+          <line x1="6" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+      <button type="button" class="tool-btn is-icon" [class.is-active]="alignActive() === 'justify'"
+        [attr.aria-pressed]="alignActive() === 'justify'" title="Justificar" aria-label="Justificar"
+        (mousedown)="$event.preventDefault()" (click)="setAlign('justify')">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <span class="toolbar-sep" aria-hidden="true"></span>
+
+    <div class="toolbar-cluster">
+      <input #imageInput type="file" accept="image/*" multiple class="visually-hidden"
+        (change)="onImagePicked($event)" />
+      <button type="button" class="tool-btn is-labelled" title="Agregar imagen al cuerpo"
+        (mousedown)="$event.preventDefault()" (click)="openImagePicker()">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+          <circle cx="9" cy="9" r="2" />
+          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </svg>
+        <span>Imagen</span>
+      </button>
+
+      <button type="button" class="tool-btn is-icon" title="Limpiar formato" aria-label="Limpiar formato"
+        (mousedown)="$event.preventDefault()" (click)="clearFormatting()">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+          <path d="M22 21H7" />
+          <path d="m5 11 9 9" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra contextual de imagen seleccionada (tamaño manual + alineación) -->
+  @if (selectedImageActive()) {
+  <div class="context-bar image-bar">
+    <span class="context-label">
+      Tamaño imagen:
+      <strong class="mono-meta">
+        {{ selectedImageWidth() ? selectedImageWidth() + ' px' : 'Automático' }}
+      </strong>
+      <span class="mono-meta">(máx. {{ maxImageWidth }} px · arrastra esquinas)</span>
+    </span>
+    <div class="context-actions">
+      @for (preset of imageWidthPresets; track preset.width) {
+      <button type="button" class="ctx-btn" [class.is-active]="selectedImageWidth() === preset.width"
+        (mousedown)="$event.preventDefault()" (click)="setImageWidth(preset.width)">
+        {{ preset.label }}
+      </button>
+      }
+      <span class="ctx-sep" aria-hidden="true"></span>
+      <button type="button" class="ctx-btn" [class.is-active]="selectedImageAlign() === 'left'"
+        (mousedown)="$event.preventDefault()" (click)="setAlign('left')">Izquierda</button>
+      <button type="button" class="ctx-btn" [class.is-active]="selectedImageAlign() === 'center'"
+        (mousedown)="$event.preventDefault()" (click)="setAlign('center')">Centro</button>
+      <button type="button" class="ctx-btn" [class.is-active]="selectedImageAlign() === 'right'"
+        (mousedown)="$event.preventDefault()" (click)="setAlign('right')">Derecha</button>
+      <span class="ctx-sep" aria-hidden="true"></span>
+      <button type="button" class="ctx-btn is-danger" (mousedown)="$event.preventDefault()"
+        (click)="removeSelectedImage()">Quitar</button>
+    </div>
+  </div>
+  }
+
+  <!-- Barra contextual de enlace -->
+  @if (activeLinkHref(); as href) {
+  <div class="context-bar">
+    <span class="active-link-url" [title]="href">Enlace: {{ href }}</span>
+    <div class="context-actions">
+      <button type="button" class="ctx-btn" (mousedown)="$event.preventDefault()" (click)="openActiveLink()">
+        Abrir enlace ↗
+      </button>
+      <button type="button" class="ctx-btn" (mousedown)="$event.preventDefault()" (click)="unlinkActive()">
+        Quitar enlace
+      </button>
+    </div>
+  </div>
+  }
+
+  <div class="editor-stage" (click)="focus()">
+    @if (isEmpty()) {
+    <p class="editor-placeholder" aria-hidden="true">{{ placeholder() }}</p>
+    }
+    <div #editorHost class="rich-editor"></div>
+  </div>
+</div>

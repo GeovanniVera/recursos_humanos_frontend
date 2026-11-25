@@ -1,3 +1,28 @@
+@use '../../../../styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.scroll-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font: var(--text-overline);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--color-text-overline);
+}
+
+.scroll-hint svg {
+  flex: none;
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
 // The card is the final surface: the table only paints its own rows, so the
 // radius, the hairline and the glass live here and clip in one place.
 .wrap {
@@ -5,8 +30,15 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-surface-glass);
-  backdrop-filter: blur(var(--blur-glass));
   box-shadow: var(--shadow-sm);
+}
+
+.wrap.is-scroll.can-scroll-right {
+  border-inline-end: calc(var(--border-width) * 3) solid var(--color-accent);
+}
+
+.wrap.is-scroll.can-scroll-left {
+  border-inline-start: calc(var(--border-width) * 3) solid var(--color-accent);
 }
 
 .table {
@@ -14,10 +46,68 @@
   // Separate, not collapse: collapsed borders escape the rounded corners.
   border-collapse: separate;
   border-spacing: 0;
+  // Vertical padding of a row, read by both the head and the body. `standard`
+  // is the padding this table has always had, so the default is a no-op.
+  --table-cell-pad-y: var(--space-3);
+}
+
+// One spacing step tighter or looser, and nothing else: the horizontal padding
+// of a cell is part of the table's shape, not of its density.
+.table.is-compact {
+  --table-cell-pad-y: var(--space-2);
+}
+
+.table.is-comfortable {
+  --table-cell-pad-y: var(--space-4);
+}
+
+// ---------------------------------------------------------------------------
+// Fit — a compact sheet that never scrolls sideways
+//
+// The caller owns the full value (a `title`, a drawer) and the table keeps only
+// the line that fits. Opt-in, so every other table keeps the natural width of a
+// card and the scroll hint that comes with it.
+// ---------------------------------------------------------------------------
+.wrap.is-fit {
+  overflow-x: hidden;
+}
+
+.table.is-fit {
+  table-layout: fixed;
+}
+
+.table.is-fit .head-cell,
+.table.is-fit .cell {
+  box-sizing: border-box;
+  padding-inline: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-8);
+  padding: 0;
+  border: 0;
+  background: var(--color-surface-ghost);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-button svg {
+  width: var(--space-4);
+  height: var(--space-4);
+  flex: none;
 }
 
 .head-cell {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--table-cell-pad-y) var(--space-4);
   border-bottom: var(--border-width) solid var(--color-border-default);
   font: var(--text-label);
   letter-spacing: var(--tracking-label);
@@ -28,7 +118,7 @@
 }
 
 .cell {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--table-cell-pad-y) var(--space-4);
   border-bottom: var(--border-width) solid var(--color-border-default);
   font: var(--text-body);
   color: var(--color-text-primary);
@@ -95,4 +185,180 @@
   height: var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-border-default);
+}
+
+// Only callers projecting an absolute leading decoration opt into this anchor.
+.table.has-leading-decoration .row .cell:first-child {
+  position: relative;
+}
+
+// The leading-decoration table opts into a row-wide keyboard focus indicator.
+.table.has-leading-decoration .row.is-clickable:focus-within {
+  outline: var(--border-width) solid var(--color-accent);
+  outline-offset: calc(-1 * var(--border-width));
+  background: var(--color-surface-glass);
+}
+
+// ---------------------------------------------------------------------------
+// Ledger — the official sheet
+//
+// Opt-in (`variant="ledger"`), so the roster and the catalog keep the plain
+// card. The sheet gains a ruled margin on the left, dashed rules between rows,
+// a banded head, and a square top-left corner where the tab strip of the screen
+// sits on its edge. Every colour is a theme role: the margin and the rules are
+// the default border, the bands are the glass surface the sheet is painted with,
+// and no new role is invented here.
+// ---------------------------------------------------------------------------
+.wrap.is-ledger {
+  // Square where the tab strip begins; the other three corners keep the card's
+  // radius so the sheet still reads as one surface.
+  border-start-start-radius: 0;
+}
+
+.table.is-ledger .head-row {
+  background: var(--color-surface-glass);
+}
+
+// Dashed, not solid: a ledger is written between rules, not closed by them.
+.table.is-ledger .cell {
+  border-bottom-style: dashed;
+}
+
+// The margin is a band of the sheet, so both the head and the body start clear
+// of it.
+.table.is-ledger .head-cell:first-child,
+.table.is-ledger .cell:first-child:not(.empty) {
+  position: relative;
+  padding-inline-start: calc(var(--space-5) + var(--space-3));
+}
+
+// The ruled margin itself: one hairline per cell, so it follows the row height
+// and stops where the sheet stops. `--space-5` is the margin, and the indent
+// above is that margin plus a cell's own padding.
+.table.is-ledger .head-cell:first-child::after,
+.table.is-ledger .cell:first-child:not(.empty)::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--space-5);
+  width: var(--border-width);
+  background: var(--color-border-default);
+}
+
+@include bp.down(bp.$bp-sm) {
+  .wrap.is-scroll .cell:not(.actions) {
+    min-width: 8rem;
+  }
+
+  .table.is-cards,
+  .table.is-cards tbody {
+    display: block;
+    width: 100%;
+  }
+
+  // Keep headers in the accessibility tree and DOM for keyboard/screen readers & specs.
+  .table.is-cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table.is-cards tbody tr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: var(--border-width) solid var(--color-border-default);
+  }
+
+  .table.is-cards tbody tr:last-child {
+    border-bottom-width: 0;
+  }
+
+  .table.is-cards.has-leading-decoration .row {
+    padding-inline-start: var(--space-5);
+  }
+
+  .table.is-cards.has-leading-decoration .row .cell:first-child,
+  .table.is-cards .row.is-active .cell:first-child {
+    position: static;
+  }
+
+  .table.is-cards .row.is-active .cell:first-child::before {
+    content: attr(data-label);
+    position: static;
+    inset: auto;
+    width: auto;
+    background: var(--transparent);
+  }
+
+  .table.is-cards .row.is-active::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: var(--space-1);
+    background: var(--color-accent);
+  }
+
+  .table.is-cards .row .cell {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+    text-align: end;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .table.is-cards .row .cell::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 42%;
+    font: var(--text-label);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    text-align: start;
+  }
+
+  .table.is-cards .row .cell.actions {
+    white-space: normal;
+  }
+
+  .table.is-cards .skeleton-row .cell {
+    display: block;
+    width: 100%;
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+  }
+
+  .table.is-cards .empty {
+    display: block;
+    width: 100%;
+    padding: var(--space-6) var(--space-3);
+  }
+
+  // A stacked card has no margin to keep clear of: the sheet's ruled edge is a
+  // reading affordance of the tabular layout and would cut through the labels.
+  .table.is-ledger .cell:first-child:not(.empty) {
+    padding-inline-start: 0;
+  }
+
+  .table.is-ledger .cell:first-child:not(.empty)::after {
+    content: none;
+  }
 }

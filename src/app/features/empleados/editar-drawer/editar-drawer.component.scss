@@ -1,0 +1,284 @@
+@use '../carpeta-formacion';
+@use '../../../../styles/breakpoints' as bp;
+// ---------------------------------------------------------------------------
+// Loading and failure of the sheet
+// ---------------------------------------------------------------------------
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--paper-indent);
+}
+
+.line {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-paper-xs);
+  background: var(--color-paper-line);
+}
+
+.line.is-short {
+  width: 58%;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: var(--paper-indent);
+}
+
+.state-title {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-stamp);
+}
+
+.state-text {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-paper-muted);
+}
+
+// The retry of the failure block sits on the sheet, so its ink is the sheet's.
+.state .action {
+  align-self: flex-start;
+}
+
+// ---------------------------------------------------------------------------
+// Adaptations
+// ---------------------------------------------------------------------------
+
+@include bp.down(bp.$bp-sm) {
+  // Two columns of a CURP do not fit a phone: the sheet becomes a single line of
+  // boxes, the way a narrow form breaks.
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
+// High contrast takes colour away, so every state told apart by ink is restated
+// with line and shape.
+@media (forced-colors: active) {
+  .control:focus-visible {
+    outline: 2px solid;
+  }
+
+  .control.is-invalid {
+    border-bottom-style: double;
+  }
+
+  .value.is-empty {
+    font-style: normal;
+    border-bottom-style: dashed;
+  }
+
+  .action.is-primary {
+    outline: 2px solid;
+    outline-offset: -2px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The folder and its annex
+// ---------------------------------------------------------------------------
+
+// The drawer's body is a flex column and the folder must fill it. The annex is
+// positioned against this box, so the wrapper is the containing block and the
+// folder keeps its own height.
+.edicion {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+// Second level: the annex of an audited act, stacked over the folder.
+.anexo {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-paper);
+  box-shadow: var(--shadow-paper-panel);
+  overflow: auto;
+}
+
+.anexo-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--paper-indent);
+  border-bottom: var(--border-width) solid var(--color-paper-line);
+  background: var(--color-paper);
+}
+
+.anexo-titulo {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 18px;
+  color: var(--color-paper-text);
+}
+
+.anexo-cuerpo {
+  flex: 1 1 auto;
+  padding: var(--space-4) var(--paper-indent);
+}
+
+.anexo-pie {
+  margin: 0;
+  padding: var(--space-3) var(--paper-indent);
+  border-top: var(--border-width) dashed var(--color-paper-line);
+  font-family: var(--font-paper-mono);
+  font-size: 12px;
+  color: var(--color-paper-muted);
+}
+
+// A destination that is not connected yet says so instead of showing a form
+// that would save over nobody.
+.pendiente {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 14px;
+  color: var(--color-paper-muted);
+}
+
+// Doors into the second level, under the read-only block of a sheet.
+.group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+app-grados-academicos {
+  display: block;
+}
+
+app-grados-academicos + .group {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) dashed var(--color-paper-line);
+}
+
+// ---------------------------------------------------------------------------
+// 1:N folders
+// ---------------------------------------------------------------------------
+
+// A save that landed while the folder stays open: confirmation, not an alert.
+.exito {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-paper-mono);
+  font-size: 13px;
+  color: var(--color-stamp-ok);
+}
+
+// ---------------------------------------------------------------------------
+// Second level: the sheets of the audited acts
+// ---------------------------------------------------------------------------
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+// The sentence that explains what the act does before the operator types.
+.aviso {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-paper-muted);
+}
+
+// A value the operator reads but cannot type (the derived CCT category, the
+// current folio).
+.dato {
+  margin: 0;
+  padding-bottom: 3px;
+  border-bottom: 1px dotted var(--color-paper-line);
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  color: var(--color-paper-value);
+}
+
+.nota-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-family: var(--font-paper);
+  font-size: 12px;
+  color: var(--color-paper-muted);
+}
+
+// ---------------------------------------------------------------------------
+// The appointment timeline
+// ---------------------------------------------------------------------------
+
+.linea-tiempo {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0 0 0 var(--space-6);
+  list-style: none;
+}
+
+// The guide runs down the column like the margin of a record.
+.linea-tiempo::before {
+  content: '';
+  position: absolute;
+  inset-block: 6px;
+  inset-inline-start: 7px;
+  width: var(--border-width);
+  background: var(--color-paper-line);
+}
+
+.periodo {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+// The node sits on the guide: guinda for the period in force, hollow for the
+// closed ones, so the current appointment reads at a glance.
+.nodo {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-start: calc(var(--space-6) * -1);
+  width: 15px;
+  height: 15px;
+  border: var(--border-width) solid var(--color-paper-line);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+}
+
+.periodo.is-vigente .nodo {
+  border-color: var(--color-stamp);
+  background: var(--color-stamp);
+}
+
+.periodo-titulo {
+  margin: 0;
+  font-family: var(--font-paper-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-paper-value);
+}
+
+.periodo-meta {
+  margin: 0;
+  font-family: var(--font-paper);
+  font-size: 13px;
+  color: var(--color-paper-muted);
+}

@@ -1,10 +1,28 @@
 <div class="shell" [class.is-collapsed]="collapsed()">
-  <app-sidebar class="sidebar" />
+  <a
+    class="skip-link"
+    href="#main-content"
+    (click)="$event.preventDefault(); mainContent.focus()"
+  >
+    Saltar al contenido principal
+  </a>
+
+  @if (isMobile() && mobileOpen()) {
+    <div class="scrim" aria-hidden="true" (click)="closeMobile(true)"></div>
+  }
+
+  <app-sidebar
+    id="app-sidebar-drawer"
+    class="sidebar"
+    [attr.inert]="isMobile() && !mobileOpen() ? '' : null"
+    [attr.aria-hidden]="isMobile() && !mobileOpen() ? 'true' : null"
+    (mobileClose)="closeMobile(true)"
+  />
 
   <div class="content">
     <app-topbar />
 
-    <main class="stage">
+    <main #mainContent id="main-content" class="stage" tabindex="-1">
       <router-outlet />
     </main>
   </div>
