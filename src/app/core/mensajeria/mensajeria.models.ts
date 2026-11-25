@@ -12,7 +12,17 @@ export type EstatusComunicado =
 
 export type CategoriaCctTipo = 'administrativo' | 'docente' | 'mando_medio_superior';
 
-export type FiltroBandejaComunicados = 'pendientes' | 'aprobados' | 'rechazados' | 'borradores';
+export type FiltroBandejaComunicados =
+  | 'pendientes'
+  | 'aprobados'
+  | 'rechazados'
+  | 'borradores'
+  | 'historial'
+  | 'historial_completados'
+  | 'historial_en_progreso'
+  | 'historial_con_fallos';
+
+export type EstatusDestinatario = 'PEND' | 'ENVIADO' | 'FALLIDO';
 
 export interface AreaSegmento {
   id: number;
@@ -94,6 +104,42 @@ export interface ComunicadoConteos {
   aprobados: number;
   rechazados: number;
   borradores: number;
+  historial?: number;
+  historial_completados?: number;
+  historial_en_progreso?: number;
+  historial_con_fallos?: number;
+}
+
+export interface ComunicadoDestinatarioDto {
+  id: number;
+  empleado_id: number | null;
+  correo_destino: string;
+  nombre_destino: string;
+  area_nombre: string | null;
+  categoria_nombre: string | null;
+  numero_empleado: string | null;
+  status: EstatusDestinatario;
+  status_etiqueta: string;
+  error_detalle: string | null;
+  fecha_envio: string | null;
+}
+
+export interface DestinatarioComunicadoConteos {
+  total: number;
+  pendientes: number;
+  enviados: number;
+  fallidos: number;
+}
+
+export interface ListadoDestinatariosComunicadoResponse {
+  destinatarios: ComunicadoDestinatarioDto[];
+  conteos: DestinatarioComunicadoConteos;
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export interface ListadoComunicadosResponse {

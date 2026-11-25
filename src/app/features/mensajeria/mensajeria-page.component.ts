@@ -677,7 +677,7 @@ export class MensajeriaPage {
         title: `Comunicado ${res.comunicado.folio ?? ''} encolado para envío masivo.`,
       });
       this.resetComposer();
-      void this.router.navigate(['/mensajeria/autorizaciones']);
+      void this.router.navigate(['/mensajeria/historial']);
     } catch (err) {
       this.mostrarErrorHttp(err, 'No se pudo enviar el comunicado.');
     } finally {
@@ -692,6 +692,10 @@ export class MensajeriaPage {
 
   irABorradores(): void {
     void this.router.navigate(['/mensajeria/borradores']);
+  }
+
+  irAHistorial(): void {
+    void this.router.navigate(['/mensajeria/historial']);
   }
 
   nuevoBorradorLimpio(): void {

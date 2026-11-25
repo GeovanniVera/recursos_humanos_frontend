@@ -96,6 +96,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'mensajeria/historial',
+        data: { breadcrumb: 'Historial de envíos' },
+        loadComponent: () =>
+          import('./features/mensajeria/historial-page/historial-page.component').then(
+            (m) => m.HistorialEnviosPage,
+          ),
+      },
+      {
         path: 'admin/catalogos',
         // One flat route instead of an `admin` branch with its own breadcrumb:
         // the trail the product asked for is a single step, `Catálogos`.
