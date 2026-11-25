@@ -21,23 +21,6 @@
   gap: var(--space-3);
 }
 
-// The way back is the screen's quiet action. The head itself is painted by
-// `app-page-header`.
-.back {
-  min-height: var(--space-8);
-  display: inline-flex;
-  gap: var(--space-3);
-  align-items: center;
-  color: var(--color-text-primary);
-  font: var(--text-label);
-  text-decoration: none;
-}
-
-.back svg {
-  width: var(--space-5);
-  height: var(--space-5);
-}
-
 // ---------------------------------------------------------------------------
 // Folder tabs
 //
@@ -139,6 +122,11 @@
   margin-top: 0;
   background: var(--color-surface-glass);
   color: var(--color-text-primary);
+}
+
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 // The accent that names the state, on the top edge of the selected tab.
@@ -430,4 +418,63 @@ input::placeholder {
   .tab {
     padding: var(--space-2) var(--space-3);
   }
+}
+
+.recordatorios-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-glass);
+}
+
+.recordatorios-info,
+.recordatorios-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.recordatorios-pill {
+  padding: 2px var(--space-2);
+  border: var(--border-width) solid var(--color-state-success);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recordatorios-pill.is-paused {
+  border-color: var(--color-state-warning);
+}
+
+.recordatorios-summary,
+.reminder-timer,
+.reminder-done,
+.confirm-lote-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.reminder-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.confirm-lote-body {
+  display: grid;
+  gap: var(--space-2);
+  font: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+.confirm-lote-body p {
+  margin: 0;
 }

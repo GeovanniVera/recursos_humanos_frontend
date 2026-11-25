@@ -92,7 +92,12 @@ export class AutorizacionesPage {
   readonly densidades = DENSIDADES;
   readonly tamanosPagina = [10, 20, 50] as const;
 
-  readonly esAutorizador = computed(() => esRolAutorizador(this.auth.rol()));
+  readonly esAutorizador = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return this.auth.tienePermiso('comunicados.autorizar');
+    }
+    return esRolAutorizador(this.auth.rol());
+  });
 
   readonly estadoFiltro = signal<FiltroTab['id']>('pendientes');
   readonly buscar = signal('');

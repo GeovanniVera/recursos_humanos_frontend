@@ -236,6 +236,11 @@
   font: var(--text-nav-branch);
 }
 
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
 // The figure of the status this tab filters, typed like every other count of
 // the screen. It is painted in the role of that status through `--tab-state`,
 // the same variable the accent bar uses.

@@ -40,52 +40,156 @@
   color: var(--color-text-secondary);
 }
 
-// --- KPI grid -------------------------------------------------------------
+// --- Tabbed analytics (ledger grammar) --------------------------------------
 
-// Three cards that collapse to one column on a narrow window instead of
-// squeezing the display figure.
-.kpis {
+.ledger {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: var(--space-4);
+  min-width: 0;
 }
 
-// Body of the metric layer: the two figures the modal explains, side by side.
-.figures {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-  gap: var(--space-3);
-  margin: var(--space-4) 0 0;
-}
-
-.figure {
+.tabs {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  margin-bottom: calc(-1 * var(--border-width));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-8);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border: var(--border-width) solid var(--color-border-default);
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--color-surface-overlay);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tab-title {
+  font: var(--text-nav-branch);
+}
+
+.tab.is-active {
+  z-index: 1;
+  margin-top: 0;
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+}
+
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.tab.is-active::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: calc(var(--border-width) * 3);
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+  background: var(--color-accent);
+}
+
+.sheet {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  border-start-start-radius: 0;
+  background: var(--color-surface-glass);
+  box-shadow: var(--shadow-sm);
+}
+
+.mini-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-3);
+}
+
+.mini-kpi {
+  display: grid;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
-  background: var(--color-surface-ghost);
+  background: var(--color-surface-overlay);
 }
 
-.figure-label {
-  font: var(--text-label);
-  letter-spacing: var(--tracking-label);
+.mini-label {
+  font: var(--text-overline);
   text-transform: uppercase;
   color: var(--color-text-secondary);
 }
 
-// `dd` ships a 40px inline margin of its own; the grid already aligns it.
-.figure-value {
-  margin: 0;
-  font: var(--text-heading);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
+.mini-val {
+  font-family: var(--font-typewriter);
+  font-size: 22px;
+  color: var(--color-text-heading);
 }
 
-.figure-note {
-  margin-top: var(--space-3);
-  font: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.charts-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chart-card {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+  overflow: hidden;
+}
+
+.chart-title,
+.chart-sub {
+  margin: 0;
+  font: var(--text-nav-branch);
+  color: var(--color-text-heading);
+}
+
+.chart-sub {
+  margin: 0;
+  font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+.chart-empty {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+@media (width <= 1080px) {
+  .charts-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 860px) {
+  .charts-grid,
+  .charts-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

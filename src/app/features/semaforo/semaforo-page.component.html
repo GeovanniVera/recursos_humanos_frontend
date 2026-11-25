@@ -13,18 +13,15 @@
     subtitle="Identifica la información pendiente de cada expediente. Consulta los campos faltantes para conocer qué hace falta completar."
   >
     <div class="head-actions">
-      <a class="back" routerLink="/"
-        >Volver al panel
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          aria-hidden="true"
+      @if (puedeGestionarRecordatorios()) {
+        <app-button
+          variant="secondary"
+          [disabled]="!recordatoriosConfig()"
+          (click)="abrirRecordatoriosDrawer()"
         >
-          <path d="M15 10H5m5-5-5 5 5 5" />
-        </svg>
-      </a>
+          Configuración e historial
+        </app-button>
+      }
       <!--
         The refresh re-asks the server for the same window: the query did not
         change, so the request is forced. It is disabled while one is in flight,
@@ -68,6 +65,40 @@
       </div>
     </div>
   </div>
+  @if (puedeEnviarRecordatorios() && recordatoriosConfig(); as cfg) {
+    <section class="recordatorios-bar" aria-label="Control de recordatorios por correo">
+      <div class="recordatorios-info">
+        <span class="recordatorios-pill" [class.is-paused]="!cfg.activo">
+          {{ cfg.activo ? 'Automáticos activos' : 'Automáticos pausados' }}
+        </span>
+        <span class="recordatorios-summary">
+          Incompletos cada <strong>{{ cfg.dias_incompleto }} d</strong> · Casi completos cada
+          <strong>{{ cfg.dias_casi_completo }} d</strong> · Cooldown manual
+          <strong>{{ cfg.cooldown_manual_horas }} h</strong>
+        </span>
+      </div>
+      <div class="recordatorios-actions">
+        <app-button
+          variant="secondary"
+          size="sm"
+          [disabled]="loteDeshabilitado('incompleto')"
+          [loading]="loteEnviando() === 'incompleto'"
+          (click)="solicitarConfirmacionLote('incompleto')"
+        >
+          {{ etiquetaBotonLote('incompleto') }}
+        </app-button>
+        <app-button
+          variant="secondary"
+          size="sm"
+          [disabled]="loteDeshabilitado('casi_completo')"
+          [loading]="loteEnviando() === 'casi_completo'"
+          (click)="solicitarConfirmacionLote('casi_completo')"
+        >
+          {{ etiquetaBotonLote('casi_completo') }}
+        </app-button>
+      </div>
+    </section>
+  }
   @if (error(); as mensaje) {
     <app-alert-banner
       variant="error"
@@ -120,7 +151,7 @@
         variant="ledger"
         [density]="densidad()"
         mobileMode="cards"
-        [columns]="columnas"
+        [columns]="columnas()"
         [leadingDecoration]="true"
         [rows]="filas()"
         [loading]="loading()"
@@ -163,6 +194,23 @@
               }}</span>
               <span class="mono">{{ value }}</span>
             </span>
+          } @else if (column.key === 'recordatorio') {
+            @if (row.estado === 'completo') {
+              <span class="reminder-done">Sin pendientes</span>
+            } @else {
+              <span class="reminder-cell" (click)="$event.stopPropagation()">
+                <span class="reminder-timer">{{ textoAutoRecordatorio(row.id) }}</span>
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  [disabled]="!puedeEnviarManualRow(row.id)"
+                  [loading]="enviandoEmpleadoId() === row.id"
+                  (click)="$event.stopPropagation(); enviarRecordatorioIndividual(row)"
+                >
+                  {{ etiquetaBotonManual(row.id) }}
+                </app-button>
+              </span>
+            }
           } @else {
             {{ value }}
           }
@@ -231,3 +279,42 @@
   [(open)]="edicionAbierta"
   (actualizado)="alActualizarEmpleado($event)"
 />
+
+@if (puedeGestionarRecordatorios()) {
+  <app-recordatorios-drawer
+    [(open)]="recordatoriosDrawerOpen"
+    [config]="recordatoriosConfig()"
+    [puedeConfigurar]="puedeConfigurarRecordatorios()"
+    [puedeVerHistorial]="puedeEnviarRecordatorios()"
+    (configGuardada)="alGuardarConfiguracion($event)"
+  />
+
+  <app-modal
+    [open]="confirmLoteOpen()"
+    (openChange)="cerrarConfirmacionLote($event)"
+    title="Confirmar envío de recordatorios por lote"
+  >
+    @if (confirmLoteGrupo(); as grupo) {
+      <div class="confirm-lote-body">
+        <p>
+          Se enviará un correo recordatorio al personal activo con expediente
+          <strong>{{ grupo === 'incompleto' ? 'Incompleto' : 'Casi completo' }}</strong>
+          para que acuda al Departamento de Recursos Humanos a proporcionar sus datos faltantes.
+        </p>
+        <p class="confirm-lote-note">
+          Se omitirán automáticamente trabajadores sin correo institucional o que hayan recibido un envío manual en las últimas 24 horas. El contador automático de cada trabajador notificado se reiniciará.
+        </p>
+      </div>
+    }
+    <ng-template #actions>
+      <app-button variant="secondary" (click)="cerrarConfirmacionLote(false)">Cancelar</app-button>
+      <app-button
+        variant="primary"
+        [loading]="loteEnviando() !== null"
+        (click)="confirmarEnvioLote()"
+      >
+        Confirmar envío
+      </app-button>
+    </ng-template>
+  </app-modal>
+}

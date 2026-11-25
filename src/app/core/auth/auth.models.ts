@@ -27,6 +27,7 @@ export interface VerificarCodigoResponse {
   token: string;
   tipo: 'Bearer';
   rol: string;
+  permisos?: readonly string[];
   modulo: string;
   redirect: string;
   /** ISO 8601 timestamp of the token expiration. */
@@ -39,6 +40,7 @@ export interface SesionResponse {
   empleado_id: number;
   nombre: string | null;
   rol: string | null;
+  permisos?: readonly string[];
 }
 
 /** Error envelope shared by every endpoint that can fail. */

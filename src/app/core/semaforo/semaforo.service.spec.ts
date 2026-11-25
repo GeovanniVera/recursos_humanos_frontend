@@ -60,4 +60,44 @@ describe('SemaforoService', () => {
     http.expectOne(URL).flush({}, { status: 403, statusText: 'Forbidden' });
     expect(fail).toHaveBeenCalledOnce();
   });
+
+  it('calls reminder state, manual send, batch send, config, and history endpoints', () => {
+    api.obtenerEstadoRecordatorios([7, 8]).subscribe();
+    const estadoReq = http.expectOne((r) => r.url === `${URL}/recordatorios/estado`);
+    expect(estadoReq.request.params.get('empleado_ids')).toBe('7,8');
+    estadoReq.flush({ datos: { config: {}, empleados: {} } });
+
+    api.enviarRecordatorioIndividual(7).subscribe();
+    const indReq = http.expectOne(`${URL}/recordatorios/enviar`);
+    expect(indReq.request.method).toBe('POST');
+    expect(indReq.request.body).toEqual({ empleado_id: 7 });
+    indReq.flush({ datos: {} });
+
+    api.enviarRecordatorioLote('incompleto').subscribe();
+    const loteReq = http.expectOne(`${URL}/recordatorios/enviar-lote`);
+    expect(loteReq.request.method).toBe('POST');
+    expect(loteReq.request.body).toEqual({ estado: 'incompleto' });
+    loteReq.flush({ datos: {} });
+
+    api
+      .actualizarConfigRecordatorios({
+        activo: true,
+        dias_incompleto: 2,
+        dias_casi_completo: 5,
+        asunto_incompleto: 'Asunto inc',
+        mensaje_incompleto: 'Mensaje incompleto largo',
+        asunto_casi_completo: 'Asunto casi',
+        mensaje_casi_completo: 'Mensaje casi completo largo',
+      })
+      .subscribe();
+    const cfgReq = http.expectOne(`${URL}/recordatorios/configuracion`);
+    expect(cfgReq.request.method).toBe('PUT');
+    cfgReq.flush({ datos: {} });
+
+    api.consultarHistorialRecordatorios({ estado_expediente: 'incompleto', pagina: 2 }).subscribe();
+    const histReq = http.expectOne((r) => r.url === `${URL}/recordatorios/historial`);
+    expect(histReq.request.params.get('estado_expediente')).toBe('incompleto');
+    expect(histReq.request.params.get('pagina')).toBe('2');
+    histReq.flush({ datos: [], meta: { pagina: 2, por_pagina: 10, total: 0, total_paginas: 1 } });
+  });
 });

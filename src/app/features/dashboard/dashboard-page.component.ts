@@ -2,14 +2,23 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { ChartData, ChartOptions } from 'chart.js';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { ResumenDashboard, ResumenDashboardError } from '../../core/dashboard/dashboard.models';
+import {
+  AnaliticaDashboard,
+  ConteoEtiqueta,
+  ResumenDashboard,
+  ResumenDashboardError,
+} from '../../core/dashboard/dashboard.models';
 import { DashboardService } from '../../core/dashboard/dashboard.service';
 import { AlertBanner } from '../../shared/ui/alert-banner/alert-banner.component';
 import { Button } from '../../shared/ui/button/button.component';
-import { KpiCard } from '../../shared/ui/kpi-card/kpi-card.component';
-import { Modal } from '../../shared/ui/modal/modal.component';
+import {
+  ChartComponent,
+  leerTokenColor,
+  paletaGrafica,
+} from '../../shared/ui/chart/chart.component';
 
 /**
  * Own copy of the screen. Each failure below is a different situation for the
@@ -29,6 +38,8 @@ const MENSAJE_CONEXION = 'No pudimos conectar con el servidor. Revisa tu conexi�
  */
 type DashboardErrorAction = 'reintentar' | 'iniciar-sesion' | 'ninguna';
 
+type DashboardTab = 'plantilla' | 'semaforo' | 'movimientos' | 'comunicacion';
+
 /** Failure of the panel, already translated into copy and into an action. */
 interface DashboardError {
   /** HTTP status, or `0` when the request never reached the server. */
@@ -46,24 +57,15 @@ interface DashboardError {
  */
 const SIN_DATO = '—';
 
-/** Sentence shown when the total of active employees cannot produce a ratio. */
-const SIN_PORCENTAJE = 'Sin porcentaje';
-
 /**
  * General panel, reachable at `/`.
  *
- * The screen owns the state of the three counters — the service holds none —
- * so a reload here never affects another screen. The percentage is computed
- * here as well: the contract sends counts only, and the ratio is ours.
- *
- * All three cards are buttons: each opens a layer with the metric explained and
- * a shortcut to the screen that lists it. `Expedientes completos` is the one
- * whose meaning is not obvious from its label, so its layer carries the extra
- * explanation of what the metric counts.
+ * The screen owns the state of the summary and tabbed analytics — the service
+ * holds none — so a reload here never affects another screen.
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [AlertBanner, Button, KpiCard, Modal],
+  imports: [AlertBanner, Button, ChartComponent],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
 })
@@ -82,54 +84,110 @@ export class DashboardPage {
   /** Counters of the last successful request. Cleared when a request fails. */
   readonly resumen = signal<ResumenDashboard | null>(null);
 
-  /** Layer of the `Expedientes completos` metric. */
-  readonly detalleAbierto = signal(false);
+  /** Tabbed analytics loaded after the main summary. */
+  readonly analitica = signal<AnaliticaDashboard | null>(null);
+  readonly tabActiva = signal<DashboardTab>('plantilla');
 
-  /** Quick-access layers of the other two counters. */
-  readonly accesoActivos = signal(false);
-  readonly accesoBaja = signal(false);
-
-  /** One formatter for every count, so the three cards group digits alike. */
+  /** One formatter for every count, so counters group digits alike. */
   private readonly formato = new Intl.NumberFormat('es-MX');
-
-  /**
-   * Share of complete files over the active employees, rounded to a whole
-   * percent. `null` when there is nothing to divide: with no active employees
-   * a ratio would be a division by zero, not a `0 %`.
-   */
-  readonly porcentaje = computed(() => {
-    const resumen = this.resumen();
-    if (resumen === null || resumen.empleados_activos <= 0) {
-      return null;
-    }
-    return Math.round((resumen.expedientes_completos / resumen.empleados_activos) * 100);
-  });
 
   readonly valorActivos = computed(() => this.formatear(this.resumen()?.empleados_activos));
 
   readonly valorBaja = computed(() => this.formatear(this.resumen()?.empleados_baja));
 
-  readonly valorExpedientes = computed(() =>
-    this.formatear(this.resumen()?.expedientes_completos),
+  readonly horizontalBarOptions: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+  };
+
+  readonly groupedBarOptions: ChartOptions<'bar'> = {
+    plugins: {
+      legend: {
+        display: true,
+        position: 'bottom',
+      },
+    },
+  };
+
+  readonly areasChartData = computed(() =>
+    this.toBarData(this.analitica()?.plantilla.top_areas ?? [], 'Personal activo'),
   );
 
-  /**
-   * Line under the third figure. It is the only hint that carries data, so it
-   * disappears while the data is unknown instead of guessing a value.
-   */
-  readonly pistaExpedientes = computed(() => {
-    if (this.resumen() === null) {
-      return undefined;
-    }
-    const porcentaje = this.porcentaje();
-    return porcentaje === null ? SIN_PORCENTAJE : `${porcentaje} % de los activos`;
+  readonly categoriaChartData = computed(() =>
+    this.toBarData(
+      this.analitica()?.plantilla.por_categoria_cct ?? [],
+      'Personal activo',
+      leerTokenColor('--color-state-success', '#2f6f4e'),
+    ),
+  );
+
+  readonly tipoPersonalChartData = computed(() =>
+    this.toPieData(this.analitica()?.plantilla.por_tipo_personal ?? []),
+  );
+
+  readonly jornadaChartData = computed(() =>
+    this.toPieData(this.analitica()?.plantilla.por_jornada ?? []),
+  );
+
+  readonly sexoChartData = computed(() =>
+    this.toPieData(this.analitica()?.plantilla.por_sexo ?? []),
+  );
+
+  readonly semaforoChartData = computed<ChartData<'doughnut'> | null>(() => {
+    const s = this.analitica()?.semaforo;
+    if (!s) return null;
+    return {
+      labels: ['Completos', 'Casi completos', 'Incompletos'],
+      datasets: [
+        {
+          data: [s.completos, s.casi_completos, s.incompletos],
+          backgroundColor: [
+            leerTokenColor('--color-state-success', '#2f6f4e'),
+            leerTokenColor('--color-state-warning', '#b26b1b'),
+            leerTokenColor('--color-state-error', '#a63a3a'),
+          ],
+          borderWidth: 0,
+        },
+      ],
+    };
   });
 
-  /** Same ratio as the hint, for the layer. */
-  readonly porcentajeTexto = computed(() => {
-    const porcentaje = this.porcentaje();
-    return porcentaje === null ? SIN_DATO : `${porcentaje} %`;
+  readonly estudiosChartData = computed(() =>
+    this.toBarData(this.analitica()?.semaforo.por_nivel_estudios ?? [], 'Empleados'),
+  );
+
+  readonly movimientosSerieData = computed<ChartData<'bar'> | null>(() => {
+    const serie = this.analitica()?.movimientos.serie_mensual;
+    if (!serie || serie.length === 0) return null;
+    return {
+      labels: serie.map((m) => m.mes),
+      datasets: [
+        {
+          label: 'Altas',
+          data: serie.map((m) => m.altas),
+          backgroundColor: leerTokenColor('--color-state-success', '#2f6f4e'),
+          borderRadius: 4,
+        },
+        {
+          label: 'Bajas',
+          data: serie.map((m) => m.bajas),
+          backgroundColor: leerTokenColor('--color-state-error', '#a63a3a'),
+          borderRadius: 4,
+        },
+      ],
+    };
   });
+
+  readonly motivosBajaChartData = computed(() =>
+    this.toBarData(
+      this.analitica()?.movimientos.motivos_baja ?? [],
+      'Registros',
+      leerTokenColor('--color-state-error', '#a63a3a'),
+    ),
+  );
+
+  readonly comunicacionChartData = computed(() =>
+    this.toPieData(this.analitica()?.comunicacion.por_estatus ?? []),
+  );
 
   constructor() {
     this.cargar();
@@ -151,9 +209,59 @@ export class DashboardPage {
         finalize(() => this.loading.set(false)),
       )
       .subscribe({
-        next: (resumen) => this.resumen.set(resumen),
+        next: (resumen) => {
+          this.resumen.set(resumen);
+          this.cargarAnalitica();
+        },
         error: (error: unknown) => this.manejarError(error),
       });
+  }
+
+  private cargarAnalitica(): void {
+    this.dashboard
+      .cargarAnalitica()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (datos) => {
+          this.analitica.set(datos);
+        },
+        error: () => {
+          this.analitica.set(null);
+        },
+      });
+  }
+
+  private toBarData(
+    lista: readonly ConteoEtiqueta[],
+    etiqueta: string,
+    color?: string,
+  ): ChartData<'bar'> {
+    const fill = color ?? leerTokenColor('--color-accent', '#1b4d89');
+    return {
+      labels: lista.map((i) => i.etiqueta),
+      datasets: [
+        {
+          label: etiqueta,
+          data: lista.map((i) => i.total),
+          backgroundColor: fill,
+          borderRadius: 4,
+        },
+      ],
+    };
+  }
+
+  private toPieData(lista: readonly ConteoEtiqueta[]): ChartData<'doughnut'> {
+    const paleta = paletaGrafica();
+    return {
+      labels: lista.map((i) => i.etiqueta),
+      datasets: [
+        {
+          data: lista.map((i) => i.total),
+          backgroundColor: lista.map((_, idx) => paleta[idx % paleta.length]),
+          borderWidth: 0,
+        },
+      ],
+    };
   }
 
   /** Drops the local session and returns to the door. */
@@ -162,25 +270,33 @@ export class DashboardPage {
     void this.router.navigate(['/login']);
   }
 
-  /**
-   * Shortcut of a card: closes whichever layer is open and goes to the screen
-   * that lists the metric. The layers close first so a blocked navigation never
-   * leaves a modal floating over the panel.
-   */
-  /**
-   * Navigates to the screen behind a card, closing every layer first.
-   *
-   * `queryParams` is how a card opens a filter of the destination instead of its
-   * default view: the listing of employees is one screen with four tabs, so the
-   * baja card asks for its tab instead of a second address.
-   */
-  ir(ruta: string, queryParams?: Record<string, string>): void {
-    this.accesoActivos.set(false);
-    this.accesoBaja.set(false);
-    this.detalleAbierto.set(false);
-    void (queryParams
-      ? this.router.navigate([ruta], { queryParams })
-      : this.router.navigate([ruta]));
+  alNavegarTabs(event: KeyboardEvent): void {
+    const tabs: readonly DashboardTab[] = ['plantilla', 'semaforo', 'movimientos', 'comunicacion'];
+    const current = tabs.indexOf(this.tabActiva());
+    let next = current;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (current + 1) % tabs.length;
+        break;
+      case 'ArrowLeft':
+        next = (current - 1 + tabs.length) % tabs.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    this.tabActiva.set(tabs[next]);
+    const list = event.currentTarget as HTMLElement | null;
+    const buttons = list?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    buttons?.[next]?.focus();
   }
 
   /** Maps an HTTP failure to the sentence and the action the user gets. */

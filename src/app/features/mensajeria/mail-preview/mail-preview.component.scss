@@ -3,30 +3,36 @@
   flex: none;
 }
 
+.mail-preview-shell {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--guinda-800);
+}
+
 .mail-preview-frame {
   overflow: hidden;
-  border: var(--border-width) solid var(--rose-300);
-  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--gold-600);
+  border-radius: var(--radius-sm);
   background: var(--white);
   color: var(--guinda-ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .mail-preview-header {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 4px solid var(--gold-600);
-  background: var(--guinda-700);
-  color: var(--white);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 2px solid var(--gold-600);
+  background: var(--white);
+  color: var(--guinda-800);
 }
 
 .mail-logo-badge {
   display: grid;
   flex: none;
   place-items: center;
-  padding: 5px;
+  padding: var(--space-1);
   border: 1.5px solid var(--gold-600);
   border-radius: var(--radius-sm);
   background: var(--white);
@@ -34,15 +40,15 @@
 
 .mail-logo-badge img {
   display: block;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
 .mail-header-divider {
   flex: none;
   width: 2px;
-  height: 42px;
+  height: 48px;
   background: var(--gold-600);
 }
 
@@ -53,23 +59,23 @@
 
 .mail-brand-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.25;
-  color: var(--white);
+  color: var(--guinda-800);
 }
 
 .mail-brand-sub {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: var(--gold-200);
+  color: var(--gold-600);
 }
 
 .mail-preview-meta {
-  padding: var(--space-2) var(--space-5);
+  padding: var(--space-2) var(--space-6);
   border-bottom: var(--border-width) solid var(--rose-100);
   background: var(--marfil-surface);
   color: var(--guinda-ink);
@@ -88,12 +94,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .mail-folio-pill {
-  padding: 4px var(--space-2);
-  border-left: 3px solid var(--guinda-500);
+  padding: var(--space-1) var(--space-2);
+  border-left: 3px solid var(--guinda-600);
   border-radius: var(--radius-none) var(--radius-sm) var(--radius-sm) var(--radius-none);
   background: var(--rose-50);
   color: var(--guinda-800);
@@ -104,14 +110,21 @@
 }
 
 .mail-date {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--guinda-600);
 }
 
+.mail-preview-greeting {
+  margin: 0 0 var(--space-3);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--guinda-ink);
+}
+
 .mail-preview-subject {
   margin: 0 0 var(--space-3);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
   color: var(--guinda-800);
@@ -119,8 +132,8 @@
 }
 
 .mail-preview-body {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--guinda-ink);
   overflow-wrap: anywhere;
 }
@@ -151,22 +164,55 @@
   margin: var(--space-3) 0 var(--space-3) auto;
 }
 
+.mail-notice-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--guinda-600);
+  border-radius: var(--radius-sm);
+  background: var(--rose-50);
+}
+
+.mail-notice-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--guinda-600);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mail-notice-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--guinda-800);
+}
+
 .mail-preview-footer {
-  padding: var(--space-3) var(--space-5);
-  border-top: 2px solid var(--gold-600);
-  background: var(--marfil-surface);
-  text-align: center;
+  padding: var(--space-5) var(--space-6);
+  border-top: var(--border-width) solid var(--gold-600);
+  background: var(--guinda-800);
 }
 
 .mail-footer-notice {
-  margin: 0 0 3px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--guinda-700);
+  margin: 0 0 var(--space-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--white);
 }
 
 .mail-footer-org {
   margin: 0;
-  font-size: 11px;
-  color: var(--guinda-600);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--gold-400);
 }

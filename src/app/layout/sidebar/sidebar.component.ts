@@ -201,6 +201,20 @@ export class Sidebar {
   readonly roleText = computed(() => roleLabel(this.userRole()));
 
   readonly puedeVerBitacora = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return this.auth.tienePermiso('bitacora.consultar');
+    }
+    const rol = this.auth.rol();
+    return rol === 'SUPER_ADMIN' || rol === 'SISTEMAS';
+  });
+
+  readonly puedeGestionarUsuarios = computed(() => {
+    if ((this.auth.permisos?.().size ?? 0) > 0) {
+      return (
+        this.auth.tienePermiso('usuarios.ver') ||
+        this.auth.tienePermiso('roles.gestionar')
+      );
+    }
     const rol = this.auth.rol();
     return rol === 'SUPER_ADMIN' || rol === 'SISTEMAS';
   });
@@ -288,10 +302,11 @@ export class Sidebar {
       const hostRect = hostEl.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
       const railWidth = hostRect.width > 0 ? hostRect.width : 76;
+      const rightEdge = hostRect.right > 0 ? hostRect.right : railWidth;
       this.hideTooltip();
       this.railSubmenuPos.set({
-        top: btnRect.top - hostRect.top,
-        left: railWidth + 10,
+        top: btnRect.top,
+        left: rightEdge + 10,
       });
       return;
     }

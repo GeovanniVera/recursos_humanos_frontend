@@ -1,0 +1,244 @@
+<app-drawer
+  title="Recordatorios de completitud"
+  side="right"
+  size="lg"
+  [(open)]="open"
+>
+  <div class="drawer-stack">
+    <div class="drawer-tabs" role="tablist" aria-label="Opciones de recordatorios">
+      @if (puedeConfigurar()) {
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="tab() === 'configuracion'"
+          [attr.aria-selected]="tab() === 'configuracion'"
+          (click)="cambiarTab('configuracion')"
+        >
+          Configuración y mensajes
+        </button>
+      }
+      @if (puedeVerHistorial()) {
+        <button
+          type="button"
+          role="tab"
+          class="drawer-tab"
+          [class.is-active]="tab() === 'historial'"
+          [attr.aria-selected]="tab() === 'historial'"
+          (click)="cambiarTab('historial')"
+        >
+          Historial de envíos
+        </button>
+      }
+    </div>
+
+    @if (tab() === 'configuracion' && puedeConfigurar()) {
+      @if (formError(); as mensaje) {
+        <app-alert-banner variant="error" title="Revisa los datos" [message]="mensaje" />
+      }
+
+      <div class="panel-card">
+        <label class="toggle-row">
+          <input
+            type="checkbox"
+            [ngModel]="activo()"
+            (ngModelChange)="activo.set($event)"
+          />
+          <span>
+            <strong>Activar envíos automáticos programados</strong>
+            <small>El sistema envía recordatorios según la frecuencia configurada por estado. Los trabajadores no acceden al sistema; el correo les indica acudir a Recursos Humanos.</small>
+          </span>
+        </label>
+
+        <div class="freq-grid">
+          <label class="field-box">
+            <span>Frecuencia para Incompletos (días)</span>
+            <input
+              type="number"
+              min="1"
+              max="90"
+              [ngModel]="diasIncompleto()"
+              (ngModelChange)="diasIncompleto.set(+$event)"
+            />
+          </label>
+          <label class="field-box">
+            <span>Frecuencia para Casi completos (días)</span>
+            <input
+              type="number"
+              min="1"
+              max="90"
+              [ngModel]="diasCasiCompleto()"
+              (ngModelChange)="diasCasiCompleto.set(+$event)"
+            />
+          </label>
+        </div>
+        <p class="hint-note">
+          El botón de envío manual tiene un bloqueo fijo de <strong>{{ config()?.cooldown_manual_horas ?? 24 }} horas</strong> y reinicia el contador automático del trabajador para evitar correos duplicados.
+        </p>
+      </div>
+
+      <div class="panel-card">
+        <h3 class="section-title">Mensaje para expedientes Incompletos</h3>
+        <label class="field-box">
+          <span>Asunto</span>
+          <input
+            type="text"
+            maxlength="160"
+            [ngModel]="asuntoIncompleto()"
+            (ngModelChange)="asuntoIncompleto.set($event)"
+          />
+        </label>
+        <label class="field-box">
+          <span>Cuerpo del mensaje</span>
+          <textarea
+            rows="4"
+            maxlength="4000"
+            [ngModel]="mensajeIncompleto()"
+            (ngModelChange)="mensajeIncompleto.set($event)"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="panel-card">
+        <h3 class="section-title">Mensaje para expedientes Casi completos</h3>
+        <label class="field-box">
+          <span>Asunto</span>
+          <input
+            type="text"
+            maxlength="160"
+            [ngModel]="asuntoCasiCompleto()"
+            (ngModelChange)="asuntoCasiCompleto.set($event)"
+          />
+        </label>
+        <label class="field-box">
+          <span>Cuerpo del mensaje</span>
+          <textarea
+            rows="4"
+            maxlength="4000"
+            [ngModel]="mensajeCasiCompleto()"
+            (ngModelChange)="mensajeCasiCompleto.set($event)"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="panel-card">
+        <div class="preview-head">
+          <h3 class="section-title">Vista previa de plantilla UTN</h3>
+          <div class="preview-actions">
+            <select
+              aria-label="Estado de muestra para vista previa"
+              [ngModel]="previewEstado()"
+              (ngModelChange)="previewEstado.set($event)"
+            >
+              <option value="incompleto">Incompleto</option>
+              <option value="casi_completo">Casi completo</option>
+            </select>
+            <app-button
+              variant="ghost"
+              size="sm"
+              (click)="mostrarPreview.set(!mostrarPreview())"
+            >
+              {{ mostrarPreview() ? 'Ocultar vista previa' : 'Ver vista previa' }}
+            </app-button>
+          </div>
+        </div>
+
+        @if (mostrarPreview()) {
+          <app-mail-preview
+            recipient="colaborador@utn.edu.mx"
+            [badgeText]="previewBadge()"
+            greeting="Hola Colaborador(a) de la Universidad Tecnológica de Nezahualcóyotl,"
+            [subject]="previewSubject()"
+            [bodyHtml]="previewBodySafe()"
+            noticeText="Por favor acude personalmente al Departamento de Recursos Humanos en horario laboral para proporcionar tus datos pendientes."
+          />
+        }
+      </div>
+    } @else {
+      <div class="history-toolbar">
+        <label class="history-filter">
+          <span>Filtrar estado</span>
+          <select
+            [ngModel]="historialFiltroEstado()"
+            (ngModelChange)="alCambiarFiltroHistorial($event)"
+          >
+            <option value="">Todos</option>
+            <option value="incompleto">Incompletos</option>
+            <option value="casi_completo">Casi completos</option>
+          </select>
+        </label>
+        <app-button
+          variant="secondary"
+          size="sm"
+          [loading]="historialLoading()"
+          (click)="cargarHistorial(historialPagina())"
+        >
+          Refrescar
+        </app-button>
+      </div>
+
+      @if (historialError(); as err) {
+        <app-alert-banner variant="error" title="Error en historial" [message]="err" />
+      }
+
+      @if (historialLoading()) {
+        <p class="hint-note">Consultando historial de recordatorios…</p>
+      } @else if (historial().length === 0) {
+        <p class="hint-note">Aún no hay recordatorios registrados con este filtro.</p>
+      } @else {
+        <ul class="history-list">
+          @for (item of historial(); track item.id) {
+            <li class="history-item">
+              <div class="history-top">
+                <div>
+                  <strong>{{ item.empleado_nombre ?? 'Trabajador #' + item.empleado_id }}</strong>
+                  <span class="mono-meta"> · {{ item.num_empleado ?? 'S/N' }} · {{ item.correo_destino }}</span>
+                </div>
+                <span class="status-chip" [class.is-error]="item.status === 'fallido'">
+                  {{ item.status === 'enviado' ? 'Enviado' : 'Fallido' }}
+                </span>
+              </div>
+              <div class="history-meta">
+                <span>{{ item.estado_expediente === 'incompleto' ? 'Incompleto' : 'Casi completo' }} ({{ item.campos_faltantes_count }} pendientes)</span>
+                <span>{{ etiquetaOrigen(item.origen) }}</span>
+                <span>{{ formatearFecha(item.fecha_envio) }}</span>
+              </div>
+              @if (item.error_detalle) {
+                <p class="error-note">{{ item.error_detalle }}</p>
+              }
+            </li>
+          }
+        </ul>
+
+        <div class="history-pager">
+          <app-button
+            variant="ghost"
+            size="sm"
+            [disabled]="historialPagina() <= 1 || historialLoading()"
+            (click)="cargarHistorial(historialPagina() - 1)"
+          >
+            Anterior
+          </app-button>
+          <span class="mono-meta">Página {{ historialPagina() }} de {{ historialTotalPaginas() }}</span>
+          <app-button
+            variant="ghost"
+            size="sm"
+            [disabled]="historialPagina() >= historialTotalPaginas() || historialLoading()"
+            (click)="cargarHistorial(historialPagina() + 1)"
+          >
+            Siguiente
+          </app-button>
+        </div>
+      }
+    }
+  </div>
+
+  <ng-template #actions>
+    <app-button variant="secondary" (click)="open.set(false)">Cerrar</app-button>
+    @if (tab() === 'configuracion') {
+      <app-button variant="primary" [loading]="saving()" (click)="guardarConfiguracion()">
+        Guardar configuración
+      </app-button>
+    }
+  </ng-template>
+</app-drawer>

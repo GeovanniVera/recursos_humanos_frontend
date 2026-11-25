@@ -34,101 +34,313 @@
     </app-alert-banner>
   }
 
-  <!--
-    While loading, the region announces itself as busy and every figure is the
-    unknown placeholder: no number is shown before the backend sent one.
-  -->
-  <section
-    class="kpis"
-    aria-label="Indicadores del panel general"
-    [attr.aria-busy]="loading() ? 'true' : null"
-  >
-    <app-kpi-card
-      label="Empleados activos"
-      [value]="valorActivos()"
-      tone="success"
-      icon="activos"
-      hint="Activos y sin fecha de baja"
-      [clickable]="true"
-      (click)="accesoActivos.set(true)"
-    />
+  @if (loading() && !analitica()) {
+    <section class="sheet" aria-label="Indicadores del panel general" aria-busy="true">
+      <p class="chart-empty">Cargando indicadores del panel…</p>
+    </section>
+  }
 
-    <app-kpi-card
-      label="Empleados baja"
-      [value]="valorBaja()"
-      tone="danger"
-      icon="bajas"
-      hint="Cuentas inactivas"
-      [clickable]="true"
-      (click)="accesoBaja.set(true)"
-    />
+  @if (analitica(); as datos) {
+    <section
+      class="ledger"
+      aria-label="Analítica detallada del sistema"
+      [attr.aria-busy]="loading() ? 'true' : null"
+    >
+      <div
+        class="tabs"
+        role="tablist"
+        aria-label="Vistas analíticas"
+        (keydown)="alNavegarTabs($event)"
+      >
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-active]="tabActiva() === 'plantilla'"
+          [attr.aria-selected]="tabActiva() === 'plantilla'"
+          [attr.tabindex]="tabActiva() === 'plantilla' ? 0 : -1"
+          (click)="tabActiva.set('plantilla')"
+        >
+          <span class="tab-title">Plantilla</span>
+        </button>
 
-    <app-kpi-card
-      label="Expedientes completos"
-      [value]="valorExpedientes()"
-      tone="warning"
-      icon="semaforo"
-      [hint]="pistaExpedientes()"
-      [clickable]="true"
-      (click)="detalleAbierto.set(true)"
-    />
-  </section>
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-active]="tabActiva() === 'semaforo'"
+          [attr.aria-selected]="tabActiva() === 'semaforo'"
+          [attr.tabindex]="tabActiva() === 'semaforo' ? 0 : -1"
+          (click)="tabActiva.set('semaforo')"
+        >
+          <span class="tab-title">Semáforo y formación</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-active]="tabActiva() === 'movimientos'"
+          [attr.aria-selected]="tabActiva() === 'movimientos'"
+          [attr.tabindex]="tabActiva() === 'movimientos' ? 0 : -1"
+          (click)="tabActiva.set('movimientos')"
+        >
+          <span class="tab-title">Movimientos</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          class="tab"
+          [class.is-active]="tabActiva() === 'comunicacion'"
+          [attr.aria-selected]="tabActiva() === 'comunicacion'"
+          [attr.tabindex]="tabActiva() === 'comunicacion' ? 0 : -1"
+          (click)="tabActiva.set('comunicacion')"
+        >
+          <span class="tab-title">Comunicación</span>
+        </button>
+      </div>
+
+      <div class="sheet">
+        @switch (tabActiva()) {
+          @case ('plantilla') {
+            <div class="mini-kpis">
+              <div class="mini-kpi">
+                <span class="mini-label">Activos</span>
+                <strong class="mini-val">{{ valorActivos() }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Bajas definitivas</span>
+                <strong class="mini-val">{{ valorBaja() }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">En licencia</span>
+                <strong class="mini-val">{{ datos.plantilla.en_licencia }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Con empleo externo</span>
+                <strong class="mini-val">{{ datos.plantilla.con_empleo_externo_vigente }}</strong>
+              </div>
+            </div>
+
+            <div class="charts-grid">
+              <article class="chart-card">
+                <h2 class="chart-title">Áreas con más personal activo</h2>
+                <p class="chart-sub">Distribución de la plantilla vigente por adscripción</p>
+                @if (datos.plantilla.top_areas.length === 0) {
+                  <p class="chart-empty">No hay personal activo asignado a áreas.</p>
+                } @else {
+                  <app-chart
+                    type="bar"
+                    [height]="260"
+                    [data]="areasChartData()"
+                    [options]="horizontalBarOptions"
+                    ariaLabel="Áreas con más personal activo"
+                  />
+                }
+              </article>
+
+              <article class="chart-card">
+                <h2 class="chart-title">Categoría CCT</h2>
+                <p class="chart-sub">Clasificación contractual del personal activo</p>
+                @if (datos.plantilla.por_categoria_cct.length === 0) {
+                  <p class="chart-empty">Sin categorías registradas.</p>
+                } @else {
+                  <app-chart
+                    type="bar"
+                    [height]="260"
+                    [data]="categoriaChartData()"
+                    ariaLabel="Categoría CCT"
+                  />
+                }
+              </article>
+            </div>
+
+            <div class="charts-grid charts-grid--3">
+              <article class="chart-card">
+                <h2 class="chart-title">Tipo de personal</h2>
+                <p class="chart-sub">Relación sindical del personal activo</p>
+                @if (datos.plantilla.por_tipo_personal.length === 0) {
+                  <p class="chart-empty">Sin datos registrados.</p>
+                } @else {
+                  <app-chart
+                    type="doughnut"
+                    [height]="220"
+                    [data]="tipoPersonalChartData()"
+                    ariaLabel="Tipo de personal"
+                  />
+                }
+              </article>
+
+              <article class="chart-card">
+                <h2 class="chart-title">Jornada laboral</h2>
+                <p class="chart-sub">Distribución de turnos del personal activo</p>
+                @if (datos.plantilla.por_jornada.length === 0) {
+                  <p class="chart-empty">Sin jornadas registradas.</p>
+                } @else {
+                  <app-chart
+                    type="pie"
+                    [height]="220"
+                    [data]="jornadaChartData()"
+                    ariaLabel="Jornada laboral"
+                  />
+                }
+              </article>
+
+              <article class="chart-card">
+                <h2 class="chart-title">Distribución por sexo</h2>
+                <p class="chart-sub">Composición demográfica de la plantilla</p>
+                @if (datos.plantilla.por_sexo.length === 0) {
+                  <p class="chart-empty">Sin datos registrados.</p>
+                } @else {
+                  <app-chart
+                    type="pie"
+                    [height]="220"
+                    [data]="sexoChartData()"
+                    ariaLabel="Distribución por sexo"
+                  />
+                }
+              </article>
+            </div>
+          }
+
+          @case ('semaforo') {
+            <div class="mini-kpis">
+              <div class="mini-kpi">
+                <span class="mini-label">Completos</span>
+                <strong class="mini-val">{{ datos.semaforo.completos }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Casi completos</span>
+                <strong class="mini-val">{{ datos.semaforo.casi_completos }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Incompletos</span>
+                <strong class="mini-val">{{ datos.semaforo.incompletos }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Sin CURP / Sin grado</span>
+                <strong class="mini-val">
+                  {{ datos.semaforo.sin_curp }} / {{ datos.semaforo.sin_grado_maximo }}
+                </strong>
+              </div>
+            </div>
+
+            <div class="charts-grid">
+              <article class="chart-card">
+                <h2 class="chart-title">Proporción del semáforo</h2>
+                <p class="chart-sub">Estado documental de los empleados activos</p>
+                @if (semaforoChartData(); as semData) {
+                  <app-chart
+                    type="doughnut"
+                    [data]="semData"
+                    ariaLabel="Proporción del semáforo"
+                  />
+                }
+              </article>
+
+              <article class="chart-card">
+                <h2 class="chart-title">Nivel máximo de estudios</h2>
+                <p class="chart-sub">Grado académico máximo declarado por personal activo</p>
+                @if (datos.semaforo.por_nivel_estudios.length === 0) {
+                  <p class="chart-empty">
+                    Ningún empleado activo tiene grado académico máximo registrado aún.
+                  </p>
+                } @else {
+                  <app-chart
+                    type="bar"
+                    [data]="estudiosChartData()"
+                    [options]="horizontalBarOptions"
+                    ariaLabel="Nivel máximo de estudios"
+                  />
+                }
+              </article>
+            </div>
+          }
+
+          @case ('movimientos') {
+            <div class="mini-kpis">
+              <div class="mini-kpi">
+                <span class="mini-label">Altas este mes</span>
+                <strong class="mini-val">{{ datos.movimientos.altas_mes }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Bajas este mes</span>
+                <strong class="mini-val">{{ datos.movimientos.bajas_mes }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Cambios de adscripción (90 días)</span>
+                <strong class="mini-val">{{ datos.movimientos.cambios_adscripcion_90d }}</strong>
+              </div>
+            </div>
+
+            <div class="charts-grid">
+              <article class="chart-card">
+                <h2 class="chart-title">Altas vs. Bajas (últimos 6 meses)</h2>
+                <p class="chart-sub">Comparativa mensual de ingresos y salidas</p>
+                @if (movimientosSerieData(); as movData) {
+                  <app-chart
+                    type="bar"
+                    [data]="movData"
+                    [options]="groupedBarOptions"
+                    ariaLabel="Altas vs. Bajas"
+                  />
+                } @else {
+                  <p class="chart-empty">Sin movimientos en los últimos 6 meses.</p>
+                }
+              </article>
+
+              <article class="chart-card">
+                <h2 class="chart-title">Motivos de baja más frecuentes</h2>
+                <p class="chart-sub">Causas registradas en bajas y licencias</p>
+                @if (datos.movimientos.motivos_baja.length === 0) {
+                  <p class="chart-empty">No hay bajas registradas en el sistema todavía.</p>
+                } @else {
+                  <app-chart
+                    type="bar"
+                    [data]="motivosBajaChartData()"
+                    [options]="horizontalBarOptions"
+                    ariaLabel="Motivos de baja más frecuentes"
+                  />
+                }
+              </article>
+            </div>
+          }
+
+          @case ('comunicacion') {
+            <div class="mini-kpis">
+              <div class="mini-kpi">
+                <span class="mini-label">Pendientes de autorización</span>
+                <strong class="mini-val">{{ datos.comunicacion.pendientes_autorizacion }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Enviados este mes</span>
+                <strong class="mini-val">{{ datos.comunicacion.enviados_mes }}</strong>
+              </div>
+              <div class="mini-kpi">
+                <span class="mini-label">Destinatarios alcanzados (mes)</span>
+                <strong class="mini-val">{{ datos.comunicacion.destinatarios_mes }}</strong>
+              </div>
+            </div>
+
+            <div class="charts-grid">
+              <article class="chart-card">
+                <h2 class="chart-title">Comunicados por estatus</h2>
+                <p class="chart-sub">Estado actual de borradores, autorizaciones y envíos</p>
+                @if (datos.comunicacion.por_estatus.length === 0) {
+                  <p class="chart-empty">Aún no se han creado comunicados.</p>
+                } @else {
+                  <app-chart
+                    type="doughnut"
+                    [data]="comunicacionChartData()"
+                    ariaLabel="Comunicados por estatus"
+                  />
+                }
+              </article>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  }
 </section>
-
-<app-modal title="Empleados activos" [(open)]="accesoActivos">
-  <p>
-    Cuenta a los empleados con la cuenta activa y sin fecha de baja: la plantilla vigente. Los
-    historiales, las adscripciones y las bajas no entran en esta cifra.
-  </p>
-
-  <ng-template #actions>
-    <app-button variant="secondary" (click)="accesoActivos.set(false)">Cancelar</app-button>
-    <app-button variant="primary" (click)="ir('/empleados')">
-      Ir a empleados activos
-    </app-button>
-  </ng-template>
-</app-modal>
-
-<app-modal title="Empleados baja" [(open)]="accesoBaja">
-  <p>
-    Cuenta las cuentas inactivas. El historial de cada baja, con su fecha, su motivo y su archivo,
-    vive en la pestaña de bajas definitivas del listado de empleados.
-  </p>
-
-  <ng-template #actions>
-    <app-button variant="secondary" (click)="accesoBaja.set(false)">Cancelar</app-button>
-    <app-button variant="primary" (click)="ir('/empleados', { estatus: 'baja_definitiva' })">Ir a empleados baja</app-button>
-  </ng-template>
-</app-modal>
-
-<app-modal title="Expedientes completos" [(open)]="detalleAbierto">
-  <p>
-    Cuenta a los empleados activos cuyo expediente está completo: los quince campos vigentes del
-    expediente están llenos. Un empleado dado de baja no suma, y un expediente al que le falta un
-    campo tampoco.
-  </p>
-
-  <dl class="figures">
-    <div class="figure">
-      <dt class="figure-label">Expedientes completos</dt>
-      <dd class="figure-value">{{ valorExpedientes() }}</dd>
-    </div>
-
-    <div class="figure">
-      <dt class="figure-label">Del total de activos</dt>
-      <dd class="figure-value">{{ porcentajeTexto() }}</dd>
-    </div>
-  </dl>
-
-  <p class="figure-note">
-    El porcentaje lo calcula el panel a partir de las dos cifras del servidor; no viene en la
-    respuesta.
-  </p>
-
-  <ng-template #actions>
-    <app-button variant="secondary" (click)="detalleAbierto.set(false)">Cancelar</app-button>
-    <app-button variant="primary" (click)="ir('/semaforo-documentos')">
-      Ir a semáforo de documentos
-    </app-button>
-  </ng-template>
-</app-modal>

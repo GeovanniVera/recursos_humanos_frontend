@@ -291,10 +291,10 @@
 }
 
 .rail-submenu {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  z-index: 35;
+  z-index: 45;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -322,6 +322,11 @@
 .rail-submenu-item.is-active {
   background: var(--color-sidebar-active);
   color: var(--color-sidebar-active-ink);
+}
+
+.rail-submenu-item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .nav-badge {
