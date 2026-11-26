@@ -60,12 +60,18 @@ export interface FiltrosComunicado {
 export interface ComunicadoArchivo {
   id: number;
   comunicado_id: number;
+  uuid?: string | null;
   nombre_original: string;
   mime_type: string;
   tamano_bytes: number;
   es_imagen: boolean;
   embebido_en_cuerpo: boolean;
+  estado?: 'ACTIVO' | 'ELIMINADO';
+  esta_disponible?: boolean;
+  expira_en?: string | null;
+  eliminado_en?: string | null;
   url_descarga: string;
+  url_publica?: string | null;
   fecha_subida: string | null;
 }
 
