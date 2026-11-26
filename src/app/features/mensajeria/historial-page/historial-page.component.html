@@ -177,9 +177,18 @@
           <span class="meta-label">Archivos adjuntos:</span>
           <div class="chips-wrap">
             @for (arch of item.archivos; track arch.id) {
-              <button type="button" class="attach-btn" (click)="descargarArchivo(item.id, arch)">
-                {{ arch.nombre_original }} ({{ formatBytes(arch.tamano_bytes) }})
-              </button>
+              @if (archivoExpirado(arch)) {
+                <span
+                  class="attach-expired"
+                  title="Imagen eliminada del servidor al concluir su periodo de vigencia"
+                >
+                  {{ arch.nombre_original }} · Expirada / Eliminada
+                </span>
+              } @else {
+                <button type="button" class="attach-btn" (click)="descargarArchivo(item.id, arch)">
+                  {{ arch.nombre_original }} ({{ formatBytes(arch.tamano_bytes) }})
+                </button>
+              }
             }
           </div>
         </div>

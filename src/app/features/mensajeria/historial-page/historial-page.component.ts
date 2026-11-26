@@ -469,7 +469,19 @@ export class HistorialEnviosPage {
       });
   }
 
+  archivoExpirado(archivo: ComunicadoArchivo): boolean {
+    return archivo.estado === 'ELIMINADO' || archivo.esta_disponible === false;
+  }
+
   async descargarArchivo(comunicadoId: number, archivo: ComunicadoArchivo): Promise<void> {
+    if (this.archivoExpirado(archivo)) {
+      this.toast.show({
+        type: 'info',
+        title: 'Esta imagen expiró y fue eliminada del servidor tras cumplir su vigencia.',
+      });
+      return;
+    }
+
     try {
       const blob = await firstValueFrom(this.mensajeria.descargarAdjunto(comunicadoId, archivo.id));
       const url = URL.createObjectURL(blob);
@@ -514,7 +526,9 @@ export class HistorialEnviosPage {
   }
 
   private async cargarImagenesEmbebidas(item: ComunicadoDto): Promise<void> {
-    const embebidas = (item.archivos ?? []).filter((a) => a.embebido_en_cuerpo && a.es_imagen);
+    const embebidas = (item.archivos ?? []).filter(
+      (a) => a.embebido_en_cuerpo && a.es_imagen && !this.archivoExpirado(a),
+    );
     if (embebidas.length === 0) {
       return;
     }

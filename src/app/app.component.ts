@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { AuthService } from './core/auth/auth.service';
 import { RouterOutlet } from '@angular/router';
 import { ToastContainer } from './shared/ui/toast/toast-container.component';
 
@@ -11,6 +12,9 @@ import { ToastContainer } from './shared/ui/toast/toast-container.component';
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, ToastContainer],
-  template: '<router-outlet />\n<app-toast-container />',
+  // Unmount expired views, including native modal dialogs that escape ancestor inert.
+  template: '@if (!auth.expiracionPendiente()) { <router-outlet /> }\n<app-toast-container />',
 })
-export class App {}
+export class App {
+  readonly auth = inject(AuthService);
+}

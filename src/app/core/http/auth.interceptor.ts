@@ -9,22 +9,23 @@ import { TokenStorageService } from '../auth/token-storage.service';
  * session when the backend answers `401`.
  *
  * Expired or revoked tokens are detected here, not in each feature: a `401`
- * clears the token so the next guarded navigation sends the user to login.
- * Navigation is intentionally out of scope — the app shell owns routing.
+ * invalidates the session and opens the shared notification. Its close action
+ * owns navigation; concurrent rejections of the old token are ignored.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const tokenStorage = inject(TokenStorageService);
   const auth = inject(AuthService);
 
   const token = tokenStorage.read();
-  const request = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-    : req;
+  if (auth.expiracionPendiente() && !/\/auth\/otp(?:\/verificar)?$/.test(req.url)) {
+    return throwError(() => new HttpErrorResponse({ status: 401, statusText: 'Sesión expirada' }));
+  }
+  const request = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
 
   return next(request).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
-        auth.limpiarSesionLocal();
+        if (token !== null && auth.token() === token) auth.notificarSesionExpirada();
       }
       return throwError(() => error);
     }),

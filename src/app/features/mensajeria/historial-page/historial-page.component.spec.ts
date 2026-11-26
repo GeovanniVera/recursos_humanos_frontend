@@ -164,4 +164,84 @@ describe('HistorialEnviosPage', () => {
 
     await fixture.whenStable();
   });
+
+  it('muestra estado Expirada / Eliminada sin descarga para imágenes vencidas en el historial', async () => {
+    const auth = TestBed.inject(AuthService);
+    auth.cargarSesion().subscribe();
+    httpMock
+      .expectOne((req) => req.url.endsWith('/auth/sesion'))
+      .flush({ usuario_id: 2, empleado_id: 20, nombre: 'Director UTN', rol: 'SUPER_ADMIN' });
+
+    const fixture = TestBed.createComponent(HistorialEnviosPage);
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne(
+        (req) =>
+          req.url.endsWith('/mensajeria/comunicados') &&
+          req.params.get('estatus') === 'historial',
+      )
+      .flush({
+        comunicados: [
+          {
+            ...COMUNICADO_PARCIAL,
+            status: 'COMPLET',
+            status_etiqueta: 'Enviado',
+            fallidos: 0,
+            archivos: [
+              {
+                id: 88,
+                comunicado_id: 42,
+                uuid: '01950000-0000-7000-8000-000000000088',
+                nombre_original: 'banner-viejo.png',
+                mime_type: 'image/png',
+                tamano_bytes: 12000,
+                es_imagen: true,
+                embebido_en_cuerpo: true,
+                estado: 'ELIMINADO',
+                esta_disponible: false,
+                expira_en: '2026-10-24T10:20:00Z',
+                eliminado_en: '2026-10-25T00:00:00Z',
+                url_descarga: '/api/mensajeria/comunicados/42/adjuntos/88',
+                url_publica: 'https://rh.utn.edu.mx/api/medios/01950000-0000-7000-8000-000000000088.png',
+                fecha_subida: '2026-09-24T10:00:00Z',
+              },
+            ],
+          },
+        ],
+        conteos: {
+          pendientes: 0,
+          aprobados: 1,
+          rechazados: 0,
+          borradores: 0,
+          historial: 1,
+          historial_completados: 1,
+          historial_en_progreso: 0,
+          historial_con_fallos: 0,
+        },
+        meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
+      });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    host.querySelector<HTMLButtonElement>('app-row-link button')?.click();
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne((req) => req.url.endsWith('/mensajeria/comunicados/42/destinatarios'))
+      .flush({
+        destinatarios: [],
+        conteos: { total: 2, pendientes: 0, enviados: 2, fallidos: 0 },
+        meta: { current_page: 1, last_page: 1, per_page: 25, total: 0 },
+      });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.body.querySelector('.attach-expired')?.textContent).toContain('banner-viejo.png');
+    expect(document.body.querySelector('.attach-expired')?.textContent).toContain('Expirada / Eliminada');
+    expect(document.body.querySelector('.attach-btn')).toBeNull();
+  });
 });
