@@ -1,5 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { ToastService } from '../../shared/ui/toast/toast.service';
 import { Observable, finalize, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
@@ -22,6 +24,11 @@ import { TokenStorageService } from './token-storage.service';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenStorage = inject(TokenStorageService);
+  private readonly injector = inject(Injector);
+  private readonly toast = inject(ToastService);
+  private readonly _expiracionPendiente = signal(false);
+  readonly expiracionPendiente = this._expiracionPendiente.asReadonly();
+  private expiracionToastId: number | null = null;
 
   private readonly baseUrl = `${environment.apiBaseUrl}/auth`;
 
@@ -44,9 +51,7 @@ export class AuthService {
   readonly rol = computed(() => this._sesion()?.rol ?? null);
 
   /** Effective resource permissions returned by the backend for the active role. */
-  readonly permisos = computed<ReadonlySet<string>>(
-    () => new Set(this._sesion()?.permisos ?? []),
-  );
+  readonly permisos = computed<ReadonlySet<string>>(() => new Set(this._sesion()?.permisos ?? []));
 
   tienePermiso(clave: string): boolean {
     return this.permisos().has(clave);
@@ -66,22 +71,29 @@ export class AuthService {
    */
   verificarCodigo(correo: string, codigo: string): Observable<VerificarCodigoResponse> {
     const body: VerificarCodigoRequest = { correo, codigo };
-    return this.http
-      .post<VerificarCodigoResponse>(`${this.baseUrl}/otp/verificar`, body)
-      .pipe(
-        tap((response) => {
-          this.tokenStorage.write(response.token);
-          this._token.set(response.token);
-          this._redirect.set(response.redirect);
-        }),
-      );
+    return this.http.post<VerificarCodigoResponse>(`${this.baseUrl}/otp/verificar`, body).pipe(
+      tap((response) => {
+        if (this.expiracionToastId !== null) {
+          this.toast.dismiss(this.expiracionToastId, false);
+          this.expiracionToastId = null;
+        }
+        this._expiracionPendiente.set(false);
+        this.tokenStorage.write(response.token);
+        this._token.set(response.token);
+        this._redirect.set(response.redirect);
+      }),
+    );
   }
 
   /** `GET /auth/sesion` — loads the identity behind the current token. */
   cargarSesion(): Observable<SesionResponse> {
-    return this.http
-      .get<SesionResponse>(`${this.baseUrl}/sesion`)
-      .pipe(tap((sesion) => this._sesion.set(sesion)));
+    const token = this.token();
+    return this.http.get<SesionResponse>(`${this.baseUrl}/sesion`).pipe(
+      tap((sesion) => {
+        // An in-flight response must not restore permissions after expiration.
+        if (token === this.token() && !this.expiracionPendiente()) this._sesion.set(sesion);
+      }),
+    );
   }
 
   /**
@@ -101,5 +113,31 @@ export class AuthService {
     this.tokenStorage.clear();
     this._token.set(null);
     this._sesion.set(null);
+  }
+
+  /** Invalidate immediately; only the notification's close action navigates. */
+  notificarSesionExpirada(): void {
+    if (this._expiracionPendiente() || this.token() === null) return;
+    this.limpiarSesionLocal();
+    this._expiracionPendiente.set(true);
+    this.expiracionToastId = this.toast.show(
+      {
+        type: 'error',
+        title: 'Sesión expirada',
+        message:
+          'Tu sesión ha expirado por inactividad. Cierra esta notificación para volver a iniciar sesión.',
+      },
+      {
+        duration: 0,
+        onDismiss: () => {
+          this.expiracionToastId = null;
+          this.limpiarSesionLocal();
+          void this.injector
+            .get(Router)
+            .navigate(['/login'], { replaceUrl: true })
+            .finally(() => this._expiracionPendiente.set(false));
+        },
+      },
+    );
   }
 }
