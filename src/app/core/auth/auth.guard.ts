@@ -15,7 +15,7 @@ export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   if (auth.token() === null) {
-    void router.navigate(['/login']);
+    if (!auth.expiracionPendiente()) void router.navigate(['/login']);
     return false;
   }
 
@@ -24,10 +24,10 @@ export const authGuard: CanActivateFn = () => {
   }
 
   return auth.cargarSesion().pipe(
-    map(() => true),
+    map(() => auth.token() !== null && !auth.expiracionPendiente()),
     catchError(() => {
       auth.limpiarSesionLocal();
-      void router.navigate(['/login']);
+      if (!auth.expiracionPendiente()) void router.navigate(['/login']);
       return of(false);
     }),
   );

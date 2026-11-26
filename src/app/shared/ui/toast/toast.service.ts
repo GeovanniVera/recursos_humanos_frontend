@@ -18,6 +18,8 @@ export interface ToastOptions {
    * dismisses it, which is what a message with an action needs.
    */
   duration?: number;
+  /** Called once on dismissal, never when the stack is cleared. */
+  onDismiss?: () => void;
 }
 
 const DEFAULT_DURATION = 5000;
@@ -54,6 +56,7 @@ export class ToastService {
   private readonly exitTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
   private nextId = 1;
+  private readonly dismissCallbacks = new Map<number, () => void>();
 
   constructor() {
     // Root services live as long as the app, but a test module or an embedded
@@ -75,11 +78,17 @@ export class ToastService {
   show(toast: Omit<Toast, 'id'>, options?: ToastOptions): number {
     const id = this.nextId++;
     const duration = options?.duration ?? DEFAULT_DURATION;
+    if (options?.onDismiss) this.dismissCallbacks.set(id, options.onDismiss);
 
     const current = this._toasts();
     const next = [...current, { ...toast, id }];
-    const overflow = next.length - MAX_VISIBLE;
-    const dropped = overflow > 0 ? next.splice(0, overflow) : [];
+    // A persistent notification with a close action must remain reachable.
+    const dropped: Toast[] = [];
+    while (next.length > MAX_VISIBLE) {
+      const index = next.findIndex((item) => !this.dismissCallbacks.has(item.id));
+      if (index < 0) break;
+      dropped.push(...next.splice(index, 1));
+    }
 
     this._toasts.set(next);
     if (dropped.length > 0) {
@@ -105,7 +114,7 @@ export class ToastService {
   }
 
   /** Starts the exit transition for one toast and removes it after `TOAST_EXIT_MS`. */
-  dismiss(id: number): void {
+  dismiss(id: number, notify = true): void {
     this.clearTimer(id);
     if (!this._toasts().some((toast) => toast.id === id) || this._exitingIds().has(id)) {
       return;
@@ -121,6 +130,9 @@ export class ToastService {
       id,
       setTimeout(() => this.finalizeDismiss(id), TOAST_EXIT_MS),
     );
+    const callback = this.dismissCallbacks.get(id);
+    this.dismissCallbacks.delete(id);
+    if (notify) callback?.();
   }
 
   /** Clears the stack and every pending timer with it. */
@@ -160,6 +172,7 @@ export class ToastService {
   }
 
   private clearTimers(): void {
+    this.dismissCallbacks.clear();
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
